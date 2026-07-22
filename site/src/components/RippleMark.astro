@@ -1,0 +1,22 @@
+---
+// The ripple — three concentric rings, thickest at the center thinning
+// outward; innermost ring carries the bamboo accent (Brand Guide §02).
+interface Props {
+  size?: number;
+  class?: string;
+}
+const { size = 40, class: className } = Astro.props;
+---
+<svg
+  width={size}
+  height={size}
+  viewBox="0 0 48 48"
+  fill="none"
+  role="img"
+  aria-label="Panta ripple mark"
+  class={className}
+>
+  <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.4" />
+  <circle cx="24" cy="24" r="13.5" stroke="currentColor" stroke-width="2.2" />
+  <circle cx="24" cy="24" r="6" stroke="#6F8B3C" stroke-width="3.4" />
+</svg>

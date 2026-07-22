@@ -1,0 +1,12 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "panta-site",
+      "runtimeExecutable": "npm",
+      "runtimeArgs": ["run", "dev", "--prefix", "site", "--", "--port", "4380"],
+      "port": 4380,
+      "autoPort": false
+    }
+  ]
+}

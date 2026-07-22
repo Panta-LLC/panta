@@ -1,0 +1,62 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="Contact Panta — book a free 20-minute call"
+  description="Tell us what's not working about your online presence. We reply within one business day — because response speed is one of the things we audit."
+>
+  <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
+    <div class="container">
+      <p class="label">Contact</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">Tell us what's not working.</h1>
+      <p class="lede">
+        A free 20-minute call, no pitch. If the audit isn't the right move for
+        you, we'll say so — and you'll still leave with something useful.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <div class="grid grid--2" style="gap: 3rem; align-items: start;">
+        <div>
+          <!-- TODO(deploy): wire action to a form backend (Formspree/Resend) before launch -->
+          <form class="form-grid" method="post" action="#">
+            <div>
+              <label for="name">Your name</label>
+              <input type="text" id="name" name="name" autocomplete="name" required />
+            </div>
+            <div>
+              <label for="org">Organization</label>
+              <input type="text" id="org" name="org" autocomplete="organization" />
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" autocomplete="email" required />
+            </div>
+            <div>
+              <label for="message">What made you reach out now?</label>
+              <textarea id="message" name="message" rows="5" placeholder="The itch. A form nobody fills out, a listing with the wrong hours, a hunch you're invisible on Google…"></textarea>
+            </div>
+            <div>
+              <button type="submit" class="btn btn--primary">Send it over</button>
+            </div>
+          </form>
+        </div>
+        <div>
+          <p class="label">Or just email</p>
+          <p style="font-family: var(--font-serif); font-size: 1.5rem;">
+            <a href="mailto:hello@panta.co">hello@panta.co</a>
+          </p>
+          <hr class="divider" />
+          <p class="label">What happens next</p>
+          <ul class="checklist">
+            <li>We reply within one business day. Response speed is one of the things we audit — so we model it.</li>
+            <li>We'll schedule a free 20-minute call to hear what's going on.</li>
+            <li>If the audit fits, we'll send the intake questionnaire and get started. If it doesn't, we'll point you somewhere useful.</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

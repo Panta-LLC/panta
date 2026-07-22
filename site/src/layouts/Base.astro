@@ -1,0 +1,128 @@
+---
+import '../styles/global.css';
+import RippleMark from '../components/RippleMark.astro';
+
+interface Props {
+  title: string;
+  description: string;
+  /** Extra JSON-LD blocks to append after the org schema. */
+  schema?: object[];
+}
+
+const { title, description, schema = [] } = Astro.props;
+const canonical = new URL(Astro.url.pathname, Astro.site);
+const year = new Date().getFullYear();
+
+const orgSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ProfessionalService',
+  name: 'Panta LLC',
+  alternateName: 'panta',
+  url: Astro.site?.toString(),
+  logo: new URL('/favicon.svg', Astro.site).toString(),
+  email: 'hello@panta.co',
+  description:
+    'Panta helps small businesses, nonprofits, and independent practices build a digital presence that actually works — strategy and engineering from the same hands.',
+  slogan: 'One good move, felt everywhere.',
+  areaServed: 'United States',
+  knowsAbout: [
+    'digital presence audits',
+    'local SEO',
+    'web development',
+    'nonprofit digital strategy',
+  ],
+};
+
+const navItems = [
+  { href: '/audit/', label: 'The Audit' },
+  { href: '/about/', label: 'About' },
+  { href: '/contact/', label: 'Contact' },
+];
+
+const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <link rel="canonical" href={canonical} />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="sitemap" href="/sitemap-index.xml" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Panta" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:url" content={canonical} />
+    <meta name="theme-color" content="#26251F" />
+    {[orgSchema, ...schema].map((block) => (
+      <script type="application/ld+json" set:html={JSON.stringify(block)} />
+    ))}
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header">
+      <div class="container site-header__inner">
+        <a href="/" class="brand" aria-label="Panta — home">
+          <RippleMark size={34} />
+          <span class="brand__word">panta</span>
+        </a>
+        <nav class="site-nav" aria-label="Main">
+          {navItems.map((item) => (
+            <a
+              href={item.href}
+              aria-current={currentPath === item.href ? 'page' : undefined}
+            >
+              {item.label}
+            </a>
+          ))}
+          <a href="/audit/" class="btn btn--primary">Get your audit</a>
+        </nav>
+      </div>
+    </header>
+
+    <main id="main">
+      <slot />
+    </main>
+
+    <footer class="site-footer">
+      <div class="container">
+        <div class="site-footer__grid">
+          <div>
+            <a href="/" class="brand" aria-label="Panta — home" style="color: var(--cream);">
+              <RippleMark size={30} />
+              <span class="brand__word">panta</span>
+            </a>
+            <p class="site-footer__tag">One good move, felt everywhere.</p>
+            <p style="font-size: 0.95rem; max-width: 34ch;">
+              Digital business consulting for small businesses, nonprofits, and
+              independent practices.
+            </p>
+          </div>
+          <nav aria-label="Footer">
+            <p class="label" style="color: var(--sage);">Explore</p>
+            <ul class="footer-list">
+              <li><a href="/audit/">The Digital Presence Audit</a></li>
+              <li><a href="/about/">About Panta</a></li>
+              <li><a href="/contact/">Contact</a></li>
+            </ul>
+          </nav>
+          <div>
+            <p class="label" style="color: var(--sage);">Say hello</p>
+            <ul class="footer-list">
+              <li><a href="mailto:hello@panta.co">hello@panta.co</a></li>
+              <li><span style="color: var(--stone);">Northern California, working anywhere</span></li>
+            </ul>
+          </div>
+        </div>
+        <div class="site-footer__meta">
+          <span>© {year} Panta LLC. All rights reserved.</span>
+          <span>We reply within one business day.</span>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
