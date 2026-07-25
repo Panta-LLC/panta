@@ -1,0 +1,550 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="The Client Journey — Panta"
+  description="Every path a client can take from discovering you to choosing you — and where each one can leak."
+  noindex
+>
+  <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
+    <div class="container">
+      <p class="label">The client journey</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">Many doors. One destination.</h1>
+      <p class="lede">
+        Every client arrives by a different path — a search, a map, a feed, a
+        friend. Scroll to watch every route from <em>find</em> to
+        <em>trust</em> to <em>choose</em> — including the two places most
+        businesses quietly lose them.
+      </p>
+      <p class="small" style="margin-top: 1rem;">↓ Scroll to begin</p>
+    </div>
+  </section>
+
+  <section id="journey-stage" class="journey-stage">
+    <div class="journey-layout">
+      <div class="journey-captions" aria-live="polite">
+        <div class="jcap jcap--find">
+          <p class="label">Stage one</p>
+          <h2>Find</h2>
+          <p>
+            The journey starts in many places at once. A Google search, a maps
+            result, a scroll past your post, a directory, a review site, a
+            friend's recommendation — every one is a front door.
+          </p>
+        </div>
+        <div class="jcap jcap--trust">
+          <p class="label">Stage two</p>
+          <h2>Trust</h2>
+          <p>
+            Before anyone acts, they verify: reviews, consistent info, signs of
+            life. Most paths route through your website — the hub. Stale or
+            conflicting info leaks people here, silently.
+          </p>
+        </div>
+        <div class="jcap jcap--choose">
+          <p class="label">Stage three</p>
+          <h2>Choose</h2>
+          <p>
+            Every channel needs a working next step — call, book, message. Some
+            paths never touch your website at all. Friction here is the most
+            expensive leak, and the cheapest to fix.
+          </p>
+        </div>
+        <div class="jcap jcap--convert">
+          <p class="label">Arrival</p>
+          <h2>Convert</h2>
+          <p>
+            Every surviving path lands in the same place: a new client, donor,
+            or booking. Then the ripple starts — reviews and referrals feed the
+            journey's front doors all over again.
+          </p>
+        </div>
+      </div>
+
+      <div class="journey-canvas">
+        <svg
+          viewBox="0 0 840 1080"
+          role="img"
+          aria-label="Diagram of every client path from finding a business, through trust checks, to conversion — including leak points"
+          class="journey-svg"
+        >
+          <!-- stage band labels -->
+          <text class="band-label" x="32" y="66">Find</text>
+          <text class="band-label" x="32" y="428">Trust</text>
+          <text class="band-label" x="32" y="784">Choose</text>
+
+          <!-- ============ paths: find → trust ============ -->
+          <g class="segs segs--trust">
+            <path class="seg" pathLength="1" d="M90 164 C 90 300 210 480 322 572" />
+            <path class="seg" pathLength="1" d="M222 164 C 214 260 186 380 172 464" />
+            <path class="seg" pathLength="1" d="M354 164 C 360 280 380 440 398 560" />
+            <path class="seg" pathLength="1" d="M486 164 C 480 280 462 440 450 560" />
+            <path class="seg" pathLength="1" d="M618 164 C 600 300 522 486 478 564" />
+            <path class="seg" pathLength="1" d="M750 164 C 745 260 700 380 678 464" />
+            <!-- trust internals → hub -->
+            <path class="seg" pathLength="1" d="M172 508 C 182 558 240 594 300 599" />
+            <path class="seg" pathLength="1" d="M420 484 C 420 510 420 536 420 560" />
+            <path class="seg" pathLength="1" d="M672 508 C 660 558 600 596 540 599" />
+            <!-- leak 1: stale info -->
+            <path class="seg seg--leak" pathLength="1" d="M517 462 C 620 470 722 510 782 552" />
+          </g>
+
+          <!-- ============ paths: trust → choose ============ -->
+          <g class="segs segs--choose">
+            <path class="seg" pathLength="1" d="M338 637 C 260 700 202 760 184 820" />
+            <path class="seg" pathLength="1" d="M420 637 C 420 700 420 760 420 820" />
+            <!-- reviews check → call (maps path skips the website) -->
+            <path class="seg" pathLength="1" d="M168 508 C 148 620 158 730 176 818" />
+            <!-- freshness → dm/visit (social proof path skips the website) -->
+            <path class="seg" pathLength="1" d="M674 508 C 682 620 668 730 654 818" />
+            <path class="seg" pathLength="1" d="M502 637 C 560 700 620 758 644 818" />
+          </g>
+
+          <!-- ============ paths: choose → convert ============ -->
+          <g class="segs segs--convert">
+            <path class="seg" pathLength="1" d="M184 872 C 220 940 322 986 398 998" />
+            <path class="seg" pathLength="1" d="M420 874 C 420 902 420 930 420 958" />
+            <path class="seg" pathLength="1" d="M648 872 C 612 940 502 992 444 1000" />
+            <!-- leak 2: no reply -->
+            <path class="seg seg--leak" pathLength="1" d="M458 880 C 502 914 540 944 556 964" />
+            <!-- the ripple loop: converts become referrers -->
+            <path class="seg seg--loop" pathLength="1" d="M456 982 C 762 900 806 420 760 172" />
+          </g>
+
+          <!-- ============ FIND: entry nodes ============ -->
+          <g class="nodes nodes--find">
+            <g class="node">
+              <rect x="34" y="120" width="112" height="44" rx="22" />
+              <text class="node-label" x="90" y="147">Search</text>
+              <text class="node-sub" x="90" y="182">Google</text>
+            </g>
+            <g class="node">
+              <rect x="166" y="120" width="112" height="44" rx="22" />
+              <text class="node-label" x="222" y="147">Maps</text>
+              <text class="node-sub" x="222" y="182">Business Profile</text>
+            </g>
+            <g class="node">
+              <rect x="298" y="120" width="112" height="44" rx="22" />
+              <text class="node-label" x="354" y="147">Social</text>
+              <text class="node-sub" x="354" y="182">feeds &amp; posts</text>
+            </g>
+            <g class="node">
+              <rect x="430" y="120" width="112" height="44" rx="22" />
+              <text class="node-label" x="486" y="147">Directories</text>
+              <text class="node-sub" x="486" y="182">industry lists</text>
+            </g>
+            <g class="node">
+              <rect x="562" y="120" width="112" height="44" rx="22" />
+              <text class="node-label" x="618" y="147">Reviews</text>
+              <text class="node-sub" x="618" y="182">Yelp &amp; friends</text>
+            </g>
+            <g class="node">
+              <rect x="694" y="120" width="112" height="44" rx="22" />
+              <text class="node-label" x="750" y="147">Referral</text>
+              <text class="node-sub" x="750" y="182">word of mouth</text>
+            </g>
+          </g>
+
+          <!-- ============ TRUST: checkpoints + hub ============ -->
+          <g class="nodes nodes--trust">
+            <g class="node node--check">
+              <rect x="104" y="444" width="136" height="42" rx="21" />
+              <text class="node-label" x="172" y="470">4.8★ reviews</text>
+            </g>
+            <g class="node node--check">
+              <rect x="322" y="442" width="196" height="42" rx="21" />
+              <text class="node-label" x="420" y="468">same info everywhere</text>
+            </g>
+            <g class="node node--check">
+              <rect x="602" y="444" width="140" height="42" rx="21" />
+              <text class="node-label" x="672" y="470">signs of life</text>
+            </g>
+            <g class="node node--hub">
+              <rect x="298" y="562" width="244" height="74" rx="14" />
+              <text class="hub-label" x="420" y="594">Your website</text>
+              <text class="hub-sub" x="420" y="620">the hub most paths check</text>
+            </g>
+            <g class="leak-mark leak-mark--1">
+              <text class="leak-x" x="793" y="562">✕</text>
+              <text class="leak-label" x="656" y="524">stale info — lost</text>
+            </g>
+          </g>
+
+          <!-- ============ CHOOSE: actions ============ -->
+          <g class="nodes nodes--choose">
+            <g class="node node--action">
+              <rect x="118" y="822" width="128" height="48" rx="24" />
+              <text class="action-label" x="182" y="851">Call</text>
+            </g>
+            <g class="node node--action">
+              <rect x="352" y="822" width="136" height="48" rx="24" />
+              <text class="action-label" x="420" y="851">Book / form</text>
+            </g>
+            <g class="node node--action">
+              <rect x="586" y="822" width="128" height="48" rx="24" />
+              <text class="action-label" x="650" y="851">DM / visit</text>
+            </g>
+            <g class="leak-mark leak-mark--2">
+              <text class="leak-x" x="565" y="984">✕</text>
+              <text class="leak-label" x="590" y="948">no reply — lost</text>
+            </g>
+          </g>
+
+          <!-- ============ CONVERT: the ripple ============ -->
+          <g class="nodes nodes--convert">
+            <g class="ripple">
+              <circle cx="420" cy="1002" r="38" class="ring ring--outer" />
+              <circle cx="420" cy="1002" r="25" class="ring ring--mid" />
+              <circle cx="420" cy="1002" r="12" class="ring ring--core" />
+            </g>
+            <text class="convert-label" x="420" y="1068">a new client, donor, or booking</text>
+            <text class="loop-label" x="712" y="600">reviews &amp; referrals</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <p class="label">What the picture says</p>
+      <h2>Four things every business should notice.</h2>
+      <ul class="checklist" style="margin-top: 1.5rem;">
+        <li><strong>There is no single front door.</strong> Six channels feed the same journey — a gap in any one of them is invisible to you and obvious to the client who walked through it.</li>
+        <li><strong>Trust is a checkpoint, not a feeling.</strong> Reviews, consistency, and freshness get verified on every path — usually before your website ever loads.</li>
+        <li><strong>Some paths skip your website entirely.</strong> Maps-to-call and social-to-DM convert on the channel itself — which is why every channel needs a working next step.</li>
+        <li><strong>The journey is a loop.</strong> Converted clients become the reviews and referrals that feed the front doors. That's the ripple.</li>
+      </ul>
+      <div class="btn-row" style="margin-top: 2rem;">
+        <a href="/services/" class="btn btn--primary">Find where your journey leaks</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .journey-stage {
+    background: var(--cream);
+    min-height: 100svh;
+  }
+
+  .journey-layout {
+    display: grid;
+    grid-template-columns: minmax(260px, 340px) 1fr;
+    gap: 1.5rem;
+    align-items: center;
+    max-width: var(--container);
+    margin-inline: auto;
+    padding-inline: clamp(1.25rem, 5vw, 2.5rem);
+    height: 100svh;
+  }
+
+  .journey-captions {
+    position: relative;
+    min-height: 16rem;
+  }
+
+  .jcap {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  /* Static / no-JS / reduced-motion fallback: first caption visible, full diagram drawn */
+  .jcap--find {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  .jcap h2 {
+    font-size: clamp(2rem, 3.2vw, 2.8rem);
+    margin-bottom: 0.4em;
+  }
+
+  .journey-canvas {
+    height: min(92svh, 100%);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .journey-svg {
+    height: 100%;
+    max-width: 100%;
+    display: block;
+  }
+
+  @media (max-width: 719px) {
+    .journey-layout {
+      grid-template-columns: 1fr;
+      grid-template-rows: auto 1fr;
+      align-items: start;
+      padding-top: 1rem;
+      gap: 0.5rem;
+    }
+    .journey-captions {
+      min-height: 11.5rem;
+    }
+    .jcap p:not(.label) {
+      font-size: 0.95rem;
+      line-height: 1.5;
+    }
+    .journey-canvas {
+      height: auto;
+      min-height: 0;
+    }
+    .journey-svg {
+      height: auto;
+      width: 100%;
+      max-height: calc(100svh - 14rem);
+    }
+  }
+
+  /* --- SVG styling ------------------------------------------------------- */
+
+  .journey-svg text {
+    font-family: var(--font-sans);
+    fill: var(--charcoal);
+    text-anchor: middle;
+  }
+
+  .band-label {
+    text-anchor: start;
+    font-size: 15px;
+    font-weight: 600;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    fill: var(--stone);
+  }
+
+  .seg {
+    fill: none;
+    stroke: var(--charcoal);
+    stroke-width: 2;
+    stroke-linecap: round;
+    opacity: 0.55;
+    stroke-dasharray: 1;
+    stroke-dashoffset: 0; /* fully drawn by default; JS rewinds then animates */
+  }
+
+  .seg--leak {
+    stroke: var(--stone);
+    stroke-width: 1.8;
+    stroke-dasharray: 0.04 0.02; /* dashed, in pathLength units */
+    opacity: 0.75;
+  }
+
+  .seg--loop {
+    stroke: var(--bamboo);
+    stroke-width: 2;
+    stroke-dasharray: 0.018 0.014;
+    opacity: 0.9;
+  }
+
+  .node rect {
+    fill: #fffdf7;
+    stroke: var(--charcoal);
+    stroke-width: 1.6;
+  }
+
+  .node-label {
+    font-size: 17px;
+    font-weight: 500;
+  }
+
+  .node-sub {
+    font-size: 12.5px;
+    fill: var(--stone-deep);
+  }
+
+  .node--check rect {
+    fill: #eef0e0;
+    stroke: var(--bamboo-deep);
+    stroke-width: 1.5;
+  }
+
+  .node--check .node-label {
+    font-size: 15.5px;
+    fill: var(--bamboo-deep);
+    font-weight: 500;
+  }
+
+  .node--hub rect {
+    fill: var(--cream);
+    stroke: var(--charcoal);
+    stroke-width: 2.4;
+  }
+
+  .hub-label {
+    font-family: var(--font-serif);
+    font-size: 23px;
+  }
+
+  .hub-sub {
+    font-size: 12.5px;
+    fill: var(--stone-deep);
+  }
+
+  .node--action rect {
+    fill: var(--charcoal);
+    stroke: none;
+  }
+
+  .action-label {
+    font-size: 16.5px;
+    font-weight: 500;
+    fill: var(--cream);
+  }
+
+  .leak-x {
+    font-size: 20px;
+    fill: var(--stone);
+    font-weight: 600;
+  }
+
+  .leak-label {
+    font-size: 13px;
+    fill: var(--stone-deep);
+    font-style: italic;
+  }
+
+  .ring {
+    fill: none;
+    stroke: var(--charcoal);
+  }
+
+  .ring--outer { stroke-width: 1.4; }
+  .ring--mid { stroke-width: 2.4; }
+  .ring--core {
+    stroke: var(--bamboo);
+    stroke-width: 4;
+  }
+
+  .convert-label {
+    font-size: 15px;
+    fill: var(--stone-deep);
+  }
+
+  .loop-label {
+    font-size: 13px;
+    fill: var(--bamboo-deep);
+    font-style: italic;
+  }
+
+  @media (prefers-reduced-motion: no-preference) {
+    .ripple {
+      transform-origin: 420px 1002px;
+    }
+  }
+</style>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  const mm = gsap.matchMedia();
+
+  mm.add('(prefers-reduced-motion: no-preference)', () => {
+    const stage = document.querySelector('#journey-stage');
+    if (!stage) return;
+
+    // Rewind everything (CSS default is the fully-drawn static fallback)
+    gsap.set('.segs .seg', { strokeDashoffset: 1 });
+    gsap.set('.seg--leak', { strokeDashoffset: 0, autoAlpha: 0 });
+    gsap.set('.seg--loop', { strokeDashoffset: 0, autoAlpha: 0 });
+    gsap.set('.nodes--find .node, .nodes--trust .node, .nodes--choose .node', {
+      autoAlpha: 0,
+      y: 14,
+    });
+    gsap.set('.leak-mark', { autoAlpha: 0 });
+    gsap.set('.nodes--convert .ripple .ring', { autoAlpha: 0, scale: 0.4, transformOrigin: '420px 1002px' });
+    gsap.set('.convert-label, .loop-label', { autoAlpha: 0 });
+    gsap.set('.jcap', { autoAlpha: 0 });
+
+    const tl = gsap.timeline({
+      defaults: { ease: 'none' },
+      scrollTrigger: {
+        trigger: stage,
+        start: 'top top',
+        end: '+=3600',
+        scrub: 0.4,
+        pin: true,
+      },
+    });
+
+    const capIn = (sel: string) =>
+      tl.to(sel, { autoAlpha: 1, duration: 0.5 });
+    const capOut = (sel: string) =>
+      tl.to(sel, { autoAlpha: 0, duration: 0.35 });
+
+    // --- FIND -----------------------------------------------------------
+    capIn('.jcap--find');
+    tl.to('.nodes--find .node', {
+      autoAlpha: 1,
+      y: 0,
+      duration: 1.6,
+      stagger: 0.25,
+      ease: 'power1.out',
+    });
+    tl.to({}, { duration: 0.6 }); // beat
+
+    // --- TRUST ----------------------------------------------------------
+    capOut('.jcap--find');
+    capIn('.jcap--trust');
+    tl.to('.segs--trust .seg:not(.seg--leak)', {
+      strokeDashoffset: 0,
+      duration: 3,
+      stagger: 0.3,
+    });
+    tl.to('.nodes--trust .node', { autoAlpha: 1, y: 0, duration: 1.4, stagger: 0.3 }, '<40%');
+    tl.to('.segs--trust .seg--leak', { autoAlpha: 1, duration: 0.8 });
+    tl.to('.leak-mark--1', { autoAlpha: 1, duration: 0.7 }, '<50%');
+    tl.to({}, { duration: 0.6 });
+
+    // --- CHOOSE ---------------------------------------------------------
+    capOut('.jcap--trust');
+    capIn('.jcap--choose');
+    tl.to('.segs--choose .seg', {
+      strokeDashoffset: 0,
+      duration: 2.6,
+      stagger: 0.35,
+    });
+    tl.to('.nodes--choose .node', { autoAlpha: 1, y: 0, duration: 1.2, stagger: 0.35 }, '<50%');
+    tl.to({}, { duration: 0.6 });
+
+    // --- CONVERT --------------------------------------------------------
+    capOut('.jcap--choose');
+    capIn('.jcap--convert');
+    tl.to('.segs--convert .seg:not(.seg--leak):not(.seg--loop)', {
+      strokeDashoffset: 0,
+      duration: 2.2,
+      stagger: 0.3,
+    });
+    tl.to('.segs--convert .seg--leak', { autoAlpha: 1, duration: 0.7 });
+    tl.to('.leak-mark--2', { autoAlpha: 1, duration: 0.6 }, '<50%');
+    tl.to('.nodes--convert .ripple .ring', {
+      autoAlpha: 1,
+      scale: 1,
+      duration: 1.6,
+      stagger: 0.35,
+      ease: 'back.out(1.6)',
+    });
+    tl.to('.convert-label', { autoAlpha: 1, duration: 0.8 }, '<60%');
+    tl.to('.segs--convert .seg--loop', { autoAlpha: 1, duration: 2 });
+    tl.to('.loop-label', { autoAlpha: 1, duration: 0.8 }, '<50%');
+    tl.to({}, { duration: 1 }); // resting beat at the end
+
+    if (location.hostname === 'localhost') {
+      // Dev-only hook so the timeline can be driven from the console
+      (window as any).__journey = { gsap, ScrollTrigger, tl };
+    }
+
+    return () => {
+      tl.scrollTrigger?.kill();
+      tl.kill();
+    };
+  });
+</script>
