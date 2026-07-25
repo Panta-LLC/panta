@@ -34,7 +34,7 @@ const orgSchema = {
 };
 
 const navItems = [
-  { href: '/audit/', label: 'The Audit' },
+  { href: '/services/', label: 'Services' },
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
 ];
@@ -79,7 +79,7 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
               {item.label}
             </a>
           ))}
-          <a href="/audit/" class="btn btn--primary">Get your audit</a>
+          <a href="/services/" class="btn btn--primary">Get started</a>
         </nav>
       </div>
     </header>
@@ -105,7 +105,9 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
           <nav aria-label="Footer">
             <p class="label" style="color: var(--sage);">Explore</p>
             <ul class="footer-list">
+              <li><a href="/services/">Where to start</a></li>
               <li><a href="/audit/">The Digital Presence Audit</a></li>
+              <li><a href="/blueprint/">The Digital Presence Blueprint</a></li>
               <li><a href="/about/">About Panta</a></li>
               <li><a href="/contact/">Contact</a></li>
             </ul>
