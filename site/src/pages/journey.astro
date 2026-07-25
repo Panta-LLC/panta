@@ -12,9 +12,9 @@ import Base from '../layouts/Base.astro';
       <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">Many doors. One destination.</h1>
       <p class="lede">
         Every client arrives by a different path — a search, a map, a feed, a
-        friend. Scroll to watch every route from <em>find</em> to
-        <em>trust</em> to <em>choose</em> — including the two places most
-        businesses quietly lose them.
+        friend. Scroll to move through the journey stage by stage, from
+        <em>find</em> to <em>trust</em> to <em>choose</em> — including the two
+        places most businesses quietly lose them.
       </p>
       <div class="btn-row" style="margin-top: 1.25rem;">
         <button id="journey-play" class="btn btn--primary" type="button" style="display: none; cursor: pointer;">
@@ -73,7 +73,7 @@ import Base from '../layouts/Base.astro';
           aria-label="Diagram of every client path from finding a business, through trust checks, to conversion — including leak points"
           class="journey-svg"
         >
-          <!-- stage band labels (revealed with their phase) -->
+          <!-- stage band labels (revealed with their stage) -->
           <text class="band-label band-label--find" x="32" y="66">Find</text>
           <text class="band-label band-label--trust" x="32" y="428">Trust</text>
           <text class="band-label band-label--choose" x="32" y="784">Choose</text>
@@ -208,6 +208,23 @@ import Base from '../layouts/Base.astro';
         </svg>
       </div>
     </div>
+
+    <!-- vertical journey timeline, right side -->
+    <div class="journey-rail" aria-hidden="true">
+      <div class="journey-rail__line"></div>
+      <div class="journey-rail__node" data-rail="0" style="top: 2%;"><span>Find</span></div>
+      <div class="journey-rail__node" data-rail="1" style="top: 34%;"><span>Trust</span></div>
+      <div class="journey-rail__node" data-rail="2" style="top: 66%;"><span>Choose</span></div>
+      <div class="journey-rail__node" data-rail="3" style="top: 94%;"><span>Convert</span></div>
+      <div class="journey-rail__marker">
+        <svg viewBox="0 0 48 48" width="18" height="18" fill="none" aria-hidden="true">
+          <circle cx="24" cy="24" r="21" stroke="#26251F" stroke-width="2.2" />
+          <circle cx="24" cy="24" r="13.5" stroke="#26251F" stroke-width="3.2" />
+          <circle cx="24" cy="24" r="6" stroke="#6F8B3C" stroke-width="4.8" />
+        </svg>
+      </div>
+    </div>
+
     <div class="scroll-hint" aria-hidden="true">
       <span>Scroll</span><span class="scroll-hint__arrow">↓</span>
     </div>
@@ -215,6 +232,8 @@ import Base from '../layouts/Base.astro';
       <div class="journey-progress__bar"></div>
     </div>
   </section>
+
+  <button id="journey-toggle" class="journey-toggle" type="button" aria-label="Play the journey">▶</button>
 
   <section class="section">
     <div class="container">
@@ -235,6 +254,7 @@ import Base from '../layouts/Base.astro';
 
 <style>
   .journey-stage {
+    position: relative;
     background: var(--cream);
     min-height: 100svh;
   }
@@ -454,10 +474,113 @@ import Base from '../layouts/Base.astro';
     text-anchor: middle;
   }
 
-  /* --- scroll hint & progress -------------------------------------------- */
+  /* --- timeline rail ------------------------------------------------------ */
 
-  .journey-stage {
-    position: relative;
+  .journey-rail {
+    position: absolute;
+    right: clamp(0.9rem, 2.5vw, 2.25rem);
+    top: 50%;
+    transform: translateY(-50%);
+    height: 68svh;
+    width: 30px;
+    opacity: 0; /* shown by JS only when the scroll experience is active */
+    pointer-events: none;
+  }
+
+  .journey-rail__line {
+    position: absolute;
+    left: 50%;
+    top: 0;
+    bottom: 0;
+    width: 2px;
+    transform: translateX(-50%);
+    background: var(--line);
+  }
+
+  .journey-rail__node {
+    position: absolute;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    background: var(--cream);
+    border: 2px solid var(--stone);
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+
+  .journey-rail__node.is-active {
+    background: var(--bamboo);
+    border-color: var(--bamboo);
+  }
+
+  .journey-rail__node span {
+    position: absolute;
+    right: 1.3rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    white-space: nowrap;
+    transition: color 0.3s ease;
+  }
+
+  .journey-rail__node.is-active span {
+    color: var(--bamboo-deep);
+  }
+
+  .journey-rail__marker {
+    position: absolute;
+    left: 50%;
+    top: 0%;
+    transform: translate(-50%, -50%);
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    box-shadow: 0 2px 8px rgba(38, 37, 31, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+  }
+
+  @media (max-width: 719px) {
+    .journey-rail { right: 0.5rem; }
+    .journey-rail__node span { display: none; }
+  }
+
+  /* --- play/pause, scroll hint & progress --------------------------------- */
+
+  .journey-toggle {
+    position: fixed;
+    left: 1.25rem;
+    bottom: 1.25rem;
+    z-index: 60;
+    width: 3.25rem;
+    height: 3.25rem;
+    border-radius: 50%;
+    border: none;
+    background: var(--charcoal);
+    color: var(--cream);
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    display: none; /* shown by JS only when the scroll experience is active */
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 4px 14px rgba(38, 37, 31, 0.3);
+    transition: background 0.2s ease, transform 0.2s ease;
+  }
+
+  .journey-toggle:hover {
+    background: var(--bamboo);
+    color: var(--charcoal);
+    transform: scale(1.05);
   }
 
   .scroll-hint {
@@ -475,7 +598,7 @@ import Base from '../layouts/Base.astro';
     font-size: 0.85rem;
     font-weight: 500;
     letter-spacing: 0.06em;
-    opacity: 0; /* shown by JS only when the scroll animation is active */
+    opacity: 0; /* shown by JS only when the scroll experience is active */
     pointer-events: none;
     transition: opacity 0.4s ease;
   }
@@ -497,7 +620,7 @@ import Base from '../layouts/Base.astro';
     bottom: 0;
     height: 3px;
     background: var(--line);
-    opacity: 0; /* shown by JS only when the scroll animation is active */
+    opacity: 0; /* shown by JS only when the scroll experience is active */
   }
 
   .journey-progress__bar {
@@ -527,17 +650,14 @@ import Base from '../layouts/Base.astro';
   const mm = gsap.matchMedia();
 
   mm.add('(prefers-reduced-motion: no-preference)', () => {
-    const stage = document.querySelector('#journey-stage');
-    if (!stage) return;
+    const stageEl = document.querySelector('#journey-stage');
+    if (!stageEl) return;
 
     // Rewind everything (CSS default is the fully-drawn static fallback)
     gsap.set('.segs .seg', { strokeDashoffset: 1 });
     gsap.set('.seg--leak', { strokeDashoffset: 0, autoAlpha: 0 });
     gsap.set('.seg--loop', { strokeDashoffset: 0, autoAlpha: 0 });
-    gsap.set('.nodes--find .node, .nodes--trust .node, .nodes--choose .node', {
-      autoAlpha: 0,
-      y: 14,
-    });
+    gsap.set('.nodes--find .node, .nodes--trust .node, .nodes--choose .node', { autoAlpha: 0, y: 14 });
     gsap.set('.band-label', { autoAlpha: 0 });
     gsap.set('.leak-mark', { autoAlpha: 0 });
     gsap.set('.nodes--convert .ripple .ring', { autoAlpha: 0, scale: 0.4, transformOrigin: '420px 1002px' });
@@ -546,115 +666,178 @@ import Base from '../layouts/Base.astro';
 
     const hint = document.querySelector('.scroll-hint') as HTMLElement | null;
     const bar = document.querySelector('.journey-progress__bar') as HTMLElement | null;
-    gsap.set('.scroll-hint, .journey-progress', { autoAlpha: 1 });
+    const marker = document.querySelector('.journey-rail__marker') as HTMLElement | null;
+    const railNodes = Array.from(document.querySelectorAll('.journey-rail__node'));
+    const toggle = document.getElementById('journey-toggle') as HTMLButtonElement | null;
+    const heroPlay = document.getElementById('journey-play') as HTMLButtonElement | null;
 
-    const tl = gsap.timeline({
-      defaults: { ease: 'none' },
-      scrollTrigger: {
-        trigger: stage,
-        start: 'top top',
-        end: '+=4200',
-        scrub: 1, // softer catch-up = smoother feel
-        pin: true,
-        onUpdate: (self) => {
-          if (bar) bar.style.transform = `scaleX(${self.progress})`;
-          if (hint) hint.style.opacity = self.progress > 0.03 && self.progress < 0.97 ? '0' : self.progress <= 0.03 ? '1' : '0';
-        },
+    gsap.set('.scroll-hint, .journey-progress, .journey-rail', { autoAlpha: 1 });
+    if (toggle) toggle.style.display = 'flex';
+    if (heroPlay) heroPlay.style.display = 'inline-flex';
+
+    // Rail node fractions double as the stage-transition thresholds:
+    // when the marker reaches a node, that stage's slide plays.
+    const THRESHOLDS = [0.02, 0.34, 0.66, 0.94];
+    const CAPS = ['.jcap--find', '.jcap--trust', '.jcap--choose', '.jcap--convert'];
+    const BANDS = ['.band-label--find', '.band-label--trust', '.band-label--choose'];
+
+    let stage = -1;
+    let transTl: gsap.core.Timeline | null = null;
+
+    function applyStage(next: number) {
+      if (next === stage) return;
+      const entering = next > stage;
+      stage = next;
+      transTl?.kill();
+      const tl = gsap.timeline({ defaults: { ease: 'power2.out' } });
+      transTl = tl;
+
+      // caption swap
+      tl.to('.jcap', { autoAlpha: 0, duration: 0.25 }, 0);
+      tl.to(CAPS[next], { autoAlpha: 1, duration: 0.5 }, 0.2);
+
+      // band labels accumulate with the stages
+      BANDS.forEach((b, i) => tl.to(b, { autoAlpha: next >= i ? 1 : 0, duration: 0.3 }, 0));
+
+      const settle = (sel: string, vars: gsap.TweenVars) =>
+        tl.to(sel, { ...vars, duration: 0.3, overwrite: 'auto' }, 0);
+
+      // --- stage 0: entry nodes (always on once the journey starts) -------
+      if (next === 0 && entering) {
+        tl.to('.nodes--find .node', { autoAlpha: 1, y: 0, duration: 0.7, stagger: 0.08 }, 0.1);
+      } else {
+        settle('.nodes--find .node', { autoAlpha: 1, y: 0 });
+      }
+
+      // --- stage 1: trust ---------------------------------------------------
+      if (next >= 1) {
+        if (next === 1 && entering) {
+          tl.to('.segs--trust .seg:not(.seg--leak)', { strokeDashoffset: 0, duration: 0.9, stagger: 0.06, ease: 'power1.inOut' }, 0.1);
+          tl.to('.nodes--trust .node', { autoAlpha: 1, y: 0, duration: 0.6, stagger: 0.08 }, 0.5);
+          tl.to('.segs--trust .seg--leak', { autoAlpha: 1, duration: 0.5 }, 0.95);
+          tl.to('.leak-mark--1', { autoAlpha: 1, duration: 0.5 }, 1.1);
+        } else {
+          settle('.segs--trust .seg:not(.seg--leak)', { strokeDashoffset: 0 });
+          settle('.nodes--trust .node', { autoAlpha: 1, y: 0 });
+          settle('.segs--trust .seg--leak', { autoAlpha: 1 });
+          settle('.leak-mark--1', { autoAlpha: 1 });
+        }
+      } else {
+        settle('.segs--trust .seg:not(.seg--leak)', { strokeDashoffset: 1 });
+        settle('.nodes--trust .node', { autoAlpha: 0, y: 14 });
+        settle('.segs--trust .seg--leak', { autoAlpha: 0 });
+        settle('.leak-mark--1', { autoAlpha: 0 });
+      }
+
+      // --- stage 2: choose --------------------------------------------------
+      if (next >= 2) {
+        if (next === 2 && entering) {
+          tl.to('.segs--choose .seg', { strokeDashoffset: 0, duration: 0.9, stagger: 0.07, ease: 'power1.inOut' }, 0.1);
+          tl.to('.nodes--choose .node', { autoAlpha: 1, y: 0, duration: 0.6, stagger: 0.1 }, 0.55);
+        } else {
+          settle('.segs--choose .seg', { strokeDashoffset: 0 });
+          settle('.nodes--choose .node', { autoAlpha: 1, y: 0 });
+        }
+      } else {
+        settle('.segs--choose .seg', { strokeDashoffset: 1 });
+        settle('.nodes--choose .node', { autoAlpha: 0, y: 14 });
+      }
+
+      // --- stage 3: convert -------------------------------------------------
+      if (next >= 3) {
+        if (next === 3 && entering) {
+          tl.to('.segs--convert .seg:not(.seg--leak):not(.seg--loop)', { strokeDashoffset: 0, duration: 0.8, stagger: 0.08, ease: 'power1.inOut' }, 0.1);
+          tl.to('.segs--convert .seg--leak', { autoAlpha: 1, duration: 0.45 }, 0.6);
+          tl.to('.leak-mark--2', { autoAlpha: 1, duration: 0.45 }, 0.75);
+          tl.to('.nodes--convert .ripple .ring', { autoAlpha: 1, scale: 1, duration: 0.7, stagger: 0.12, ease: 'back.out(1.4)' }, 0.7);
+          tl.to('.convert-label', { autoAlpha: 1, duration: 0.5 }, 1.1);
+          tl.to('.segs--convert .seg--loop', { autoAlpha: 1, duration: 0.8 }, 1.2);
+          tl.to('.loop-label', { autoAlpha: 1, duration: 0.5 }, 1.5);
+        } else {
+          settle('.segs--convert .seg:not(.seg--leak):not(.seg--loop)', { strokeDashoffset: 0 });
+          settle('.segs--convert .seg--leak', { autoAlpha: 1 });
+          settle('.leak-mark--2', { autoAlpha: 1 });
+          settle('.nodes--convert .ripple .ring', { autoAlpha: 1, scale: 1 });
+          settle('.convert-label', { autoAlpha: 1 });
+          settle('.segs--convert .seg--loop', { autoAlpha: 1 });
+          settle('.loop-label', { autoAlpha: 1 });
+        }
+      } else {
+        settle('.segs--convert .seg:not(.seg--leak):not(.seg--loop)', { strokeDashoffset: 1 });
+        settle('.segs--convert .seg--leak', { autoAlpha: 0 });
+        settle('.leak-mark--2', { autoAlpha: 0 });
+        settle('.nodes--convert .ripple .ring', { autoAlpha: 0, scale: 0.4 });
+        settle('.convert-label', { autoAlpha: 0 });
+        settle('.segs--convert .seg--loop', { autoAlpha: 0 });
+        settle('.loop-label', { autoAlpha: 0 });
+      }
+
+      railNodes.forEach((n, i) => n.classList.toggle('is-active', i <= next));
+    }
+
+    const st = ScrollTrigger.create({
+      trigger: stageEl,
+      start: 'top top',
+      end: '+=4200',
+      pin: true,
+      onEnter: () => applyStage(0),
+      onUpdate: (self) => {
+        const p = self.progress;
+        if (bar) bar.style.transform = `scaleX(${p})`;
+        if (hint) hint.style.opacity = p > 0.03 ? '0' : '1';
+        if (marker) marker.style.top = `${Math.min(98, Math.max(2, p * 100))}%`;
+        let target = 0;
+        THRESHOLDS.forEach((t, i) => { if (p >= t) target = i; });
+        applyStage(target);
       },
     });
 
-    const swapCaps = (out: string, inSel: string) => {
-      tl.to(out, { autoAlpha: 0, duration: 0.35 });
-      tl.to(inSel, { autoAlpha: 1, duration: 0.5 }, '<0.1');
+    // --- play / pause -----------------------------------------------------
+    const SPEED = 150; // px of scroll per second while auto-playing
+    let drive: gsap.core.Timeline | null = null;
+
+    const setToggleUI = (playing: boolean) => {
+      if (!toggle) return;
+      toggle.textContent = playing ? '❚❚' : '▶';
+      toggle.setAttribute('aria-label', playing ? 'Pause the journey' : 'Play the journey');
     };
 
-    // --- FIND -----------------------------------------------------------
-    tl.to('.jcap--find', { autoAlpha: 1, duration: 0.5 });
-    tl.to('.band-label--find', { autoAlpha: 1, duration: 0.6 }, '<');
-    tl.to('.nodes--find .node', {
-      autoAlpha: 1,
-      y: 0,
-      duration: 1.4,
-      stagger: 0.2,
-      ease: 'power1.out',
-    }, '<0.2');
-    tl.to({}, { duration: 0.5 }); // beat
+    const stopDrive = () => {
+      drive?.kill();
+      drive = null;
+      setToggleUI(false);
+    };
 
-    // --- TRUST ----------------------------------------------------------
-    swapCaps('.jcap--find', '.jcap--trust');
-    tl.to('.band-label--trust', { autoAlpha: 1, duration: 0.6 }, '<');
-    tl.to('.segs--trust .seg:not(.seg--leak)', {
-      strokeDashoffset: 0,
-      duration: 3.6,
-      stagger: 0.22,
-    }, '<0.15');
-    tl.to('.nodes--trust .node', { autoAlpha: 1, y: 0, duration: 1.8, stagger: 0.25 }, '<30%');
-    tl.to('.segs--trust .seg--leak', { autoAlpha: 1, duration: 0.9 }, '-=0.8');
-    tl.to('.leak-mark--1', { autoAlpha: 1, duration: 0.8 }, '<40%');
-    tl.to({}, { duration: 0.5 });
-
-    // --- CHOOSE ---------------------------------------------------------
-    swapCaps('.jcap--trust', '.jcap--choose');
-    tl.to('.band-label--choose', { autoAlpha: 1, duration: 0.6 }, '<');
-    tl.to('.segs--choose .seg', {
-      strokeDashoffset: 0,
-      duration: 3.2,
-      stagger: 0.25,
-    }, '<0.15');
-    tl.to('.nodes--choose .node', { autoAlpha: 1, y: 0, duration: 1.6, stagger: 0.3 }, '<40%');
-    tl.to({}, { duration: 0.5 });
-
-    // --- CONVERT --------------------------------------------------------
-    swapCaps('.jcap--choose', '.jcap--convert');
-    tl.to('.segs--convert .seg:not(.seg--leak):not(.seg--loop)', {
-      strokeDashoffset: 0,
-      duration: 2.6,
-      stagger: 0.25,
-    }, '<0.15');
-    tl.to('.segs--convert .seg--leak', { autoAlpha: 1, duration: 0.8 }, '-=1');
-    tl.to('.leak-mark--2', { autoAlpha: 1, duration: 0.7 }, '<40%');
-    tl.to('.nodes--convert .ripple .ring', {
-      autoAlpha: 1,
-      scale: 1,
-      duration: 1.8,
-      stagger: 0.3,
-      ease: 'back.out(1.4)',
-    });
-    tl.to('.convert-label', { autoAlpha: 1, duration: 0.9 }, '<60%');
-    tl.to('.segs--convert .seg--loop', { autoAlpha: 1, duration: 2.2 }, '<50%');
-    tl.to('.loop-label', { autoAlpha: 1, duration: 0.9 }, '<50%');
-    tl.to({}, { duration: 1.2 }); // resting beat at the end
-
-    // --- Play button: auto-scroll the pinned journey ---------------------
-    const playBtn = document.getElementById('journey-play') as HTMLButtonElement | null;
-    if (playBtn) {
-      playBtn.style.display = 'inline-flex'; // only shown when motion is active
-      playBtn.addEventListener('click', () => {
-        const st = tl.scrollTrigger;
-        if (!st) return;
-        // autoKill hands control back the moment the user scrolls themselves
-        const drive = gsap.timeline();
-        drive.to(window, {
-          scrollTo: { y: st.start, autoKill: true },
-          duration: 0.7,
-          ease: 'power1.inOut',
-        });
-        drive.to(window, {
-          scrollTo: { y: st.end, autoKill: true },
-          duration: 26,
-          ease: 'none',
-        });
+    const startDrive = () => {
+      stopDrive();
+      const atEnd = window.scrollY >= st.end - 20;
+      const from = window.scrollY < st.start || atEnd ? st.start : window.scrollY;
+      const tlDrive = gsap.timeline({ onComplete: stopDrive });
+      if (Math.abs(from - window.scrollY) > 4) {
+        tlDrive.to(window, { scrollTo: { y: from, autoKill: false }, duration: 0.6, ease: 'power1.inOut' });
+      }
+      // autoKill hands control back the moment the user scrolls themselves
+      tlDrive.to(window, {
+        scrollTo: { y: st.end, autoKill: true, onAutoKill: stopDrive },
+        duration: Math.max(1, (st.end - from) / SPEED),
+        ease: 'none',
       });
-    }
+      drive = tlDrive;
+      setToggleUI(true);
+    };
+
+    toggle?.addEventListener('click', () => (drive ? stopDrive() : startDrive()));
+    heroPlay?.addEventListener('click', startDrive);
 
     if (location.hostname === 'localhost') {
-      // Dev-only hook so the timeline can be driven from the console
-      (window as any).__journey = { gsap, ScrollTrigger, tl };
+      // Dev-only hook so the stages can be driven from the console
+      (window as any).__journey = { gsap, ScrollTrigger, applyStage, st, startDrive, stopDrive };
     }
 
     return () => {
-      tl.scrollTrigger?.kill();
-      tl.kill();
+      stopDrive();
+      transTl?.kill();
+      st.kill();
     };
   });
 </script>
