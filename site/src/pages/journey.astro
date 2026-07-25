@@ -16,7 +16,12 @@ import Base from '../layouts/Base.astro';
         <em>trust</em> to <em>choose</em> — including the two places most
         businesses quietly lose them.
       </p>
-      <p class="small" style="margin-top: 1rem;">↓ Scroll to begin</p>
+      <div class="btn-row" style="margin-top: 1.25rem;">
+        <button id="journey-play" class="btn btn--primary" type="button" style="display: none; cursor: pointer;">
+          ▶&nbsp; Play the journey
+        </button>
+        <p class="small" style="margin: 0;">↓ or scroll at your own pace</p>
+      </div>
     </div>
   </section>
 
@@ -507,11 +512,17 @@ import Base from '../layouts/Base.astro';
   }
 </style>
 
+<style is:global>
+  /* CSS smooth-scrolling fights the JS-driven autoplay on this page */
+  html { scroll-behavior: auto; }
+</style>
+
 <script>
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
 
-  gsap.registerPlugin(ScrollTrigger);
+  gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
 
   const mm = gsap.matchMedia();
 
@@ -613,6 +624,28 @@ import Base from '../layouts/Base.astro';
     tl.to('.segs--convert .seg--loop', { autoAlpha: 1, duration: 2.2 }, '<50%');
     tl.to('.loop-label', { autoAlpha: 1, duration: 0.9 }, '<50%');
     tl.to({}, { duration: 1.2 }); // resting beat at the end
+
+    // --- Play button: auto-scroll the pinned journey ---------------------
+    const playBtn = document.getElementById('journey-play') as HTMLButtonElement | null;
+    if (playBtn) {
+      playBtn.style.display = 'inline-flex'; // only shown when motion is active
+      playBtn.addEventListener('click', () => {
+        const st = tl.scrollTrigger;
+        if (!st) return;
+        // autoKill hands control back the moment the user scrolls themselves
+        const drive = gsap.timeline();
+        drive.to(window, {
+          scrollTo: { y: st.start, autoKill: true },
+          duration: 0.7,
+          ease: 'power1.inOut',
+        });
+        drive.to(window, {
+          scrollTo: { y: st.end, autoKill: true },
+          duration: 26,
+          ease: 'none',
+        });
+      });
+    }
 
     if (location.hostname === 'localhost') {
       // Dev-only hook so the timeline can be driven from the console
