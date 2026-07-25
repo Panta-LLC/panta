@@ -210,12 +210,12 @@ import Base from '../layouts/Base.astro';
     </div>
 
     <!-- vertical journey timeline, right side -->
-    <div class="journey-rail" aria-hidden="true">
-      <div class="journey-rail__line"></div>
-      <div class="journey-rail__node" data-rail="0" style="top: 2%;"><span>Find</span></div>
-      <div class="journey-rail__node" data-rail="1" style="top: 34%;"><span>Trust</span></div>
-      <div class="journey-rail__node" data-rail="2" style="top: 66%;"><span>Choose</span></div>
-      <div class="journey-rail__node" data-rail="3" style="top: 94%;"><span>Convert</span></div>
+    <div class="journey-rail">
+      <div class="journey-rail__line" aria-hidden="true"></div>
+      <button type="button" class="journey-rail__node" data-rail="0" style="top: 2%;" aria-label="Go to stage: Find"><span>Find</span></button>
+      <button type="button" class="journey-rail__node" data-rail="1" style="top: 34%;" aria-label="Go to stage: Trust"><span>Trust</span></button>
+      <button type="button" class="journey-rail__node" data-rail="2" style="top: 66%;" aria-label="Go to stage: Choose"><span>Choose</span></button>
+      <button type="button" class="journey-rail__node" data-rail="3" style="top: 94%;" aria-label="Go to stage: Convert"><span>Convert</span></button>
       <div class="journey-rail__marker">
         <svg viewBox="0 0 48 48" width="18" height="18" fill="none" aria-hidden="true">
           <circle cx="24" cy="24" r="21" stroke="#26251F" stroke-width="2.2" />
@@ -503,10 +503,25 @@ import Base from '../layouts/Base.astro';
     transform: translate(-50%, -50%);
     width: 11px;
     height: 11px;
+    padding: 0;
     border-radius: 50%;
     background: var(--cream);
     border: 2px solid var(--stone);
     transition: background 0.3s ease, border-color 0.3s ease;
+    pointer-events: auto;
+    cursor: pointer;
+  }
+
+  /* generous click target around each small dot */
+  .journey-rail__node::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+  }
+
+  .journey-rail__node:hover {
+    border-color: var(--bamboo);
   }
 
   .journey-rail__node.is-active {
@@ -828,6 +843,15 @@ import Base from '../layouts/Base.astro';
 
     toggle?.addEventListener('click', () => (drive ? stopDrive() : startDrive()));
     heroPlay?.addEventListener('click', startDrive);
+
+    // clicking a rail node jumps to that stage's scroll position
+    railNodes.forEach((node, i) => {
+      node.addEventListener('click', () => {
+        stopDrive();
+        const y = st.start + THRESHOLDS[i] * (st.end - st.start) + 10;
+        gsap.to(window, { scrollTo: { y, autoKill: true }, duration: 0.8, ease: 'power2.inOut' });
+      });
+    });
 
     if (location.hostname === 'localhost') {
       // Dev-only hook so the stages can be driven from the console
