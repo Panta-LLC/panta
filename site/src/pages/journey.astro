@@ -68,10 +68,10 @@ import Base from '../layouts/Base.astro';
           aria-label="Diagram of every client path from finding a business, through trust checks, to conversion — including leak points"
           class="journey-svg"
         >
-          <!-- stage band labels -->
-          <text class="band-label" x="32" y="66">Find</text>
-          <text class="band-label" x="32" y="428">Trust</text>
-          <text class="band-label" x="32" y="784">Choose</text>
+          <!-- stage band labels (revealed with their phase) -->
+          <text class="band-label band-label--find" x="32" y="66">Find</text>
+          <text class="band-label band-label--trust" x="32" y="428">Trust</text>
+          <text class="band-label band-label--choose" x="32" y="784">Choose</text>
 
           <!-- ============ paths: find → trust ============ -->
           <g class="segs segs--trust">
@@ -203,6 +203,12 @@ import Base from '../layouts/Base.astro';
         </svg>
       </div>
     </div>
+    <div class="scroll-hint" aria-hidden="true">
+      <span>Scroll</span><span class="scroll-hint__arrow">↓</span>
+    </div>
+    <div class="journey-progress" aria-hidden="true">
+      <div class="journey-progress__bar"></div>
+    </div>
   </section>
 
   <section class="section">
@@ -302,14 +308,14 @@ import Base from '../layouts/Base.astro';
   }
 
   /* --- SVG styling ------------------------------------------------------- */
+  /* NOTE: keep type selectors out of text rules — `.journey-svg text` would
+     out-rank the per-class fills/anchors and break them. */
 
-  .journey-svg text {
+  .journey-svg {
     font-family: var(--font-sans);
-    fill: var(--charcoal);
-    text-anchor: middle;
   }
 
-  .band-label {
+  .journey-svg text.band-label {
     text-anchor: start;
     font-size: 15px;
     font-weight: 600;
@@ -351,11 +357,14 @@ import Base from '../layouts/Base.astro';
   .node-label {
     font-size: 17px;
     font-weight: 500;
+    fill: var(--charcoal);
+    text-anchor: middle;
   }
 
   .node-sub {
     font-size: 12.5px;
     fill: var(--stone-deep);
+    text-anchor: middle;
   }
 
   .node--check rect {
@@ -379,11 +388,14 @@ import Base from '../layouts/Base.astro';
   .hub-label {
     font-family: var(--font-serif);
     font-size: 23px;
+    fill: var(--charcoal);
+    text-anchor: middle;
   }
 
   .hub-sub {
     font-size: 12.5px;
     fill: var(--stone-deep);
+    text-anchor: middle;
   }
 
   .node--action rect {
@@ -395,18 +407,21 @@ import Base from '../layouts/Base.astro';
     font-size: 16.5px;
     font-weight: 500;
     fill: var(--cream);
+    text-anchor: middle;
   }
 
   .leak-x {
     font-size: 20px;
     fill: var(--stone);
     font-weight: 600;
+    text-anchor: middle;
   }
 
   .leak-label {
     font-size: 13px;
     fill: var(--stone-deep);
     font-style: italic;
+    text-anchor: middle;
   }
 
   .ring {
@@ -424,18 +439,71 @@ import Base from '../layouts/Base.astro';
   .convert-label {
     font-size: 15px;
     fill: var(--stone-deep);
+    text-anchor: middle;
   }
 
   .loop-label {
     font-size: 13px;
     fill: var(--bamboo-deep);
     font-style: italic;
+    text-anchor: middle;
   }
 
-  @media (prefers-reduced-motion: no-preference) {
-    .ripple {
-      transform-origin: 420px 1002px;
-    }
+  /* --- scroll hint & progress -------------------------------------------- */
+
+  .journey-stage {
+    position: relative;
+  }
+
+  .scroll-hint {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.55rem 1.05rem;
+    border-radius: 999px;
+    background: var(--charcoal);
+    color: var(--cream);
+    font-size: 0.85rem;
+    font-weight: 500;
+    letter-spacing: 0.06em;
+    opacity: 0; /* shown by JS only when the scroll animation is active */
+    pointer-events: none;
+    transition: opacity 0.4s ease;
+  }
+
+  .scroll-hint__arrow {
+    display: inline-block;
+    animation: hint-bob 1.4s ease-in-out infinite;
+  }
+
+  @keyframes hint-bob {
+    0%, 100% { transform: translateY(-1px); }
+    50% { transform: translateY(3px); }
+  }
+
+  .journey-progress {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    height: 3px;
+    background: var(--line);
+    opacity: 0; /* shown by JS only when the scroll animation is active */
+  }
+
+  .journey-progress__bar {
+    height: 100%;
+    background: var(--bamboo);
+    transform: scaleX(0);
+    transform-origin: left center;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .scroll-hint__arrow { animation: none; }
   }
 </style>
 
@@ -459,83 +527,92 @@ import Base from '../layouts/Base.astro';
       autoAlpha: 0,
       y: 14,
     });
+    gsap.set('.band-label', { autoAlpha: 0 });
     gsap.set('.leak-mark', { autoAlpha: 0 });
     gsap.set('.nodes--convert .ripple .ring', { autoAlpha: 0, scale: 0.4, transformOrigin: '420px 1002px' });
     gsap.set('.convert-label, .loop-label', { autoAlpha: 0 });
     gsap.set('.jcap', { autoAlpha: 0 });
+
+    const hint = document.querySelector('.scroll-hint') as HTMLElement | null;
+    const bar = document.querySelector('.journey-progress__bar') as HTMLElement | null;
+    gsap.set('.scroll-hint, .journey-progress', { autoAlpha: 1 });
 
     const tl = gsap.timeline({
       defaults: { ease: 'none' },
       scrollTrigger: {
         trigger: stage,
         start: 'top top',
-        end: '+=3600',
-        scrub: 0.4,
+        end: '+=4200',
+        scrub: 1, // softer catch-up = smoother feel
         pin: true,
+        onUpdate: (self) => {
+          if (bar) bar.style.transform = `scaleX(${self.progress})`;
+          if (hint) hint.style.opacity = self.progress > 0.03 && self.progress < 0.97 ? '0' : self.progress <= 0.03 ? '1' : '0';
+        },
       },
     });
 
-    const capIn = (sel: string) =>
-      tl.to(sel, { autoAlpha: 1, duration: 0.5 });
-    const capOut = (sel: string) =>
-      tl.to(sel, { autoAlpha: 0, duration: 0.35 });
+    const swapCaps = (out: string, inSel: string) => {
+      tl.to(out, { autoAlpha: 0, duration: 0.35 });
+      tl.to(inSel, { autoAlpha: 1, duration: 0.5 }, '<0.1');
+    };
 
     // --- FIND -----------------------------------------------------------
-    capIn('.jcap--find');
+    tl.to('.jcap--find', { autoAlpha: 1, duration: 0.5 });
+    tl.to('.band-label--find', { autoAlpha: 1, duration: 0.6 }, '<');
     tl.to('.nodes--find .node', {
       autoAlpha: 1,
       y: 0,
-      duration: 1.6,
-      stagger: 0.25,
+      duration: 1.4,
+      stagger: 0.2,
       ease: 'power1.out',
-    });
-    tl.to({}, { duration: 0.6 }); // beat
+    }, '<0.2');
+    tl.to({}, { duration: 0.5 }); // beat
 
     // --- TRUST ----------------------------------------------------------
-    capOut('.jcap--find');
-    capIn('.jcap--trust');
+    swapCaps('.jcap--find', '.jcap--trust');
+    tl.to('.band-label--trust', { autoAlpha: 1, duration: 0.6 }, '<');
     tl.to('.segs--trust .seg:not(.seg--leak)', {
       strokeDashoffset: 0,
-      duration: 3,
-      stagger: 0.3,
-    });
-    tl.to('.nodes--trust .node', { autoAlpha: 1, y: 0, duration: 1.4, stagger: 0.3 }, '<40%');
-    tl.to('.segs--trust .seg--leak', { autoAlpha: 1, duration: 0.8 });
-    tl.to('.leak-mark--1', { autoAlpha: 1, duration: 0.7 }, '<50%');
-    tl.to({}, { duration: 0.6 });
+      duration: 3.6,
+      stagger: 0.22,
+    }, '<0.15');
+    tl.to('.nodes--trust .node', { autoAlpha: 1, y: 0, duration: 1.8, stagger: 0.25 }, '<30%');
+    tl.to('.segs--trust .seg--leak', { autoAlpha: 1, duration: 0.9 }, '-=0.8');
+    tl.to('.leak-mark--1', { autoAlpha: 1, duration: 0.8 }, '<40%');
+    tl.to({}, { duration: 0.5 });
 
     // --- CHOOSE ---------------------------------------------------------
-    capOut('.jcap--trust');
-    capIn('.jcap--choose');
+    swapCaps('.jcap--trust', '.jcap--choose');
+    tl.to('.band-label--choose', { autoAlpha: 1, duration: 0.6 }, '<');
     tl.to('.segs--choose .seg', {
       strokeDashoffset: 0,
-      duration: 2.6,
-      stagger: 0.35,
-    });
-    tl.to('.nodes--choose .node', { autoAlpha: 1, y: 0, duration: 1.2, stagger: 0.35 }, '<50%');
-    tl.to({}, { duration: 0.6 });
+      duration: 3.2,
+      stagger: 0.25,
+    }, '<0.15');
+    tl.to('.nodes--choose .node', { autoAlpha: 1, y: 0, duration: 1.6, stagger: 0.3 }, '<40%');
+    tl.to({}, { duration: 0.5 });
 
     // --- CONVERT --------------------------------------------------------
-    capOut('.jcap--choose');
-    capIn('.jcap--convert');
+    swapCaps('.jcap--choose', '.jcap--convert');
     tl.to('.segs--convert .seg:not(.seg--leak):not(.seg--loop)', {
       strokeDashoffset: 0,
-      duration: 2.2,
-      stagger: 0.3,
-    });
-    tl.to('.segs--convert .seg--leak', { autoAlpha: 1, duration: 0.7 });
-    tl.to('.leak-mark--2', { autoAlpha: 1, duration: 0.6 }, '<50%');
+      duration: 2.6,
+      stagger: 0.25,
+    }, '<0.15');
+    tl.to('.segs--convert .seg--leak', { autoAlpha: 1, duration: 0.8 }, '-=1');
+    tl.to('.leak-mark--2', { autoAlpha: 1, duration: 0.7 }, '<40%');
     tl.to('.nodes--convert .ripple .ring', {
       autoAlpha: 1,
       scale: 1,
-      duration: 1.6,
-      stagger: 0.35,
-      ease: 'back.out(1.6)',
+      duration: 1.8,
+      stagger: 0.3,
+      ease: 'back.out(1.4)',
     });
-    tl.to('.convert-label', { autoAlpha: 1, duration: 0.8 }, '<60%');
-    tl.to('.segs--convert .seg--loop', { autoAlpha: 1, duration: 2 });
-    tl.to('.loop-label', { autoAlpha: 1, duration: 0.8 }, '<50%');
-    tl.to({}, { duration: 1 }); // resting beat at the end
+    tl.to('.convert-label', { autoAlpha: 1, duration: 0.9 }, '<60%');
+    tl.to('.segs--convert .seg--loop', { autoAlpha: 1, duration: 2.2 }, '<50%');
+    tl.to('.loop-label', { autoAlpha: 1, duration: 0.9 }, '<50%');
+    tl.to({}, { duration: 1.2 }); // resting beat at the end
 
     if (location.hostname === 'localhost') {
       // Dev-only hook so the timeline can be driven from the console
