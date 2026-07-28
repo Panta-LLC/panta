@@ -1,0 +1,213 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getDoc, getProjects } from '../../lib/sanity.js';
+
+const c = await getDoc('websitesPage');
+const projects = await getProjects();
+const featured = projects.filter((p) => p.featured).slice(0, 2);
+
+const websitesSchema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: 'Website Design & Development',
+    serviceType: 'Website design and development',
+    provider: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://panta.llc' },
+    description:
+      'Website design and development for small businesses, nonprofits, and independent practices — fast, credible, built to convert, and connected to every other place your customers find you.',
+    areaServed: 'United States',
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage',
+    mainEntity: c.faqs.map(({ q, a }) => ({
+      '@type': 'Question',
+      name: q,
+      acceptedAnswer: { '@type': 'Answer', text: a },
+    })),
+  },
+];
+---
+<Base
+  title="Website Design & Development — Panta"
+  description="Yes — we design and build websites: fast, credible, built to convert, and yours to keep. And we build them as part of a whole digital presence, so the site people trust is also the site people find."
+  schema={websitesSchema}
+>
+  <!-- HERO — acknowledge the intent head-on -->
+  <section class="section section--dark hero" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
+    <div class="container">
+      <p class="label">{c.heroLabel}</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
+      <p class="lede">{c.heroLede}</p>
+      <div class="btn-row">
+        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <a href="/work/" class="btn btn--ghost">See our work</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROOF -->
+  <div class="proof">
+    <div class="container proof-inner">
+      <span class="proof-q">{c.proofLabel}</span>
+      {projects.map((p) => <span class="client">{p.name}</span>)}
+    </div>
+  </div>
+
+  <!-- SELECTED WORK -->
+  <section class="section">
+    <div class="container">
+      <p class="label">{c.workLabel}</p>
+      <h2>{c.workTitle}</h2>
+      <div class="grid grid--3" style="margin-top: 2.5rem;">
+        {featured.map((p) => (
+          <div class="card">
+            <p class="card__kicker">{p.clientType}</p>
+            <h3>{p.name}</h3>
+            {p.situation && <p>{p.situation}</p>}
+            {(p.contributions ?? []).length > 0 && (
+              <ul class="workline">
+                {p.contributions.map((item) => <li>{item}</li>)}
+              </ul>
+            )}
+            {p.outcome && <p class="small">{p.outcome}</p>}
+          </div>
+        ))}
+        <div class="card card--more">
+          <h3>{c.moreCardTitle}</h3>
+          <p>{c.moreCardBody}</p>
+          <a href="/work/">{c.moreCardLinkLabel}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- WHAT A BUILD INCLUDES -->
+  <section class="section section--dark">
+    <div class="container">
+      <p class="label">{c.buildLabel}</p>
+      <h2>{c.buildTitle}</h2>
+      <div class="grid grid--3" style="margin-top: 2.5rem;">
+        {c.buildCards.map((card) => (
+          <div class="card card--onDark">
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- THE PIVOT — broaden -->
+  <section class="section section--bamboo">
+    <div class="container">
+      <p class="label">{c.pivotLabel}</p>
+      <h2>{c.pivotTitle}</h2>
+      <p class="lede" style="max-width: 56ch;">{c.pivotLede}</p>
+      <div class="card" style="background: var(--cream); border-color: transparent; color: var(--charcoal); margin-top: 2rem; max-width: 44rem;">
+        <p style="margin-bottom: 1rem;">{c.pivotIntro}</p>
+        <ul class="checklist" style="margin-bottom: 1.25rem;">
+          {c.pivotChecklist.map((item) => (
+            <li><strong>{item.title}</strong> {item.body}</li>
+          ))}
+        </ul>
+        <a href="/web-strategy/" class="btn btn--primary">{c.pivotCtaLabel}</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- PROCESS POINTER — the full 3-step process lives on the practice hub -->
+  <section class="section">
+    <div class="container">
+      <p class="label">{c.processLabel}</p>
+      <h2>{c.processTitle}</h2>
+      <p style="max-width: 56ch;">{c.processBody}</p>
+      <p style="margin-top: 1rem;">
+        <a href="/web-strategy/#process">{c.processLinkLabel}</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section" style="padding-top: 0;">
+    <div class="container">
+      <p class="label">{c.faqLabel}</p>
+      <h2>{c.faqTitle}</h2>
+      <div style="margin-top: 2rem; max-width: 46rem;">
+        {c.faqs.map(({ q, a }) => (
+          <details style="border-bottom: 1px solid var(--line); padding-block: 1rem;">
+            <summary style="font-family: var(--font-serif); font-size: 1.2rem; cursor: pointer;">{q}</summary>
+            <p style="margin-top: 0.75rem;">{a}</p>
+          </details>
+        ))}
+      </div>
+      <div class="btn-row" style="margin-top: 2.5rem;">
+        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <span class="small">{c.ctaNote}</span>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* proof strip — same pattern as /consultation/ */
+  .proof {
+    border-bottom: 1px solid var(--line);
+    background: var(--cream-soft);
+  }
+
+  .proof-inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.25rem, 4vw, 2.5rem);
+    flex-wrap: wrap;
+    padding-block: 1.25rem;
+  }
+
+  .proof-q {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+
+  .client {
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: 1.1rem;
+    color: var(--charcoal);
+    opacity: 0.85;
+  }
+
+  .card--onDark {
+    background: transparent;
+    border-color: #3c3a32;
+    color: var(--cream);
+  }
+
+  .card--more {
+    background: var(--cream-soft);
+  }
+
+  .workline {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .workline li {
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .workline li::before {
+    content: '·';
+    position: absolute;
+    left: 0.25rem;
+    color: var(--bamboo-deep);
+    font-weight: 700;
+  }
+</style>

@@ -1,101 +1,678 @@
 ---
+import '@fontsource/baloo-2/800.css';
 import Base from '../layouts/Base.astro';
 import RippleMark from '../components/RippleMark.astro';
+import { getDoc } from '../lib/sanity.js';
+
+const c = await getDoc('missionPage');
+// Entries without an href render as "coming soon" — add the href in Sanity
+// once the practice has a page and it becomes a link.
+const practices = c.practices;
 ---
 <Base
-  title="Panta — Build, Connect, Create for community growth"
-  description="Panta builds, connects, and creates for community growth and development — starting with Digital Business Consulting for small businesses, nonprofits, and independent practices."
+  title="Panta — Build. Connect. Create."
+  description="Panta exists to support the people who support our community — through Web Strategy & Development, Community Program Development, and Product Development. Scroll the story of our three verbs."
 >
-  <section class="section section--dark hero">
-    <div class="container">
-      <p class="label">Panta</p>
-      <h1>We build, connect, and create — for community growth.</h1>
-      <p class="lede">
-        Panta exists to help community-based businesses and organizations grow
-        their reach and their mission — with big-company capability, delivered
-        at the scale and warmth a small team can trust.
-      </p>
-      <div class="btn-row">
-        <a href="/digital-business-consulting/" class="btn btn--primary">Explore Digital Business Consulting</a>
-        <a href="/consultation/" class="btn btn--ghost">Book a free 30-minute audit</a>
+  <!-- ======================= hero (from the draft) ======================= -->
+  <section class="mhero" id="top">
+    <div class="container mhero__grid">
+      <h1 class="mhero__words">
+        <a class="mword" href="#build" data-target="build"><span>Build</span></a>
+        <a class="mword" href="#connect" data-target="connect"><span>Connect</span></a>
+        <a class="mword" href="#create" data-target="create"><span>Create</span></a>
+      </h1>
+      <div class="mhero__aside">
+        <p class="mhero__quote">{c.quote}</p>
+        <p class="mhero__sub">{c.summary}</p>
+        <div class="mhero__practices">
+          <p class="mhero__practices-label">{c.practicesLabel}</p>
+          <ul class="mhero__practices-list">
+            {practices.map((p) => (
+              <li>
+                {p.href ? (
+                  <a href={p.href}>
+                    {p.title}
+                    <span class="mhero__practice-arrow" aria-hidden="true">→</span>
+                  </a>
+                ) : (
+                  <>
+                    <span class="mhero__practice-soon">{p.title}</span>
+                    <span class="mhero__practice-tag">Coming soon</span>
+                  </>
+                )}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </div>
+    <p class="mhero__cue" aria-hidden="true">
+      <span class="mhero__cue-arrow">↓</span> scroll
+    </p>
+  </section>
+
+  <!-- ======================= origin ======================= -->
+  <section class="origin section--dark" id="origin">
+    <div class="container origin__grid">
+      <div class="origin__copy">
+        <p class="label">{c.originLabel}</p>
+        <h2>{c.originTitle}</h2>
+        <p class="lede">{c.originLede}</p>
+        <p>{c.originBody}</p>
+        <p class="origin__turn"><em>{c.originTurn}</em></p>
+      </div>
+      <div class="origin__mark" aria-hidden="true">
+        <svg viewBox="0 0 200 200" class="origin-ripple">
+          <circle cx="100" cy="100" r="88" stroke="currentColor" stroke-width="1" fill="none" />
+          <circle cx="100" cy="100" r="62" stroke="currentColor" stroke-width="1.6" fill="none" />
+          <circle cx="100" cy="100" r="38" stroke="currentColor" stroke-width="2.6" fill="none" />
+          <circle cx="100" cy="100" r="16" stroke="#6F8B3C" stroke-width="5" fill="none" />
+        </svg>
       </div>
     </div>
   </section>
 
-  <section class="section">
-    <div class="container">
-      <p class="label">What we do</p>
-      <h2>Three verbs, one mission.</h2>
-      <div class="grid grid--3" style="margin-top: 2.5rem;">
-        <div class="card">
-          <p class="card__kicker">Build</p>
-          <h3>The things that work</h3>
-          <p>
-            Websites, software, and systems — engineered to what your
-            organization actually needs, and built to be maintained, not
-            admired.
-          </p>
+  <!-- ======================= the three verbs ======================= -->
+  <div id="values">
+    {c.verbPanels.map((p) => (
+      <section class={`vpanel vpanel--${p._key}`} id={p._key} data-value={p._key}>
+        <div class="container vpanel__inner">
+          <p class="vpanel__num">{p.num}</p>
+          <p class="vword-wrap" aria-hidden="true"><span class="vword">{p.word}</span></p>
+          <h2 class="vpanel__head">{p.head}</h2>
+          <div class="vpanel__story">
+            <p>{p.story}</p>
+          </div>
+          <ul class="vchips">
+            {p.chips.map((chip) => <li>{chip}</li>)}
+          </ul>
         </div>
-        <div class="card">
-          <p class="card__kicker">Connect</p>
-          <h3>The places that matter</h3>
-          <p>
-            The channels, networks, and directories where your community
-            already looks — connected to each other so every door leads
-            somewhere.
-          </p>
-        </div>
-        <div class="card">
-          <p class="card__kicker">Create</p>
-          <h3>The story that carries</h3>
-          <p>
-            Brand, content, and design that make you recognizable everywhere
-            you show up — and give people a reason to come back.
-          </p>
+      </section>
+    ))}
+  </div>
+
+  <!-- ======================= convergence ======================= -->
+  <section class="mconverge section section--dark">
+    <div class="container mconverge__inner">
+      <p class="mconverge__words" aria-hidden="true">
+        <span>Build.</span> <span>Connect.</span> <span>Create.</span>
+      </p>
+      <div class="mconverge__reveal">
+        <RippleMark size={56} />
+        <h2>{c.convergeTitle}</h2>
+        <p class="lede">{c.convergeLede}</p>
+        <div class="btn-row">
+          <a href="/web-strategy/" class="btn btn--primary">{c.primaryCtaLabel}</a>
+          <a href="/consultation/" class="btn btn--ghost">{c.secondaryCtaLabel}</a>
         </div>
       </div>
     </div>
   </section>
 
-  <section class="section section--bamboo">
-    <div class="container">
-      <p class="label">The first of many branches</p>
-      <h2>Digital Business Consulting</h2>
-      <p class="lede" style="max-width: 56ch;">
-        Our first practice: helping small businesses, nonprofits, and
-        independent practices build a digital presence that actually works —
-        strategy and engineering from the same hands.
-      </p>
-      <div class="card" style="background: var(--cream); border-color: transparent; color: var(--charcoal); margin-top: 2rem; max-width: 44rem;">
-        <ul class="checklist" style="margin-bottom: 1.25rem;">
-          <li><strong>Digital Presence Plan</strong> — a graded read on where you stand and a 90-day roadmap forward</li>
-          <li><strong>Design, build &amp; configure web channels</strong> — website, social, Google Business Profile, directories</li>
-          <li><strong>Content creation &amp; marketing</strong> — a rhythm you can sustain, measured honestly</li>
-          <li><strong>Brand development</strong> — one recognizable identity across every channel</li>
-        </ul>
-        <a href="/digital-business-consulting/" class="btn btn--primary">See the practice</a>
-      </div>
-      <p class="small" style="margin-top: 1.5rem; color: var(--cream);">
-        More branches are growing. That's the point of the ripple.
-      </p>
-    </div>
-  </section>
-
-  <section class="section section--dark">
-    <div class="container" style="display: grid; gap: 2rem; justify-items: start;">
-      <RippleMark size={56} />
-      <div>
-        <h2>One good move, felt everywhere.</h2>
-        <p class="lede" style="max-width: 54ch;">
-          Our mark is a planted seed sending ripples outward — one clear act at
-          the core, its effect widening into the world. Every branch of Panta
-          starts the same way: with one good move for a community we care
-          about.
-        </p>
-        <div class="btn-row" style="margin-top: 1rem;">
-          <a href="/consultation/" class="btn btn--primary">Start with a free conversation</a>
-        </div>
-      </div>
-    </div>
-  </section>
+  <!-- rail: shown by JS while scrolling the three verbs -->
+  <nav class="vrail" aria-label="Mission values">
+    <button class="vrail__dot" type="button" data-target="build"><span>Build</span></button>
+    <button class="vrail__dot" type="button" data-target="connect"><span>Connect</span></button>
+    <button class="vrail__dot" type="button" data-target="create"><span>Create</span></button>
+  </nav>
 </Base>
+
+<style>
+  /* --- hero --------------------------------------------------------------- */
+
+  .mhero {
+    position: relative;
+    min-height: calc(100svh - 4.5rem);
+    display: flex;
+    align-items: center;
+    padding-block: clamp(3rem, 8vw, 5rem);
+  }
+
+  .mhero__grid {
+    display: grid;
+    gap: 2.5rem;
+    align-items: center;
+    width: 100%;
+  }
+
+  @media (min-width: 860px) {
+    .mhero__grid { grid-template-columns: 1.2fr 1fr; gap: 3rem; }
+  }
+
+  .mhero__words {
+    margin: 0;
+    display: grid;
+    justify-items: start;
+    line-height: 0.92;
+  }
+
+  .mword {
+    display: block;
+    overflow: hidden;
+    text-decoration: none;
+    color: var(--charcoal);
+    font-family: 'Baloo 2', var(--font-sans);
+    font-weight: 800;
+    font-size: clamp(3.2rem, 9vw, 7.2rem);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    line-height: 0.95;
+    transition: color 0.2s ease;
+  }
+
+  .mword span {
+    display: block;
+    transform: translateY(0);
+  }
+
+  .mword:hover,
+  .mword:focus-visible { color: var(--bamboo-deep); }
+
+  .mhero__quote {
+    font-family: var(--font-serif);
+    font-weight: 300;
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    line-height: 1.4;
+    max-width: 24ch;
+    margin-bottom: 1.25rem;
+  }
+
+  .mhero__sub {
+    font-size: 0.98rem;
+    color: var(--stone-deep);
+    max-width: 38ch;
+  }
+
+  .mhero__practices {
+    margin-top: 1.75rem;
+    padding-top: 1.4rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .mhero__practices-label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+    margin-bottom: 0.75rem;
+  }
+
+  .mhero__practices-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: 0.55rem;
+  }
+
+  .mhero__practices-list li {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .mhero__practices-list a {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 500;
+    color: var(--charcoal);
+    text-decoration: none;
+  }
+
+  .mhero__practices-list a:hover,
+  .mhero__practices-list a:focus-visible {
+    color: var(--bamboo-deep);
+  }
+
+  .mhero__practice-arrow {
+    transition: transform 0.2s ease;
+  }
+
+  .mhero__practices-list a:hover .mhero__practice-arrow,
+  .mhero__practices-list a:focus-visible .mhero__practice-arrow {
+    transform: translateX(4px);
+  }
+
+  .mhero__practice-soon {
+    font-weight: 500;
+    color: var(--stone-deep);
+  }
+
+  .mhero__practice-tag {
+    font-size: 0.62rem;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    color: var(--stone-deep);
+    white-space: nowrap;
+  }
+
+  .mhero__cue {
+    position: absolute;
+    bottom: 1.25rem;
+    left: 50%;
+    transform: translateX(-50%);
+    margin: 0;
+    font-size: 0.8rem;
+    font-weight: 500;
+    letter-spacing: 0.18em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+  }
+
+  .mhero__cue-arrow {
+    display: inline-block;
+    animation: cue-bob 1.4s ease-in-out infinite;
+  }
+
+  @keyframes cue-bob {
+    0%, 100% { transform: translateY(-1px); }
+    50% { transform: translateY(3px); }
+  }
+
+  /* --- origin ------------------------------------------------------------- */
+
+  .origin {
+    background: var(--charcoal);
+    color: var(--cream);
+    padding-block: clamp(4rem, 10vw, 7rem);
+  }
+
+  .origin__grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 860px) {
+    .origin__grid { grid-template-columns: 1.3fr 1fr; }
+  }
+
+  .origin__turn {
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    color: var(--sage);
+    margin-top: 2.25rem;
+  }
+
+  .origin__mark { display: grid; justify-items: center; }
+
+  .origin-ripple {
+    width: min(320px, 70vw);
+    color: var(--cream);
+  }
+
+  /* --- value panels -------------------------------------------------------- */
+
+  .vpanel {
+    min-height: 100svh;
+    display: flex;
+    align-items: center;
+    padding-block: clamp(3.5rem, 8vw, 5rem);
+  }
+
+  .vpanel--build { background: var(--cream); color: var(--charcoal); }
+  .vpanel--connect { background: var(--charcoal); color: var(--cream); }
+  .vpanel--create { background: var(--bamboo); color: var(--cream); }
+
+  .vpanel__num {
+    font-size: 0.75rem;
+    font-weight: 500;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    margin-bottom: 1rem;
+    color: var(--stone-deep);
+  }
+
+  .vpanel--connect .vpanel__num,
+  .vpanel--create .vpanel__num { color: var(--sage); }
+
+  .vword-wrap {
+    margin: 0 0 1.25rem;
+    max-width: none;
+    overflow: hidden;
+    line-height: 0.9;
+  }
+
+  .vword {
+    display: block;
+    font-family: 'Baloo 2', var(--font-sans);
+    font-weight: 800;
+    font-size: clamp(4rem, 14vw, 11rem);
+    letter-spacing: 0.01em;
+    text-transform: uppercase;
+    line-height: 0.95;
+  }
+
+  .vpanel__head {
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    max-width: 32ch;
+  }
+
+  .vpanel__story p {
+    font-size: 1.15rem;
+    line-height: 1.65;
+    max-width: 58ch;
+  }
+
+  .vpanel--connect .vpanel__story p,
+  .vpanel--create .vpanel__story p { color: var(--cream); }
+
+  .vchips {
+    list-style: none;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.7rem;
+  }
+
+  .vchips li {
+    font-size: 0.95rem;
+    font-weight: 500;
+    padding: 0.6rem 1.05rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: var(--cream-soft);
+  }
+
+  .vpanel--connect .vchips li {
+    background: rgba(245, 241, 231, 0.07);
+    border-color: rgba(245, 241, 231, 0.25);
+  }
+
+  .vpanel--create .vchips li {
+    background: rgba(38, 37, 31, 0.16);
+    border-color: rgba(245, 241, 231, 0.3);
+  }
+
+  /* --- convergence ---------------------------------------------------------- */
+
+  .mconverge__inner {
+    display: grid;
+    gap: 1.5rem;
+    justify-items: start;
+  }
+
+  .mconverge__words {
+    max-width: none;
+    font-family: 'Baloo 2', var(--font-sans);
+    font-weight: 800;
+    font-size: clamp(1.5rem, 3.4vw, 2.4rem);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    margin: 0;
+    display: flex;
+    gap: 0.9rem;
+    flex-wrap: wrap;
+    color: var(--sage);
+  }
+
+  .mconverge__reveal { display: grid; gap: 1.25rem; justify-items: start; }
+  .mconverge__reveal h2 { margin-bottom: 0; }
+  .mconverge__reveal .lede { max-width: 54ch; }
+
+  /* --- rail ----------------------------------------------------------------- */
+
+  .vrail {
+    position: fixed;
+    right: clamp(0.6rem, 2vw, 1.75rem);
+    top: 50%;
+    transform: translateY(-50%);
+    display: grid;
+    gap: 1.5rem;
+    z-index: 60;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.35s ease;
+  }
+
+  .vrail.is-on {
+    opacity: 1;
+    pointer-events: auto;
+  }
+
+  .vrail__dot {
+    position: relative;
+    width: 12px;
+    height: 12px;
+    padding: 0;
+    border-radius: 50%;
+    border: 2px solid var(--stone);
+    background: var(--cream);
+    cursor: pointer;
+    transition: background 0.3s ease, border-color 0.3s ease;
+  }
+
+  .vrail__dot::after {
+    content: '';
+    position: absolute;
+    inset: -10px;
+    border-radius: 50%;
+  }
+
+  .vrail__dot:hover { border-color: var(--bamboo); }
+
+  .vrail__dot.is-active {
+    background: var(--bamboo);
+    border-color: var(--bamboo);
+  }
+
+  .vrail__dot span {
+    position: absolute;
+    right: 1.4rem;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    white-space: nowrap;
+    opacity: 0;
+    transition: opacity 0.25s ease;
+    pointer-events: none;
+  }
+
+  .vrail__dot:hover span,
+  .vrail__dot.is-active span { opacity: 1; }
+
+  @media (max-width: 719px) {
+    .vrail__dot span { display: none; }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .mhero__cue-arrow { animation: none; }
+  }
+</style>
+
+<style is:global>
+  /* CSS smooth-scrolling fights the JS-driven scrollTo on this page */
+  html { scroll-behavior: auto; }
+</style>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+  import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
+
+  gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
+
+  const mm = gsap.matchMedia();
+
+  mm.add(
+    {
+      desktop: '(min-width: 720px) and (prefers-reduced-motion: no-preference)',
+      mobile: '(max-width: 719px) and (prefers-reduced-motion: no-preference)',
+    },
+    (ctx) => {
+      const desktop = !!(ctx.conditions as { desktop: boolean }).desktop;
+      const triggers: Record<string, ScrollTrigger> = {};
+      const dots = gsap.utils.toArray<HTMLElement>('.vrail__dot');
+
+      const setActive = (value: string, on: boolean) => {
+        dots.forEach((d) => {
+          if (d.dataset.target === value) d.classList.toggle('is-active', on);
+        });
+      };
+
+      // --- hero entrance ---------------------------------------------------
+      gsap.from('.mword span', {
+        yPercent: 110,
+        duration: 0.9,
+        ease: 'power3.out',
+        stagger: 0.12,
+      });
+      gsap.from('.mhero__aside', { autoAlpha: 0, y: 18, duration: 0.8, delay: 0.5 });
+      gsap.from('.mhero__cue', { autoAlpha: 0, duration: 0.8, delay: 1.1 });
+
+      // --- origin: ripple grows as the story scrolls in ---------------------
+      gsap
+        .timeline({
+          scrollTrigger: {
+            trigger: '#origin',
+            start: 'top 75%',
+            end: 'center center',
+            scrub: 0.5,
+          },
+        })
+        .from('.origin-ripple circle', {
+          scale: 0.15,
+          autoAlpha: 0,
+          transformOrigin: '50% 50%',
+          stagger: { each: 0.22, from: 'end' },
+          ease: 'power1.out',
+        });
+
+      gsap.from('.origin__copy > *', {
+        scrollTrigger: { trigger: '#origin', start: 'top 70%' },
+        autoAlpha: 0,
+        y: 24,
+        duration: 0.7,
+        stagger: 0.12,
+        ease: 'power2.out',
+      });
+
+      // --- value panels ------------------------------------------------------
+      const panels = gsap.utils.toArray<HTMLElement>('.vpanel');
+
+      panels.forEach((panel) => {
+        const q = gsap.utils.selector(panel);
+        const value = panel.dataset.value ?? '';
+
+        if (desktop) {
+          // Pin each verb as a slide; its content plays in fully on arrival
+          // (time-based), not scrubbed by scroll progress.
+          const tl = gsap.timeline({ paused: true });
+
+          tl.from(q('.vword'), { yPercent: 105, duration: 0.55, ease: 'power2.out' })
+            .from(q('.vpanel__num'), { autoAlpha: 0, y: 14, duration: 0.25 }, 0.1)
+            .from(q('.vpanel__head'), { autoAlpha: 0, y: 26, duration: 0.35 }, 0.45)
+            .from(q('.vpanel__story p'), { autoAlpha: 0, y: 26, duration: 0.35 }, 0.65)
+            .from(
+              q('.vchips li'),
+              { autoAlpha: 0, y: 18, duration: 0.28, stagger: 0.12 },
+              0.85
+            );
+
+          triggers[value] = ScrollTrigger.create({
+            trigger: panel,
+            start: 'top top',
+            end: '+=75%',
+            pin: true,
+            anticipatePin: 1,
+            onToggle: (self) => {
+              setActive(value, self.isActive);
+              // Play once, whichever direction the slide is entered from;
+              // revealed content stays revealed.
+              if (self.isActive) tl.play();
+            },
+          });
+        } else {
+          // Mobile: lighter enter-reveals, no pinning.
+          gsap.from(
+            [
+              q('.vpanel__num'),
+              q('.vword'),
+              q('.vpanel__head'),
+              q('.vpanel__story p'),
+              q('.vchips li'),
+            ].flat(),
+            {
+              scrollTrigger: { trigger: panel, start: 'top 72%' },
+              autoAlpha: 0,
+              y: 26,
+              duration: 0.7,
+              stagger: 0.09,
+              ease: 'power2.out',
+            }
+          );
+          triggers[value] = ScrollTrigger.create({
+            trigger: panel,
+            start: 'top center',
+            end: 'bottom center',
+            onToggle: (self) => setActive(value, self.isActive),
+          });
+        }
+      });
+
+      // Rail appears only while scrolling the three verbs.
+      ScrollTrigger.create({
+        trigger: '#values',
+        start: 'top 60%',
+        end: 'bottom 40%',
+        toggleClass: { targets: '.vrail', className: 'is-on' },
+      });
+
+      // --- convergence -------------------------------------------------------
+      gsap.from('.mconverge__words span', {
+        scrollTrigger: { trigger: '.mconverge', start: 'top 70%' },
+        autoAlpha: 0,
+        y: 20,
+        duration: 0.55,
+        stagger: 0.18,
+        ease: 'power2.out',
+      });
+      gsap.from('.mconverge__reveal > *', {
+        scrollTrigger: { trigger: '.mconverge', start: 'top 55%' },
+        autoAlpha: 0,
+        y: 24,
+        duration: 0.7,
+        stagger: 0.14,
+        ease: 'power2.out',
+      });
+
+      // --- hero words + rail dots navigate to their chapter -------------------
+      const goTo = (value: string) => {
+        const st = triggers[value];
+        const panel = document.getElementById(value);
+        // Land at the slide's start — content plays in on arrival.
+        const y = st
+          ? st.start
+          : (panel?.getBoundingClientRect().top ?? 0) + window.scrollY;
+        gsap.to(window, { scrollTo: y, duration: 0.9, ease: 'power2.inOut' });
+      };
+
+      const bound: Array<[HTMLElement, (e: Event) => void]> = [];
+      document.querySelectorAll<HTMLElement>('[data-target]').forEach((el) => {
+        const handler = (e: Event) => {
+          e.preventDefault();
+          goTo(el.dataset.target ?? '');
+        };
+        el.addEventListener('click', handler);
+        bound.push([el, handler]);
+      });
+
+      // Re-running on a breakpoint change must not double-bind the handlers.
+      return () => bound.forEach(([el, handler]) => el.removeEventListener('click', handler));
+    }
+  );
+</script>

@@ -1,6 +1,9 @@
 ---
 import '../styles/global.css';
 import RippleMark from '../components/RippleMark.astro';
+import Analytics from '../components/Analytics.astro';
+import ConsentBanner from '../components/ConsentBanner.astro';
+import { getDoc } from '../lib/sanity.js';
 
 interface Props {
   title: string;
@@ -15,6 +18,8 @@ const { title, description, schema = [], noindex = false } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const year = new Date().getFullYear();
 
+const settings = await getDoc('siteSettings');
+
 const orgSchema = {
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
@@ -22,9 +27,9 @@ const orgSchema = {
   alternateName: 'panta',
   url: Astro.site?.toString(),
   logo: new URL('/favicon.svg', Astro.site).toString(),
-  email: 'hello@panta.co',
+  email: 'hello@panta.llc',
   description:
-    'Panta builds, connects, and creates for community growth and development — starting with Digital Business Consulting for small businesses, nonprofits, and independent practices.',
+    'Panta builds, connects, and creates for community growth and development — through three practices: Web Strategy & Development, Community Program Development, and Product Development.',
   slogan: 'One good move, felt everywhere.',
   areaServed: 'United States',
   knowsAbout: [
@@ -35,13 +40,44 @@ const orgSchema = {
   ],
 };
 
-const navItems = [
-  { href: '/digital-business-consulting/', label: 'Digital Business Consulting' },
+const flatNavItems = [
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
 ];
 
+// Practice cards shown in the "Our Work" mega menu.
+const megaPractices = [
+  {
+    href: '/web-strategy/',
+    label: 'Web Strategy & Development',
+    desc: 'Strategy and engineering from the same hands — a presence that finds, earns, and keeps your community.',
+    icon: 'web',
+  },
+  {
+    href: '/community-programs/',
+    label: 'Community Program Development',
+    desc: 'Programs that put advancement, enrichment, and connection within reach. Taking root now.',
+    icon: 'community',
+  },
+  {
+    href: '/product-development/',
+    label: 'Product Development',
+    desc: 'New ideas for old problems, built into products that serve community needs. Taking root now.',
+    icon: 'product',
+  },
+];
+
+const megaQuickLinks = [
+  { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan' },
+  { href: '/web-strategy/websites/', label: 'Websites & web channels' },
+  { href: '/consultation/', label: 'Free 30-minute audit' },
+];
+
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
+
+const workActive =
+  ['/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
+  currentPath.startsWith('/web-strategy/');
 ---
 <!doctype html>
 <html lang="en">
@@ -59,10 +95,18 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:url" content={canonical} />
+    <meta property="og:image" content={new URL('/og.png', Astro.site)} />
+    <meta property="og:image:width" content="1200" />
+    <meta property="og:image:height" content="630" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    <meta name="twitter:image" content={new URL('/og.png', Astro.site)} />
     <meta name="theme-color" content="#26251F" />
     {[orgSchema, ...schema].map((block) => (
       <script type="application/ld+json" set:html={JSON.stringify(block)} />
     ))}
+    <Analytics />
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -74,7 +118,75 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
           <span class="brand__word">panta</span>
         </a>
         <nav class="site-nav" aria-label="Main">
-          {navItems.map((item) => (
+          <div class:list={['nav-drop', { 'nav-drop--active': workActive }]}>
+            <a
+              class="nav-drop__trigger"
+              href="/work/"
+              aria-current={currentPath === '/work/' ? 'page' : undefined}
+            >
+              Our Work
+              <svg class="nav-drop__caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </a>
+            <div class="nav-mega" aria-label="Our Work">
+              <div class="container nav-mega__grid">
+                <div class="nav-mega__intro">
+                  <p class="nav-mega__label">Our Work</p>
+                  <p class="nav-mega__head">One good move, felt everywhere.</p>
+                  <p class="nav-mega__sub">
+                    Three practices supporting the people who support our
+                    community.
+                  </p>
+                  <a class="nav-mega__worklink" href="/work/">See client work <span aria-hidden="true">→</span></a>
+                </div>
+                <div class="nav-mega__cards">
+                  {megaPractices.map((p) => (
+                    <a
+                      class="nav-mega__card"
+                      href={p.href}
+                      aria-current={currentPath === p.href ? 'page' : undefined}
+                    >
+                      <span class="nav-mega__icon" aria-hidden="true">
+                        {p.icon === 'web' && (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" />
+                          </svg>
+                        )}
+                        {p.icon === 'community' && (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <circle cx="12" cy="6.5" r="2.3" />
+                            <circle cx="6" cy="17" r="2.3" />
+                            <circle cx="18" cy="17" r="2.3" />
+                            <path d="M10.9 8.5L7.2 15M13.1 8.5l3.7 6.5M8.3 17h7.4" />
+                          </svg>
+                        )}
+                        {p.icon === 'product' && (
+                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M12 3l2.2 4.9L19 10l-4.8 2.1L12 17l-2.2-4.9L5 10l4.8-2.1z" />
+                            <path d="M18.5 16.5l0.9 2 2 0.9-2 0.9-0.9 2-0.9-2-2-0.9 2-0.9z" />
+                          </svg>
+                        )}
+                      </span>
+                      <span class="nav-mega__card-title">{p.label}</span>
+                      <span class="nav-mega__card-desc">{p.desc}</span>
+                      <span class="nav-mega__card-arrow" aria-hidden="true">→</span>
+                    </a>
+                  ))}
+                </div>
+              </div>
+              <div class="nav-mega__foot">
+                <div class="container nav-mega__foot-inner">
+                  <span class="nav-mega__foot-label">Start here</span>
+                  {megaQuickLinks.map((l) => (
+                    <a href={l.href} aria-current={currentPath === l.href ? 'page' : undefined}>{l.label}</a>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+          {flatNavItems.map((item) => (
             <a
               href={item.href}
               aria-current={currentPath === item.href ? 'page' : undefined}
@@ -82,10 +194,80 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
               {item.label}
             </a>
           ))}
-          <a href="/consultation/" class="btn btn--primary">Get started</a>
+          <a href="/consultation/" class="btn btn--primary">{settings.headerCtaLabel}</a>
+        </nav>
+        <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
+          <span class="nav-toggle__bar"></span>
+          <span class="nav-toggle__bar"></span>
+          <span class="nav-toggle__bar"></span>
+        </button>
+      </div>
+      <div class="mobile-nav" id="mobile-nav">
+        <nav class="container mobile-nav__inner" aria-label="Mobile">
+          <p class="mobile-nav__label">Our Work</p>
+          <ul class="mobile-nav__list">
+            {megaPractices.map((p, i) => (
+              <>
+                <li>
+                  <a href={p.href} aria-current={currentPath === p.href ? 'page' : undefined}>{p.label}</a>
+                </li>
+                {i === 0 && (
+                  <li>
+                    {megaQuickLinks.map((l) => (
+                      <a class="mobile-nav__sub" href={l.href} aria-current={currentPath === l.href ? 'page' : undefined}>{l.label}</a>
+                    ))}
+                  </li>
+                )}
+              </>
+            ))}
+            <li><a href="/work/" aria-current={currentPath === '/work/' ? 'page' : undefined}>Client work</a></li>
+          </ul>
+          <p class="mobile-nav__label">Panta</p>
+          <ul class="mobile-nav__list">
+            {flatNavItems.map((item) => (
+              <li>
+                <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+              </li>
+            ))}
+          </ul>
+          <a href="/consultation/" class="btn btn--primary mobile-nav__cta">Get started</a>
         </nav>
       </div>
     </header>
+
+    <script>
+      const toggle = document.querySelector<HTMLButtonElement>('.nav-toggle');
+      const panel = document.getElementById('mobile-nav');
+
+      const setOpen = (open: boolean) => {
+        if (!toggle || !panel) return;
+        panel.classList.toggle('is-open', open);
+        toggle.classList.toggle('is-open', open);
+        toggle.setAttribute('aria-expanded', String(open));
+      };
+
+      toggle?.addEventListener('click', () => {
+        setOpen(!panel?.classList.contains('is-open'));
+      });
+
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && panel?.classList.contains('is-open')) {
+          setOpen(false);
+          toggle?.focus();
+        }
+      });
+
+      // Tap outside the header closes the panel.
+      document.addEventListener('click', (e) => {
+        if (
+          panel?.classList.contains('is-open') &&
+          e.target instanceof Node &&
+          !document.querySelector('.site-header')?.contains(e.target)
+        ) {
+          setOpen(false);
+        }
+      });
+    </script>
 
     <main id="main">
       <slot />
@@ -99,18 +281,20 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
               <RippleMark size={30} />
               <span class="brand__word">panta</span>
             </a>
-            <p class="site-footer__tag">One good move, felt everywhere.</p>
-            <p style="font-size: 0.95rem; max-width: 34ch;">
-              Digital business consulting for small businesses, nonprofits, and
-              independent practices.
-            </p>
+            <p class="site-footer__tag">{settings.footerTagline}</p>
+            <p style="font-size: 0.95rem; max-width: 34ch;">{settings.footerDescriptor}</p>
           </div>
           <nav aria-label="Footer">
             <p class="label" style="color: var(--sage);">Explore</p>
             <ul class="footer-list">
               <li><a href="/consultation/">Free 30-minute audit</a></li>
-              <li><a href="/digital-business-consulting/">Digital Business Consulting</a></li>
-              <li><a href="/digital-business-consulting/digital-presence-plan/">The Digital Presence Plan</a></li>
+              <li><a href="/what-we-do/">What we do</a></li>
+              <li><a href="/web-strategy/">Web Strategy &amp; Development</a></li>
+              <li><a href="/web-strategy/digital-presence-plan/">The Digital Presence Plan</a></li>
+              <li><a href="/web-strategy/websites/">Websites &amp; web channels</a></li>
+              <li><a href="/community-programs/">Community Program Development</a></li>
+              <li><a href="/product-development/">Product Development</a></li>
+              <li><a href="/work/">Client work</a></li>
               <li><a href="/about/">About Panta</a></li>
               <li><a href="/contact/">Contact</a></li>
             </ul>
@@ -118,16 +302,18 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
           <div>
             <p class="label" style="color: var(--sage);">Say hello</p>
             <ul class="footer-list">
-              <li><a href="mailto:hello@panta.co">hello@panta.co</a></li>
-              <li><span style="color: var(--stone);">Northern California, working anywhere</span></li>
+              <li><a href={`mailto:${settings.email}`}>{settings.email}</a></li>
+              <li><span style="color: var(--stone);">{settings.locationLine}</span></li>
             </ul>
           </div>
         </div>
         <div class="site-footer__meta">
           <span>© {year} Panta LLC. All rights reserved.</span>
-          <span>We reply within one business day.</span>
+          <span>{settings.replyLine}</span>
         </div>
       </div>
     </footer>
+
+    <ConsentBanner />
   </body>
 </html>

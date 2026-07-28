@@ -1,6 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
 import RippleMark from '../components/RippleMark.astro';
+import { getDoc } from '../lib/sanity.js';
+
+const c = await getDoc('aboutPage');
 ---
 <Base
   title="About Panta — a friendly partner in the growth of your mission"
@@ -8,13 +11,9 @@ import RippleMark from '../components/RippleMark.astro';
 >
   <section class="section section--dark hero" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
     <div class="container">
-      <p class="label">About Panta</p>
-      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">A friendly partner in the growth of your mission.</h1>
-      <p class="lede">
-        Panta builds, connects, and creates for community growth and
-        development — helping community-based businesses and organizations
-        grow their reach and their mission.
-      </p>
+      <p class="label">{c.heroLabel}</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">{c.heroTitle}</h1>
+      <p class="lede">{c.heroLede}</p>
     </div>
   </section>
 
@@ -22,44 +21,30 @@ import RippleMark from '../components/RippleMark.astro';
     <div class="container">
       <div class="grid grid--2" style="gap: 3rem; align-items: start;">
         <div>
-          <p class="label">What we believe</p>
-          <h2>The organizations that hold communities together deserve big-company capability.</h2>
-          <p>
-            The businesses and organizations we admire most are usually
-            excellent at what they do and stretched thin everywhere else. They
-            don't need a tech team — they need a partner who can name the
-            problem, remove it, and move on. That's the practice we've built.
-          </p>
-          <p>
-            We're plain-spoken, reassuring, and specific. Every recommendation
-            we make is backed by something we can actually build — because the
-            same hands do the strategy and the engineering.
-          </p>
+          <p class="label">{c.believeLabel}</p>
+          <h2>{c.believeTitle}</h2>
+          <p>{c.believeBody1}</p>
+          <p>{c.believeBody2}</p>
         </div>
         <div>
-          <p class="label">What we do</p>
+          <p class="label">{c.doLabel}</p>
           <ul class="checklist">
-            <li>
-              <strong>Digital Presence Plan.</strong> A graded read on where
-              you stand and a 90-day roadmap forward — the front door to
-              <a href="/digital-business-consulting/">Digital Business
-              Consulting</a>.
-            </li>
-            <li>
-              <strong>Web channels, designed and built.</strong> Website
-              development plus social, Google Business Profile, and directory
-              setup — cross-linked so no door dead-ends.
-            </li>
-            <li>
-              <strong>Content creation &amp; marketing.</strong> A rhythm you
-              can sustain, review systems that build proof, and honest
-              measurement.
-            </li>
-            <li>
-              <strong>Brand development.</strong> One recognizable identity
-              across every channel your audience meets you on.
-            </li>
+            {c.doItems.map((item) => (
+              <li>
+                {item.href ? (
+                  <strong><a href={item.href}>{item.title}</a></strong>
+                ) : (
+                  <strong>{item.title}</strong>
+                )}
+                {' '}{item.body}
+              </li>
+            ))}
           </ul>
+          <p class="small" style="margin-top: 1rem;">
+            {c.doNote}
+            {' '}<a href="/community-programs/">Community Program Development</a>
+            {' · '}<a href="/product-development/">Product Development</a>
+          </p>
         </div>
       </div>
     </div>
@@ -69,30 +54,19 @@ import RippleMark from '../components/RippleMark.astro';
     <div class="container" style="display: grid; gap: 2rem; justify-items: start;">
       <RippleMark size={56} />
       <div>
-        <h2>The ripple</h2>
-        <p class="lede" style="max-width: 54ch;">
-          Our mark is a planted seed sending ripples outward — one clear act at
-          the core, its effect widening into the world. It's how we see our
-          work: a fixed contact form, a claimed listing, a faster reply. Small
-          moves, felt everywhere your community reaches.
-        </p>
+        <h2>{c.rippleTitle}</h2>
+        <p class="lede" style="max-width: 54ch;">{c.rippleLede}</p>
       </div>
     </div>
   </section>
 
   <section class="section">
     <div class="container">
-      <p class="label">Practicing what we preach</p>
-      <h2>This website is our own audit, passed.</h2>
-      <p>
-        The first project Panta ever took on was ourselves. Everything we check
-        for clients — a headline that says what we do in five seconds, one
-        clear next step, fast pages, consistent information, working forms —
-        we built into this site first. Ask us about it on a call; we'll show
-        you the scorecard.
-      </p>
+      <p class="label">{c.auditLabel}</p>
+      <h2>{c.auditTitle}</h2>
+      <p>{c.auditBody}</p>
       <div class="btn-row" style="margin-top: 1.5rem;">
-        <a href="/contact/" class="btn btn--primary">Start a conversation</a>
+        <a href="/contact/" class="btn btn--primary">{c.auditCtaLabel}</a>
       </div>
     </div>
   </section>

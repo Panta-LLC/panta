@@ -1,0 +1,123 @@
+---
+// Consent banner for the GA4 loader (see Analytics.astro). Ported from the
+// panta.studio build and restyled with this site's tokens.
+const measurementId = import.meta.env.PUBLIC_GA4_MEASUREMENT_ID ?? 'G-N46J0CDDZF';
+const enabled = measurementId.length > 0;
+---
+
+{
+  enabled && (
+    <div
+      id="consent-banner"
+      class="consent"
+      role="dialog"
+      aria-live="polite"
+      aria-label="Privacy and analytics consent"
+      hidden
+    >
+      <div class="consent__inner container">
+        <p class="consent__text">
+          We use Google Analytics to understand how visitors use this site. No
+          personal data is sold, and your IP is anonymized.
+          <a href="/privacy/">Read our privacy note.</a>
+        </p>
+        <div class="consent__actions">
+          <button type="button" class="btn btn--ghost" data-consent="declined">
+            Decline
+          </button>
+          <button type="button" class="btn btn--primary" data-consent="granted">
+            Accept
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+{
+  enabled && (
+    <script is:inline>
+      (function () {
+        const STORAGE_KEY = 'panta:consent';
+        const banner = document.getElementById('consent-banner');
+        if (!banner) return;
+
+        function readConsent() {
+          try {
+            return localStorage.getItem(STORAGE_KEY);
+          } catch (_) {
+            return null;
+          }
+        }
+
+        function writeConsent(value) {
+          try {
+            localStorage.setItem(STORAGE_KEY, value);
+          } catch (_) {
+            /* swallow */
+          }
+        }
+
+        function show() {
+          banner.hidden = false;
+        }
+
+        function hide() {
+          banner.hidden = true;
+        }
+
+        if (!readConsent()) {
+          // Small delay to keep first paint clean.
+          setTimeout(show, 600);
+        }
+
+        banner.addEventListener('click', function (e) {
+          const target = e.target;
+          if (!(target instanceof HTMLElement)) return;
+          const choice = target.dataset.consent;
+          if (!choice) return;
+          writeConsent(choice);
+          hide();
+          if (choice === 'granted') {
+            document.dispatchEvent(new CustomEvent('panta:consent-granted'));
+          }
+        });
+
+        // Allow other code (e.g. the privacy page) to re-open the banner.
+        document.addEventListener('panta:consent-reopen', show);
+      })();
+    </script>
+  )
+}
+
+<style>
+  .consent {
+    position: fixed;
+    inset: auto 0 0 0;
+    z-index: 90;
+    background: var(--cream);
+    border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  }
+
+  .consent__inner {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1rem;
+    align-items: center;
+    justify-content: space-between;
+    padding-block: 1rem;
+  }
+
+  .consent__text {
+    flex: 1 1 320px;
+    margin: 0;
+    font-size: 0.9375rem;
+  }
+
+  .consent__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+</style>

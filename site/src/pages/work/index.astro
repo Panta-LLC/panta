@@ -1,0 +1,133 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getDoc, getProjects, getTestimonial } from '../../lib/sanity.js';
+
+const c = await getDoc('workPage');
+const projects = await getProjects();
+const testimonial = await getTestimonial();
+---
+<Base
+  title="Client Work — Panta"
+  description="A few of the organizations we've helped find, earn, and keep their communities — websites, presence, content, and brand, from strategy through build."
+>
+  <!-- HERO -->
+  <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
+    <div class="container">
+      <p class="label">{c.heroLabel}</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
+      <p class="lede">{c.heroLede}</p>
+    </div>
+  </section>
+
+  <!-- PROJECTS -->
+  <section class="section">
+    <div class="container">
+      <div class="grid grid--3">
+        {projects.map((p) => (
+          <div class="card">
+            <p class="card__kicker">{p.clientType}</p>
+            <h3>{p.name}</h3>
+            {p.situation && <p>{p.situation}</p>}
+            {(p.contributions ?? []).length > 0 && (
+              <ul class="workline">
+                {p.contributions.map((item) => <li>{item}</li>)}
+              </ul>
+            )}
+            {p.outcome && <p class="small">{p.outcome}</p>}
+            {p.url && (
+              <a href={p.url} target="_blank" rel="noopener noreferrer">Visit the site →</a>
+            )}
+          </div>
+        ))}
+      </div>
+      <p class="small" style="margin-top: 2rem;">
+        {c.footNote} <a href="/web-strategy/websites/">{c.footLinkLabel}</a>
+      </p>
+    </div>
+  </section>
+
+  <!-- TESTIMONIAL -->
+  {testimonial && (
+    <section class="section" style="padding-top: 0;">
+      <div class="container">
+        <div class="quote-card">
+          <blockquote>{testimonial.quote}</blockquote>
+          <p class="quote-by"><strong>{testimonial.author}</strong> — {testimonial.role}</p>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- CTA -->
+  <section class="section section--bamboo">
+    <div class="container">
+      <h2>{c.ctaTitle}</h2>
+      <p class="lede" style="max-width: 54ch;">{c.ctaLede}</p>
+      <div class="btn-row" style="margin-top: 1.5rem;">
+        <a href="/consultation/" class="btn btn--primary">{c.ctaPrimaryLabel}</a>
+        <a href="/web-strategy/digital-presence-plan/" class="btn btn--ghost">{c.ctaSecondaryLabel}</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .workline {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 0.75rem;
+    font-size: 0.9rem;
+  }
+
+  .workline li {
+    padding-left: 1.1rem;
+    position: relative;
+  }
+
+  .workline li::before {
+    content: '·';
+    position: absolute;
+    left: 0.25rem;
+    color: var(--bamboo-deep);
+    font-weight: 700;
+  }
+
+  /* testimonial — same pattern as /consultation/ */
+  .quote-card {
+    background: var(--cream-soft);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    padding: clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 2.75rem);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .quote-card::before {
+    content: '\201C';
+    font-family: var(--font-serif);
+    position: absolute;
+    top: -2.5rem;
+    left: 1.25rem;
+    font-size: 11rem;
+    color: var(--line);
+    line-height: 1;
+  }
+
+  .quote-card blockquote {
+    font-family: var(--font-serif);
+    font-size: clamp(1.375rem, 3vw, 1.875rem);
+    font-weight: 300;
+    line-height: 1.3;
+    max-width: 30ch;
+    margin: 0;
+    position: relative;
+  }
+
+  .quote-by {
+    margin: 1.25rem 0 0;
+    font-size: 0.9rem;
+    color: var(--stone-deep);
+  }
+
+  .quote-by strong { color: var(--charcoal); }
+</style>

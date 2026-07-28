@@ -1,5 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
+import { getDoc } from '../lib/sanity.js';
+
+const c = await getDoc('contactPage');
+const settings = await getDoc('siteSettings');
 ---
 <Base
   title="Contact Panta — book a free 30-minute audit"
@@ -7,15 +11,11 @@ import Base from '../layouts/Base.astro';
 >
   <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
     <div class="container">
-      <p class="label">Contact</p>
-      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">Tell us what's not working.</h1>
-      <p class="lede">
-        The fastest path is the <a href="/consultation/">free 30-minute web
-        presence audit</a> — book a time directly, no back-and-forth. Prefer to
-        start in writing? The form works too.
-      </p>
+      <p class="label">{c.heroLabel}</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">{c.heroTitle}</h1>
+      <p class="lede">{c.heroLede}</p>
       <div class="btn-row">
-        <a href="/consultation/" class="btn btn--primary">Book the free audit</a>
+        <a href="/consultation/" class="btn btn--primary">{c.heroCtaLabel}</a>
       </div>
     </div>
   </section>
@@ -24,8 +24,18 @@ import Base from '../layouts/Base.astro';
     <div class="container">
       <div class="grid grid--2" style="gap: 3rem; align-items: start;">
         <div>
-          <!-- TODO(deploy): wire action to a form backend (Formspree/Resend) before launch -->
-          <form class="form-grid" method="post" action="#">
+          <p class="form-status form-status--ok" id="status-sent" hidden>
+            Sent — thank you. We'll reply within one business day.
+          </p>
+          <p class="form-status form-status--err" id="status-error" hidden>
+            Something went wrong sending that. Email us directly instead —
+            <a href="mailto:hello@panta.llc">hello@panta.llc</a>.
+          </p>
+          <form class="form-grid" method="post" action="/api/contact">
+            <div class="hp-field" aria-hidden="true">
+              <label for="website">Leave this field empty</label>
+              <input type="text" id="website" name="website" tabindex="-1" autocomplete="off" />
+            </div>
             <div>
               <label for="name">Your name</label>
               <input type="text" id="name" name="name" autocomplete="name" required />
@@ -48,19 +58,56 @@ import Base from '../layouts/Base.astro';
           </form>
         </div>
         <div>
-          <p class="label">Or just email</p>
+          <p class="label">{c.emailLabel}</p>
           <p style="font-family: var(--font-serif); font-size: 1.5rem;">
-            <a href="mailto:hello@panta.co">hello@panta.co</a>
+            <a href={`mailto:${settings.email}`}>{settings.email}</a>
           </p>
           <hr class="divider" />
-          <p class="label">What happens next</p>
+          <p class="label">{c.nextLabel}</p>
           <ul class="checklist">
-            <li>We reply within one business day. Response speed is one of the things we audit — so we model it.</li>
-            <li>We'll schedule your free 30-minute web presence audit to hear what's going on.</li>
-            <li>If the audit fits, we'll send the intake questionnaire and get started. If it doesn't, we'll point you somewhere useful.</li>
+            {c.nextItems.map((item) => <li>{item}</li>)}
           </ul>
         </div>
       </div>
     </div>
   </section>
 </Base>
+
+<script>
+  const params = new URLSearchParams(window.location.search);
+  if (params.has('sent')) {
+    document.getElementById('status-sent')?.removeAttribute('hidden');
+  } else if (params.has('error')) {
+    document.getElementById('status-error')?.removeAttribute('hidden');
+  }
+</script>
+
+<style>
+  .form-status {
+    padding: 0.9rem 1.1rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .form-status--ok {
+    background: #eef0e0;
+    border: 1px solid var(--sage);
+    color: var(--bamboo-deep);
+  }
+
+  .form-status--err {
+    background: #f7e9e4;
+    border: 1px solid #d9a08c;
+    color: #8a4a2f;
+  }
+
+  /* honeypot: hidden from people, present for bots */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+</style>

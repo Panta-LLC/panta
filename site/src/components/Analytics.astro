@@ -1,0 +1,60 @@
+---
+// Consent-gated GA4 loader, ported from the panta.studio build.
+// The default measurement ID is shared with panta.studio by choice;
+// override with PUBLIC_GA4_MEASUREMENT_ID if that ever changes.
+const measurementId = import.meta.env.PUBLIC_GA4_MEASUREMENT_ID ?? 'G-N46J0CDDZF';
+const enabled = measurementId.length > 0;
+---
+
+{
+  enabled && (
+    <script is:inline define:vars={{ measurementId }}>
+      // No GA script is injected until the user accepts the consent banner.
+      (function () {
+        const STORAGE_KEY = 'panta:consent';
+        const SCRIPT_ID = 'ga4-script';
+
+        window.dataLayer = window.dataLayer || [];
+        function gtag() {
+          window.dataLayer.push(arguments);
+        }
+        window.gtag = gtag;
+
+        function loadGa4() {
+          if (document.getElementById(SCRIPT_ID)) return;
+          const s = document.createElement('script');
+          s.id = SCRIPT_ID;
+          s.async = true;
+          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
+          document.head.appendChild(s);
+          gtag('js', new Date());
+          gtag('config', measurementId, {
+            anonymize_ip: true,
+            send_page_view: true,
+          });
+        }
+
+        function readConsent() {
+          try {
+            return localStorage.getItem(STORAGE_KEY);
+          } catch (_) {
+            return null;
+          }
+        }
+
+        // Tiny tracker helper, exposed globally. No-ops until consent is granted.
+        window.pantaTrack = function (event, params) {
+          if (readConsent() !== 'granted') return;
+          if (typeof window.gtag !== 'function') return;
+          window.gtag('event', event, params || {});
+        };
+
+        if (readConsent() === 'granted') {
+          loadGa4();
+        }
+
+        document.addEventListener('panta:consent-granted', loadGa4);
+      })();
+    </script>
+  )
+}

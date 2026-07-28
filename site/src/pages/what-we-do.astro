@@ -1,0 +1,86 @@
+---
+import Base from '../layouts/Base.astro';
+import RippleMark from '../components/RippleMark.astro';
+import { getDoc } from '../lib/sanity.js';
+
+const c = await getDoc('homePage');
+---
+<Base
+  title="What We Do — Panta"
+  description="Panta builds, connects, and creates for community growth and development — through three practices: Web Strategy & Development, Community Program Development, and Product Development."
+>
+  <section class="section section--dark hero">
+    <div class="container">
+      <p class="label">{c.heroLabel}</p>
+      <h1>{c.heroTitle}</h1>
+      <p class="lede">{c.heroLede}</p>
+      <div class="btn-row">
+        <a href="#practices" class="btn btn--primary">Explore our practices</a>
+        <a href="/consultation/" class="btn btn--ghost">Book a free 30-minute audit</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <p class="label">What we do</p>
+      <h2>Three verbs, one mission.</h2>
+      <div class="grid grid--3" style="margin-top: 2.5rem;">
+        {c.verbCards.map((card) => (
+          <div class="card">
+            <p class="card__kicker">{card.kicker}</p>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+            <p style="margin-top: 0.75rem;"><a href={card.href}>{card.linkLabel} →</a></p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--bamboo" id="practices">
+    <div class="container">
+      <p class="label">{c.practicesLabel}</p>
+      <h2>{c.practiceTitle}</h2>
+      <p class="lede" style="max-width: 56ch;">{c.practiceLede}</p>
+      <div class="card" style="background: var(--cream); border-color: transparent; color: var(--charcoal); margin-top: 2rem; max-width: 44rem;">
+        <ul class="checklist" style="margin-bottom: 1.25rem;">
+          {c.practiceChecklist.map((item) => (
+            <li>
+              {item.href ? (
+                <strong><a href={item.href}>{item.title}</a></strong>
+              ) : (
+                <strong>{item.title}</strong>
+              )}
+              {' — '}{item.body}
+            </li>
+          ))}
+        </ul>
+        <a href="/web-strategy/" class="btn btn--primary">{c.practiceCtaLabel}</a>
+      </div>
+      <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.25rem; margin-top: 1.5rem; max-width: 44rem;">
+        {c.comingCards.map((card) => (
+          <div class="card" style="background: transparent; border-color: rgba(245, 241, 231, 0.35); color: var(--cream);">
+            <h3 style="font-size: 1.1rem;">{card.title}</h3>
+            <p style="font-size: 0.92rem;">{card.body}</p>
+            <a href={card.href} style="color: var(--cream); font-weight: 500;">{card.linkLabel}</a>
+          </div>
+        ))}
+      </div>
+      <p class="small" style="margin-top: 1.5rem; color: var(--cream);">{c.practicesNote}</p>
+    </div>
+  </section>
+
+  <section class="section section--dark">
+    <div class="container" style="display: grid; gap: 2rem; justify-items: start;">
+      <RippleMark size={56} />
+      <div>
+        <h2>{c.rippleTitle}</h2>
+        <p class="lede" style="max-width: 54ch;">{c.rippleLede}</p>
+        <div class="btn-row" style="margin-top: 1rem;">
+          <a href="/consultation/" class="btn btn--primary">{c.rippleCtaLabel}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>

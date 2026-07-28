@@ -1,0 +1,220 @@
+---
+import Base from '../../layouts/Base.astro';
+import { getDoc } from '../../lib/sanity.js';
+
+const c = await getDoc('webStrategyPage');
+
+const dbcSchema = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'Service',
+    name: 'Web Strategy & Development',
+    serviceType: 'Web strategy and development',
+    provider: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://panta.llc' },
+    description:
+      'Digital presence planning, web channel design and build, content creation and marketing, and brand development for small businesses, nonprofits, and independent practices.',
+    areaServed: 'United States',
+  },
+];
+---
+<Base
+  title="Web Strategy & Development — Panta"
+  description="Panta's web practice: a Digital Presence Plan, web channel design and build, content creation and marketing, and brand development — for small businesses, nonprofits, and independent practices."
+  schema={dbcSchema}
+>
+  <section class="section section--dark hero">
+    <div class="container">
+      <p class="label">{c.heroLabel}</p>
+      <h1>{c.heroTitle}</h1>
+      <p class="lede">{c.heroLede}</p>
+      <div class="btn-row">
+        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <a href="#services" class="btn btn--ghost">See our services</a>
+      </div>
+    </div>
+  </section>
+
+  <section class="section section--dark" id="services" style="padding-top: 0;">
+    <div class="container svc-grid">
+      <div class="svc-intro">
+        <p class="label">{c.servicesLabel}</p>
+        <h2 style="font-size: clamp(1.6rem, 3vw, 2.2rem);">{c.servicesTitle}</h2>
+        <p>{c.servicesIntro}</p>
+      </div>
+      <div class="svc-cards">
+        {c.services.map((s, i) => (
+          <a class="svc-card" href={s.href}>
+            <span class="svc-icon" aria-hidden="true">
+              {i === 0 && (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <circle cx="12" cy="12" r="9" />
+                  <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" />
+                </svg>
+              )}
+              {i === 1 && (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <rect x="3" y="4.5" width="18" height="15" rx="2" />
+                  <path d="M3 9h18M6.2 6.8h.01M8.9 6.8h.01" />
+                  <path d="M8 15.5l2-2-2-2M12.5 16h3.5" />
+                </svg>
+              )}
+              {i === 2 && (
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 12a8 8 0 1 1-2.34-5.66" />
+                  <path d="M20 4v4h-4" />
+                  <circle cx="12" cy="12" r="2.4" />
+                </svg>
+              )}
+            </span>
+            <h3>{s.title}</h3>
+            <p>{s.body}</p>
+            <span class="svc-arrow" aria-hidden="true">→</span>
+          </a>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container">
+      <p class="label">{c.arcLabel}</p>
+      <h2>{c.arcTitle}</h2>
+      <p>{c.arcIntro}</p>
+      <div class="grid grid--3" style="margin-top: 2.5rem;">
+        {c.arcCards.map((card) => (
+          <div class="card">
+            <p class="card__kicker">{card.kicker}</p>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <section class="section" id="process" style="padding-top: 0;">
+    <div class="container">
+      <p class="label">{c.processLabel}</p>
+      <h2>{c.processTitle}</h2>
+      <div class="grid grid--3" style="margin-top: 2.5rem;">
+        {c.steps.map((step) => (
+          <div class="card">
+            <p class="card__kicker">{step.kicker}</p>
+            <h3>{step.title}</h3>
+            <p>{step.body}</p>
+          </div>
+        ))}
+      </div>
+      <div class="btn-row" style="margin-top: 2.5rem;">
+        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <span class="small">{c.ctaNote}</span>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .svc-grid {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3rem);
+    align-items: start;
+  }
+
+  @media (min-width: 1000px) {
+    .svc-grid {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 2.3fr);
+    }
+
+    .svc-intro {
+      border-right: 1px solid #3c3a32;
+      padding-right: clamp(1.5rem, 3vw, 2.5rem);
+      position: sticky;
+      top: 2rem;
+    }
+  }
+
+  .svc-intro h2 {
+    margin-block: 0.75rem 1rem;
+  }
+
+  .svc-intro p:last-child {
+    color: var(--stone);
+  }
+
+  .svc-cards {
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 720px) {
+    .svc-cards {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+  }
+
+  .svc-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.75rem;
+    padding: clamp(1.5rem, 2.5vw, 2rem) clamp(1.25rem, 2vw, 1.5rem);
+    border-radius: 10px;
+    background: var(--cream);
+    color: var(--charcoal);
+    text-decoration: none;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .svc-card:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 24px 44px -24px rgba(0, 0, 0, 0.5);
+  }
+
+  .svc-card h3 {
+    font-size: 1.15rem;
+    line-height: 1.3;
+  }
+
+  .svc-card p {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--stone-deep);
+  }
+
+  .svc-icon {
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    border: 1.5px solid var(--charcoal);
+    display: grid;
+    place-items: center;
+    color: var(--charcoal);
+    margin-bottom: 0.25rem;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+  }
+
+  .svc-card:hover .svc-icon {
+    background: var(--bamboo);
+    border-color: var(--bamboo);
+    color: var(--cream);
+  }
+
+  .svc-arrow {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    color: var(--bamboo-deep);
+    transition: transform 0.25s ease;
+  }
+
+  .svc-card:hover .svc-arrow {
+    transform: translateX(5px);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .svc-card,
+    .svc-icon,
+    .svc-arrow {
+      transition: none;
+    }
+  }
+</style>

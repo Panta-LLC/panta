@@ -1,16 +1,15 @@
 ---
 import Base from '../layouts/Base.astro';
+import { getDoc, getProjects } from '../lib/sanity.js';
 
-// Google Calendar Appointment Scheduling (shared with the panta.studio build).
-// SCHEDULE_URL is the public share link (fallback / new-tab open). CAL_EMBED_URL
-// is the frameable embed endpoint Google's "Embed" button generates.
-// NOTE (carried over from the original): this schedule currently offers
-// 15-minute slots, but this page promises a 30-minute audit. Owner action:
-// create a dedicated 30-minute appointment schedule in Google Calendar and swap
-// both URLs — or shorten the audit promise to 15 minutes.
-const SCHEDULE_URL = 'https://calendar.app.google/8mpWTUPQf7YuyFAc8';
-const CAL_EMBED_URL =
-  'https://calendar.google.com/calendar/appointments/schedules/AcZssZ2SJlIt3P8Hcftl1S53-KweB521sxLrVTbLRTpeteuqpm6maQVasMMMsD2Y9ZjzmsXIzOyAOhkx?gv=true';
+const c = await getDoc('consultationPage');
+const settings = await getDoc('siteSettings');
+const projects = await getProjects();
+
+// Booking URLs are managed in Sanity → Site Settings. The owner is updating
+// the Google Calendar schedule to offer 30-minute slots to match this page.
+const SCHEDULE_URL = settings.scheduleUrl;
+const CAL_EMBED_URL = settings.calEmbedUrl;
 
 const description =
   'A free 30-minute web presence audit for businesses at any stage — with or without a website. Walk away with an honest read on where you stand and a blueprint for what to do next.';
@@ -22,7 +21,7 @@ const consultSchema = [
     name: 'Free Web Presence Audit',
     serviceType: 'Web strategy consultation',
     description,
-    provider: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://panta.co' },
+    provider: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://panta.llc' },
     areaServed: 'Worldwide',
     offers: { '@type': 'Offer', price: '0', priceCurrency: 'USD', availability: 'https://schema.org/InStock' },
   },
@@ -37,61 +36,37 @@ const consultSchema = [
   <section class="section section--dark" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
     <div class="container hero-grid">
       <div>
-        <p class="label">Free 30-minute web presence audit</p>
-        <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">One conversation. An honest read, and a <em>blueprint for what's next</em>.</h1>
-        <p class="lede">
-          Whether you have no website yet or one that isn't pulling its weight,
-          we'll map where you stand against what your business needs — and name
-          the one thing to do first.
-        </p>
+        <p class="label">{c.heroLabel}</p>
+        <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
+        <p class="lede">{c.heroLede}</p>
         <div class="btn-row">
-          <a class="btn btn--primary" href="#book">Book my free audit ↓</a>
-          <span class="small"><strong>30 minutes.</strong> No prep needed.</span>
+          <a class="btn btn--primary" href="#book">{c.bookCtaLabel}</a>
+          <span class="small"><strong>{c.bookNote}</strong></span>
         </div>
       </div>
 
       <!-- diagnostic panel: the whole picture we map together -->
       <div class="panel" aria-label="What the audit maps">
         <div class="panel-head">
-          <span class="panel-label">The whole picture</span>
+          <span class="panel-label">{c.panelLabel}</span>
           <span class="panel-url">your web presence</span>
         </div>
-        <p class="panel-sub">
-          What we map together — whether you're starting from zero or already live.
-        </p>
+        <p class="panel-sub">{c.panelSub}</p>
         <div class="pmap">
-          <div class="pnode">
-            <span class="ico">1</span>
-            <div class="pmeta">
-              <div class="pt">Website</div>
-              <div class="ps">The one place that's yours — can a stranger trust it and act?</div>
+          {c.panelNodes.map((node, i) => (
+            <div class="pnode">
+              <span class="ico">{i + 1}</span>
+              <div class="pmeta">
+                <div class="pt">{node.title}</div>
+                <div class="ps">{node.body}</div>
+              </div>
+              <span class="pill">{node.kicker}</span>
             </div>
-            <span class="pill">Home base</span>
-          </div>
-          <div class="pnode">
-            <span class="ico">2</span>
-            <div class="pmeta">
-              <div class="pt">Social</div>
-              <div class="ps">Where your customers already are — do they find you there?</div>
-            </div>
-            <span class="pill">Be found</span>
-          </div>
-          <div class="pnode">
-            <span class="ico">3</span>
-            <div class="pmeta">
-              <div class="pt">Content</div>
-              <div class="ps">The reason to come back — do you stay top of mind?</div>
-            </div>
-            <span class="pill">Stay remembered</span>
-          </div>
+          ))}
         </div>
         <div class="panel-foot">
-          <span class="panel-tag">How we look</span>
-          <span class="panel-txt">
-            Each part read for speed, clarity, conversion, and whether it
-            supports your goals. We hunt for the single biggest opportunity —
-            not a list of everything.
-          </span>
+          <span class="panel-tag">{c.panelFootTag}</span>
+          <span class="panel-txt">{c.panelFootText}</span>
         </div>
       </div>
     </div>
@@ -100,52 +75,25 @@ const consultSchema = [
   <!-- PROOF -->
   <div class="proof">
     <div class="container proof-inner">
-      <span class="proof-q">Trusted by teams like</span>
-      <span class="client">Delta Bay Impact</span>
-      <span class="client">Arielle Hastings Therapy</span>
-      <span class="client">Light Work</span>
+      <span class="proof-q">{c.proofLabel}</span>
+      {projects.map((p) => <span class="client">{p.name}</span>)}
     </div>
   </div>
 
   <!-- WHAT YOU GET -->
   <section class="section">
     <div class="container">
-      <p class="label">What you walk away with</p>
-      <h2>Three answers, not a sales call.</h2>
-      <p>
-        You leave with a short written summary — the honest read and what your
-        plan needs to cover — whether or not we ever work together. And if you
-        want the full picture, this conversation is exactly where the
-        <a href="/digital-business-consulting/digital-presence-plan/">Digital
-        Presence Plan</a> starts.
-      </p>
+      <p class="label">{c.deliverLabel}</p>
+      <h2>{c.deliverTitle}</h2>
+      <p>{c.deliverIntro}</p>
       <div class="grid grid--3" style="margin-top: 2.5rem;">
-        <div class="card">
-          <p class="card-num">01</p>
-          <h3>Your one thing</h3>
-          <p>
-            The single move that matters most right now — the bottleneck if you
-            have a site, the starting point if you don't — with the reasoning
-            to back it up.
-          </p>
-        </div>
-        <div class="card">
-          <p class="card-num">02</p>
-          <h3>A prioritized path</h3>
-          <p>
-            What comes next and what can safely wait, ranked by impact against
-            effort — so you always know the next step without planning the
-            whole thing up front.
-          </p>
-        </div>
-        <div class="card">
-          <p class="card-num">03</p>
-          <h3>An honest call</h3>
-          <p>
-            Whether this is something you can handle yourself or worth bringing
-            someone in. Either answer is fine — we'll tell you straight.
-          </p>
-        </div>
+        {c.deliverCards.map((card) => (
+          <div class="card">
+            <p class="card-num">{card.kicker}</p>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        ))}
       </div>
     </div>
   </section>
@@ -155,37 +103,16 @@ const consultSchema = [
     <div class="container">
       <div class="ads-panel">
         <div>
-          <p class="label">Honest take on marketing</p>
-          <h2 style="font-size: clamp(1.5rem, 3.2vw, 2.125rem);">Reach is an amplifier, not a fix.</h2>
-          <p>
-            Ads don't fix a leaky presence — they pay to send more people
-            through the same holes. Before a dollar goes to reach, four things
-            need to be true. We check them with you on the call, free.
-          </p>
-          <p class="small ads-note">
-            If you don't have a home base yet, the honest answer is usually
-            simple: build that first, then talk about paying for reach.
-          </p>
+          <p class="label">{c.adsLabel}</p>
+          <h2 style="font-size: clamp(1.5rem, 3.2vw, 2.125rem);">{c.adsTitle}</h2>
+          <p>{c.adsBody}</p>
+          <p class="small ads-note">{c.adsNote}</p>
         </div>
         <ul class="checklist" style="margin: 0;">
-          <li><strong>A clear offer</strong> a stranger immediately gets</li>
-          <li><strong>A page that converts</strong> visitors into action</li>
-          <li><strong>A customer you know</strong> well enough to target</li>
-          <li><strong>A way to tell</strong> if a dollar spent came back</li>
+          {c.adsChecklist.map((item) => (
+            <li><strong>{item.title}</strong> {item.body}</li>
+          ))}
         </ul>
-      </div>
-    </div>
-  </section>
-
-  <!-- TESTIMONIAL -->
-  <section class="section" style="padding-top: 0;">
-    <div class="container">
-      <div class="quote-card">
-        <blockquote>
-          Damon found in 30 minutes what two other people missed for months. We
-          acted on it that week.
-        </blockquote>
-        <p class="quote-by"><strong>Tiffany Francies</strong> — Executive Director, Delta Bay Impact</p>
       </div>
     </div>
   </section>
@@ -193,12 +120,9 @@ const consultSchema = [
   <!-- BOOKING -->
   <section class="section booking" id="book">
     <div class="container" style="text-align: center;">
-      <p class="label">Free · no obligation</p>
-      <h2 style="max-width: 20ch; margin-inline: auto;">Book your free 30-minute web presence audit.</h2>
-      <p style="max-width: 48ch; margin: 0 auto 1.5rem;">
-        Pick a time that works. Come exactly as you are — a live site, an idea
-        on a napkin, or anything in between. Nothing to prepare.
-      </p>
+      <p class="label">{c.bookingLabel}</p>
+      <h2 style="max-width: 20ch; margin-inline: auto;">{c.bookingTitle}</h2>
+      <p style="max-width: 48ch; margin: 0 auto 1.5rem;">{c.bookingBody}</p>
       <div class="book-embed">
         <iframe
           src={CAL_EMBED_URL}
@@ -212,10 +136,9 @@ const consultSchema = [
         <a href={SCHEDULE_URL} target="_blank" rel="noopener noreferrer">Open it in a new tab →</a>
       </p>
       <div class="trust-row">
-        <span><span class="ck">✓</span> 30 minutes</span>
-        <span><span class="ck">✓</span> No prep required</span>
-        <span><span class="ck">✓</span> Written summary included</span>
-        <span><span class="ck">✓</span> Zero pressure</span>
+        {c.trustRow.map((item) => (
+          <span><span class="ck">✓</span> {item}</span>
+        ))}
       </div>
     </div>
   </section>
@@ -416,45 +339,6 @@ const consultSchema = [
       grid-template-columns: 1fr;
     }
   }
-
-  /* testimonial */
-  .quote-card {
-    background: var(--cream-soft);
-    border: 1px solid var(--line);
-    border-radius: 10px;
-    padding: clamp(2rem, 5vw, 3.5rem) clamp(1.5rem, 4vw, 2.75rem);
-    position: relative;
-    overflow: hidden;
-  }
-
-  .quote-card::before {
-    content: '\201C';
-    font-family: var(--font-serif);
-    position: absolute;
-    top: -2.5rem;
-    left: 1.25rem;
-    font-size: 11rem;
-    color: var(--line);
-    line-height: 1;
-  }
-
-  .quote-card blockquote {
-    font-family: var(--font-serif);
-    font-size: clamp(1.375rem, 3vw, 1.875rem);
-    font-weight: 300;
-    line-height: 1.3;
-    max-width: 30ch;
-    margin: 0;
-    position: relative;
-  }
-
-  .quote-by {
-    margin: 1.25rem 0 0;
-    font-size: 0.9rem;
-    color: var(--stone-deep);
-  }
-
-  .quote-by strong { color: var(--charcoal); }
 
   /* booking */
   .booking {

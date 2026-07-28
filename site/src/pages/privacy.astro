@@ -1,0 +1,51 @@
+---
+import Base from '../layouts/Base.astro';
+---
+<Base
+  title="Privacy — Panta"
+  description="What panta.llc collects and why: anonymized Google Analytics with your consent, contact details you choose to send us, and nothing else."
+>
+  <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
+    <div class="container">
+      <p class="label">Privacy</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">Plain-spoken, like everything else here.</h1>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container" style="max-width: 46rem;">
+      <h2>What we collect</h2>
+      <p>
+        With your consent, we use Google Analytics to understand how visitors
+        use this site — pages viewed, rough location (IP addresses are
+        anonymized), and how you found us. If you decline, no analytics load
+        at all.
+      </p>
+      <p>
+        If you contact us or book a consultation, we receive what you send:
+        your name, email, and message. We use it to reply and for nothing
+        else. We never sell personal data.
+      </p>
+      <h2 style="margin-top: 2rem;">Change your mind</h2>
+      <p>
+        You can change your analytics choice anytime:
+        <button type="button" class="btn btn--ghost" style="margin-left: 0.5rem;" id="reopen-consent">Update consent</button>
+      </p>
+      <p class="small" style="margin-top: 2rem;">
+        Questions? <a href="mailto:hello@panta.llc">hello@panta.llc</a> — we
+        reply within one business day.
+      </p>
+    </div>
+  </section>
+</Base>
+
+<script>
+  document.getElementById('reopen-consent')?.addEventListener('click', () => {
+    try {
+      localStorage.removeItem('panta:consent');
+    } catch (_) {
+      /* swallow */
+    }
+    document.dispatchEvent(new CustomEvent('panta:consent-reopen'));
+  });
+</script>
