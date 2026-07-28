@@ -24,7 +24,7 @@ const orgSchema = {
   logo: new URL('/favicon.svg', Astro.site).toString(),
   email: 'hello@panta.co',
   description:
-    'Panta helps small businesses, nonprofits, and independent practices build a digital presence that actually works — strategy and engineering from the same hands.',
+    'Panta builds, connects, and creates for community growth and development — starting with Digital Business Consulting for small businesses, nonprofits, and independent practices.',
   slogan: 'One good move, felt everywhere.',
   areaServed: 'United States',
   knowsAbout: [
@@ -36,7 +36,7 @@ const orgSchema = {
 };
 
 const navItems = [
-  { href: '/services/', label: 'Services' },
+  { href: '/digital-business-consulting/', label: 'Digital Business Consulting' },
   { href: '/about/', label: 'About' },
   { href: '/contact/', label: 'Contact' },
 ];
@@ -82,7 +82,7 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
               {item.label}
             </a>
           ))}
-          <a href="/services/" class="btn btn--primary">Get started</a>
+          <a href="/consultation/" class="btn btn--primary">Get started</a>
         </nav>
       </div>
     </header>
@@ -109,9 +109,8 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
             <p class="label" style="color: var(--sage);">Explore</p>
             <ul class="footer-list">
               <li><a href="/consultation/">Free 30-minute audit</a></li>
-              <li><a href="/services/">Where to start</a></li>
-              <li><a href="/audit/">The Digital Presence Audit</a></li>
-              <li><a href="/blueprint/">The Digital Presence Blueprint</a></li>
+              <li><a href="/digital-business-consulting/">Digital Business Consulting</a></li>
+              <li><a href="/digital-business-consulting/digital-presence-plan/">The Digital Presence Plan</a></li>
               <li><a href="/about/">About Panta</a></li>
               <li><a href="/contact/">Contact</a></li>
             </ul>
