@@ -107,8 +107,20 @@ const practices = c.practices;
         <h2>{c.convergeTitle}</h2>
         <p class="lede">{c.convergeLede}</p>
         <div class="btn-row">
-          <a href="/web-strategy/" class="btn btn--primary">{c.primaryCtaLabel}</a>
-          <a href="/consultation/" class="btn btn--ghost">{c.secondaryCtaLabel}</a>
+          <a
+            href="/web-strategy/"
+            class="btn btn--primary"
+            data-track="cta_click"
+            data-track-cta="web_strategy"
+            data-track-location="home_converge"
+          >{c.primaryCtaLabel}</a>
+          <a
+            href="/consultation/"
+            class="btn btn--ghost"
+            data-track="cta_click"
+            data-track-cta="consultation"
+            data-track-location="home_converge"
+          >{c.secondaryCtaLabel}</a>
         </div>
       </div>
     </div>

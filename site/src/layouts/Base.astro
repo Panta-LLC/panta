@@ -196,7 +196,13 @@ const workActive =
               {item.label}
             </a>
           ))}
-          <a href="/consultation/" class="btn btn--primary">{settings.headerCtaLabel}</a>
+          <a
+            href="/consultation/"
+            class="btn btn--primary"
+            data-track="cta_click"
+            data-track-cta="consultation"
+            data-track-location="header"
+          >{settings.headerCtaLabel}</a>
         </nav>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
           <span class="nav-toggle__bar"></span>
@@ -235,7 +241,13 @@ const workActive =
               </li>
             ))}
           </ul>
-          <a href="/consultation/" class="btn btn--primary mobile-nav__cta">Get started</a>
+          <a
+            href="/consultation/"
+            class="btn btn--primary mobile-nav__cta"
+            data-track="cta_click"
+            data-track-cta="consultation"
+            data-track-location="mobile_nav"
+          >Get started</a>
         </nav>
       </div>
     </header>

@@ -36,8 +36,20 @@ const planSchema = [
       <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
       <p class="lede">{c.heroLede}</p>
       <div class="btn-row">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
-        <a href="/contact/" class="btn btn--ghost">Get a quote</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="plan_hero"
+        >Start with the free consultation</a>
+        <a
+          href="/contact/?quote=1"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="quote"
+          data-track-location="plan_hero"
+        >Get a quote</a>
       </div>
     </div>
   </section>
@@ -116,7 +128,13 @@ const planSchema = [
       <div class="card" style="background: var(--cream); border-color: transparent; color: var(--charcoal); max-width: 44rem;">
         <p>{c.pricingBody}</p>
         <div class="btn-row" style="margin-top: 1rem;">
-          <a href="/contact/" class="btn btn--primary">{c.pricingCtaLabel}</a>
+          <a
+            href="/contact/?quote=1"
+            class="btn btn--primary"
+            data-track="cta_click"
+            data-track-cta="quote"
+            data-track-location="plan_pricing"
+          >{c.pricingCtaLabel}</a>
           <span class="small">{c.pricingCtaNote}</span>
         </div>
       </div>
@@ -137,7 +155,13 @@ const planSchema = [
         ))}
       </div>
       <div class="btn-row" style="margin-top: 2.5rem;">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="plan_faq"
+        >Start with the free consultation</a>
         <span class="small">{c.ctaNote}</span>
       </div>
     </div>

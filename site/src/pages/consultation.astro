@@ -40,7 +40,13 @@ const consultSchema = [
         <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
         <p class="lede">{c.heroLede}</p>
         <div class="btn-row">
-          <a class="btn btn--primary" href="#book">{c.bookCtaLabel}</a>
+          <a
+            class="btn btn--primary"
+            href="#book"
+            data-track="cta_click"
+            data-track-cta="scroll_to_booking"
+            data-track-location="consultation_hero"
+          >{c.bookCtaLabel}</a>
           <span class="small"><strong>{c.bookNote}</strong></span>
         </div>
       </div>
@@ -133,16 +139,55 @@ const consultSchema = [
       </div>
       <p class="small" style="margin: 0.9rem auto 0; max-width: none;">
         Calendar not loading?
-        <a href={SCHEDULE_URL} target="_blank" rel="noopener noreferrer">Open it in a new tab →</a>
+        <a
+          href={SCHEDULE_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          data-track="cta_click"
+          data-track-cta="booking_new_tab"
+          data-track-location="consultation_booking"
+        >Open it in a new tab →</a>
       </p>
       <div class="trust-row">
         {c.trustRow.map((item) => (
           <span><span class="ck">✓</span> {item}</span>
         ))}
       </div>
+      {c.escapeLabel && (
+        <p class="small escape-hatch">
+          {c.escapeLabel} <a href={c.escapeHref}>{c.escapeLinkLabel} →</a>
+        </p>
+      )}
     </div>
   </section>
 </Base>
+
+<script>
+  // Booking funnel, such as it can be measured. The scheduler is a cross-origin
+  // Google Calendar appointment embed: it exposes no completion event to the
+  // host page, so a booking is NOT observable from here. The last thing we can
+  // see is the visitor reaching the calendar; actual bookings are counted in
+  // Google Calendar itself. Don't add a "booking_completed" event unless the
+  // scheduler is swapped for one that genuinely reports back.
+  const track = (window as any).pantaTrack ?? (() => {});
+  const embed = document.querySelector<HTMLElement>('.book-embed');
+
+  if (embed) {
+    // Reaching the calendar is the real intent signal on this page — it sits
+    // below a long explainer, so most visitors never get here.
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          track('booking_viewed');
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    observer.observe(embed);
+  }
+</script>
 
 <style>
   .hero-grid {

@@ -11,11 +11,17 @@ const settings = await getDoc('siteSettings');
 >
   <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
     <div class="container">
-      <p class="label">{c.heroLabel}</p>
-      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">{c.heroTitle}</h1>
-      <p class="lede">{c.heroLede}</p>
+      <p class="label" data-default={c.heroLabel} data-quote={c.quoteHeroLabel}>{c.heroLabel}</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);" data-default={c.heroTitle} data-quote={c.quoteHeroTitle}>{c.heroTitle}</h1>
+      <p class="lede" data-default={c.heroLede} data-quote={c.quoteHeroLede}>{c.heroLede}</p>
       <div class="btn-row">
-        <a href="/consultation/" class="btn btn--primary">{c.heroCtaLabel}</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="contact_hero"
+        >{c.heroCtaLabel}</a>
       </div>
     </div>
   </section>
@@ -74,11 +80,53 @@ const settings = await getDoc('siteSettings');
 </Base>
 
 <script>
+  const track = (window as any).pantaTrack ?? (() => {});
+
+  // /api/contact redirects to a bare ?sent=1, so ?quote=1 is gone by the time
+  // we report the lead. Stash the intent on the way in and read it back after.
+  const INTENT_KEY = 'panta:contact-intent';
+  const readIntent = () => {
+    try {
+      return sessionStorage.getItem(INTENT_KEY) ?? 'general';
+    } catch (_) {
+      return 'general';
+    }
+  };
+
   const params = new URLSearchParams(window.location.search);
   if (params.has('sent')) {
     document.getElementById('status-sent')?.removeAttribute('hidden');
+    // Fired on the post-redirect landing rather than on submit: /api/contact
+    // only sends us here once the mail actually went out, so this counts real
+    // leads instead of clicks that failed validation or SMTP.
+    track('contact_submitted', { intent: readIntent() });
+    try {
+      sessionStorage.removeItem(INTENT_KEY);
+    } catch (_) {
+      /* swallow */
+    }
   } else if (params.has('error')) {
     document.getElementById('status-error')?.removeAttribute('hidden');
+    track('contact_failed', { intent: readIntent() });
+  }
+
+  // Quote mode: arriving from a "Get a quote" CTA swaps the hero copy so the
+  // intent carries through instead of landing on a generic contact page.
+  if (params.has('quote')) {
+    try {
+      sessionStorage.setItem(INTENT_KEY, 'quote');
+    } catch (_) {
+      /* swallow */
+    }
+    document.querySelectorAll<HTMLElement>('[data-quote]').forEach((el) => {
+      const quoteCopy = el.dataset.quote;
+      if (quoteCopy) el.textContent = quoteCopy;
+    });
+    const message = document.getElementById('message') as HTMLTextAreaElement | null;
+    if (message) {
+      message.placeholder =
+        'What you have now, what you need built, and roughly when you need it.';
+    }
   }
 </script>
 
