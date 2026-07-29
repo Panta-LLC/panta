@@ -409,12 +409,33 @@ th {
 }
 
 .site-nav .nav-mega__worklink {
+  display: inline-block;
   font-size: 0.92rem;
   font-weight: 500;
   color: var(--charcoal);
   text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--cream-soft);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.site-nav .nav-mega__worklink:hover {
+  border-color: var(--sage);
+  color: var(--bamboo-deep);
+}
+
+.site-nav .nav-mega__overview {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--stone-deep);
+  text-decoration: none;
   padding: 0;
 }
+
+.site-nav .nav-mega__overview:hover { color: var(--bamboo-deep); }
 
 .nav-mega__worklink:hover { color: var(--bamboo-deep); }
 

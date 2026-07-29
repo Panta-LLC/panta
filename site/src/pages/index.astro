@@ -43,6 +43,11 @@ const practices = c.practices;
               </li>
             ))}
           </ul>
+          {c.heroDirectLabel && (
+            <p class="mhero__direct">
+              <a href={c.heroDirectHref}>{c.heroDirectLabel} <span aria-hidden="true">→</span></a>
+            </p>
+          )}
         </div>
       </div>
     </div>
@@ -239,6 +244,21 @@ const practices = c.practices;
     font-weight: 500;
     color: var(--stone-deep);
   }
+
+  .mhero__direct {
+    margin-top: 1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.92rem;
+  }
+
+  .mhero__direct a {
+    color: var(--bamboo-deep);
+    font-weight: 500;
+    text-decoration: none;
+  }
+
+  .mhero__direct a:hover { text-decoration: underline; }
 
   .mhero__practice-tag {
     font-size: 0.62rem;

@@ -68,6 +68,7 @@ const megaPractices = [
 ];
 
 const megaQuickLinks = [
+  { href: '/work/', label: 'Client work' },
   { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan' },
   { href: '/web-strategy/websites/', label: 'Websites & web channels' },
   { href: '/consultation/', label: 'Free 30-minute audit' },
@@ -76,7 +77,7 @@ const megaQuickLinks = [
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
 
 const workActive =
-  ['/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
+  ['/what-we-do/', '/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
   currentPath.startsWith('/web-strategy/');
 ---
 <!doctype html>
@@ -121,24 +122,25 @@ const workActive =
           <div class:list={['nav-drop', { 'nav-drop--active': workActive }]}>
             <a
               class="nav-drop__trigger"
-              href="/work/"
-              aria-current={currentPath === '/work/' ? 'page' : undefined}
+              href="/what-we-do/"
+              aria-current={currentPath === '/what-we-do/' ? 'page' : undefined}
             >
-              Our Work
+              What we do
               <svg class="nav-drop__caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
                 <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </a>
-            <div class="nav-mega" aria-label="Our Work">
+            <div class="nav-mega" aria-label="What we do">
               <div class="container nav-mega__grid">
                 <div class="nav-mega__intro">
-                  <p class="nav-mega__label">Our Work</p>
+                  <p class="nav-mega__label">What we do</p>
                   <p class="nav-mega__head">One good move, felt everywhere.</p>
                   <p class="nav-mega__sub">
                     Three practices supporting the people who support our
                     community.
                   </p>
                   <a class="nav-mega__worklink" href="/work/">See client work <span aria-hidden="true">→</span></a>
+                  <a class="nav-mega__overview" href="/what-we-do/">Company overview</a>
                 </div>
                 <div class="nav-mega__cards">
                   {megaPractices.map((p) => (
@@ -204,8 +206,11 @@ const workActive =
       </div>
       <div class="mobile-nav" id="mobile-nav">
         <nav class="container mobile-nav__inner" aria-label="Mobile">
-          <p class="mobile-nav__label">Our Work</p>
+          <p class="mobile-nav__label">What we do</p>
           <ul class="mobile-nav__list">
+            <li>
+              <a href="/what-we-do/" aria-current={currentPath === '/what-we-do/' ? 'page' : undefined}>Company overview</a>
+            </li>
             {megaPractices.map((p, i) => (
               <>
                 <li>

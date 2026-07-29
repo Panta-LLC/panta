@@ -68,10 +68,19 @@ const dbcSchema = [
             </span>
             <h3>{s.title}</h3>
             <p>{s.body}</p>
-            <span class="svc-arrow" aria-hidden="true">→</span>
+            {s.linkLabel ? (
+              <span class="svc-link">{s.linkLabel} <span aria-hidden="true">→</span></span>
+            ) : (
+              <span class="svc-arrow" aria-hidden="true">→</span>
+            )}
           </a>
         ))}
       </div>
+      {c.proofNote && (
+        <p class="small svc-proof">
+          {c.proofNote} <a href="/work/">{c.proofLinkLabel} →</a>
+        </p>
+      )}
     </div>
   </section>
 
@@ -105,7 +114,12 @@ const dbcSchema = [
           </div>
         ))}
       </div>
-      <div class="btn-row" style="margin-top: 2.5rem;">
+      {c.aboutNote && (
+        <p class="small" style="margin-top: 1.75rem;">
+          {c.aboutNote} <a href="/about/">{c.aboutLinkLabel} →</a>
+        </p>
+      )}
+      <div class="btn-row" style="margin-top: 2rem;">
         <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
         <span class="small">{c.ctaNote}</span>
       </div>
@@ -209,6 +223,22 @@ const dbcSchema = [
   .svc-card:hover .svc-arrow {
     transform: translateX(5px);
   }
+
+  /* explicit label for cards whose destination isn't a service page */
+  .svc-link {
+    margin-top: auto;
+    padding-top: 0.5rem;
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+  }
+
+  .svc-proof {
+    margin-top: 1.75rem;
+    color: var(--stone);
+  }
+
+  .svc-proof a { color: var(--sage); }
 
   @media (prefers-reduced-motion: reduce) {
     .svc-card,
