@@ -187,6 +187,11 @@ const dbcSchema = [
   .svc-card h3 {
     font-size: 1.15rem;
     line-height: 1.3;
+    /* These cards are cream-on-dark anchors, so `.section--dark a:hover` in
+       global.css repaints the whole card cream on hover. The body copy and
+       arrow set their own colors and survive it; this heading would inherit
+       cream onto a cream card and vanish. A direct rule beats inheritance. */
+    color: var(--charcoal);
   }
 
   .svc-card p {
