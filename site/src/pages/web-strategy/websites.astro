@@ -40,8 +40,20 @@ const websitesSchema = [
       <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
       <p class="lede">{c.heroLede}</p>
       <div class="btn-row">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
-        <a href="/work/" class="btn btn--ghost">See our work</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="websites_hero"
+        >Start with the free consultation</a>
+        <a
+          href="/work/"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="work"
+          data-track-location="websites_hero"
+        >See our work</a>
       </div>
     </div>
   </section>
@@ -116,7 +128,13 @@ const websitesSchema = [
             <li><strong>{item.title}</strong> {item.body}</li>
           ))}
         </ul>
-        <a href="/web-strategy/" class="btn btn--primary">{c.pivotCtaLabel}</a>
+        <a
+          href="/web-strategy/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="web_strategy"
+          data-track-location="websites_pivot"
+        >{c.pivotCtaLabel}</a>
       </div>
     </div>
   </section>
@@ -147,7 +165,13 @@ const websitesSchema = [
         ))}
       </div>
       <div class="btn-row" style="margin-top: 2.5rem;">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="websites_faq"
+        >Start with the free consultation</a>
         <span class="small">{c.ctaNote}</span>
       </div>
     </div>

@@ -16,7 +16,13 @@ const c = await getDoc('homePage');
       <p class="lede">{c.heroLede}</p>
       <div class="btn-row">
         <a href="#practices" class="btn btn--primary">Explore our practices</a>
-        <a href="/consultation/" class="btn btn--ghost">Book a free 30-minute audit</a>
+        <a
+          href="/consultation/"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="what_we_do_hero"
+        >Book a free 30-minute consultation</a>
       </div>
     </div>
   </section>
@@ -56,7 +62,13 @@ const c = await getDoc('homePage');
             </li>
           ))}
         </ul>
-        <a href="/web-strategy/" class="btn btn--primary">{c.practiceCtaLabel}</a>
+        <a
+          href="/web-strategy/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="web_strategy"
+          data-track-location="what_we_do_practices"
+        >{c.practiceCtaLabel}</a>
       </div>
       <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr)); gap: 1.25rem; margin-top: 1.5rem; max-width: 44rem;">
         {c.comingCards.map((card) => (
@@ -78,7 +90,13 @@ const c = await getDoc('homePage');
         <h2>{c.rippleTitle}</h2>
         <p class="lede" style="max-width: 54ch;">{c.rippleLede}</p>
         <div class="btn-row" style="margin-top: 1rem;">
-          <a href="/consultation/" class="btn btn--primary">{c.rippleCtaLabel}</a>
+          <a
+            href="/consultation/"
+            class="btn btn--primary"
+            data-track="cta_click"
+            data-track-cta="consultation"
+            data-track-location="what_we_do_ripple"
+          >{c.rippleCtaLabel}</a>
         </div>
       </div>
     </div>

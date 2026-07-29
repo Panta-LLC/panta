@@ -439,10 +439,12 @@ th {
 
 .nav-mega__worklink:hover { color: var(--bamboo-deep); }
 
+/* One card for the practice that sells, one narrow column for the roadmap. */
 .nav-mega__cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  align-items: start;
 }
 
 /* .site-nav prefix: outranks the generic `.site-nav a` padding rule */
@@ -463,8 +465,18 @@ th {
   translate: 0 8px;
 }
 
+/* Roadmap column: shares the card's entrance, not its surface. */
+.nav-mega__next {
+  padding-left: clamp(1rem, 2vw, 1.5rem);
+  border-left: 1px solid var(--line);
+  opacity: 0;
+  translate: 0 8px;
+}
+
 .nav-drop:hover .nav-mega__card,
-.nav-drop:focus-within .nav-mega__card {
+.nav-drop:focus-within .nav-mega__card,
+.nav-drop:hover .nav-mega__next,
+.nav-drop:focus-within .nav-mega__next {
   opacity: 1;
   translate: 0 0;
   transition:
@@ -472,10 +484,38 @@ th {
     opacity 0.35s ease, translate 0.35s ease;
 }
 
-.nav-drop:hover .nav-mega__card:nth-child(2),
-.nav-drop:focus-within .nav-mega__card:nth-child(2) { transition-delay: 0.06s; }
-.nav-drop:hover .nav-mega__card:nth-child(3),
-.nav-drop:focus-within .nav-mega__card:nth-child(3) { transition-delay: 0.12s; }
+.nav-drop:hover .nav-mega__next,
+.nav-drop:focus-within .nav-mega__next { transition-delay: 0.06s; }
+
+.nav-mega__next-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  margin-bottom: 0.6rem;
+}
+
+.site-nav .nav-mega__nextlink {
+  display: block;
+  padding: 0.3rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--charcoal);
+  text-decoration: none;
+}
+
+.site-nav .nav-mega__nextlink:hover { color: var(--bamboo-deep); }
+
+.site-nav .nav-mega__nextlink[aria-current='page'] { color: var(--bamboo-deep); }
+
+.nav-mega__next-note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--stone-deep);
+  margin: 0.6rem 0 0;
+  max-width: 24ch;
+}
 
 .nav-mega__card:hover {
   transform: translateY(-3px);
@@ -647,6 +687,8 @@ th {
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(4) { transition-delay: 0.15s; }
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(5) { transition-delay: 0.2s; }
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(6) { transition-delay: 0.25s; }
+.mobile-nav.is-open .mobile-nav__inner > :nth-child(7) { transition-delay: 0.3s; }
+.mobile-nav.is-open .mobile-nav__inner > :nth-child(8) { transition-delay: 0.35s; }
 
 .mobile-nav__label {
   font-size: 0.68rem;
@@ -704,6 +746,7 @@ th {
 @media (prefers-reduced-motion: reduce) {
   .nav-mega,
   .site-nav .nav-mega__card,
+  .nav-mega__next,
   .nav-drop__caret,
   .nav-mega__card-arrow,
   .nav-toggle__bar,

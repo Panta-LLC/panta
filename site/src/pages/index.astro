@@ -8,32 +8,70 @@ const c = await getDoc('missionPage');
 // Entries without an href render as "coming soon" — add the href in Sanity
 // once the practice has a page and it becomes a link.
 const practices = c.practices;
+
+// Sanity gives practices only a title and href, so the analytics identity has
+// to be derived from the destination.
+const PRACTICE_CTA = {
+  '/web-strategy/': 'web_strategy',
+  '/community-programs/': 'community_programs',
+  '/product-development/': 'product_development',
+};
 ---
 <Base
   title="Panta — Build. Connect. Create."
   description="Panta exists to support the people who support our community — through Web Strategy & Development, Community Program Development, and Product Development. Scroll the story of our three verbs."
 >
   <!-- ======================= hero (from the draft) ======================= -->
-  <section class="mhero" id="top">
+  <section class="mhero" id="top" data-section="hero">
     <div class="container mhero__grid">
       <h1 class="mhero__words">
-        <a class="mword" href="#build" data-target="build"><span>Build</span></a>
-        <a class="mword" href="#connect" data-target="connect"><span>Connect</span></a>
-        <a class="mword" href="#create" data-target="create"><span>Create</span></a>
+        {/* Internal chapter jumps, not conversions — separate event so they
+            don't pollute cta_click. */}
+        <a class="mword" href="#build" data-target="build" data-track="mission_jump" data-track-word="build" data-track-location="hero"><span>Build</span></a>
+        <a class="mword" href="#connect" data-target="connect" data-track="mission_jump" data-track-word="connect" data-track-location="hero"><span>Connect</span></a>
+        <a class="mword" href="#create" data-target="create" data-track="mission_jump" data-track-word="create" data-track-location="hero"><span>Create</span></a>
       </h1>
       <div class="mhero__aside">
         <p class="mhero__quote">{c.quote}</p>
         <p class="mhero__sub">{c.summary}</p>
+
+        {/*
+          HARDCODED: the mission story says what Panta believes but never what
+          it sells, so this states the offer inside the first viewport. There is
+          no missionPage field free to hold it and the Studio is a separate
+          project — to make it editable, add `heroOfferLine` to the missionPage
+          schema and swap this for {c.heroOfferLine}.
+        */}
+        <p class="mhero__offer">
+          Today that means one thing you can hire us for: your
+          <strong> web presence</strong> — planned, built, and kept working.
+        </p>
+
+        {c.heroDirectLabel && (
+          <div class="btn-row mhero__cta">
+            <a
+              href={c.heroDirectHref}
+              class="btn btn--primary"
+              data-track="cta_click"
+              data-track-cta="websites"
+              data-track-location="home_hero"
+            >{c.heroDirectLabel}</a>
+          </div>
+        )}
+
+        {/* The umbrella stays visible, but as a footnote — not as the menu. */}
         <div class="mhero__practices">
           <p class="mhero__practices-label">{c.practicesLabel}</p>
           <ul class="mhero__practices-list">
             {practices.map((p) => (
               <li>
                 {p.href ? (
-                  <a href={p.href}>
-                    {p.title}
-                    <span class="mhero__practice-arrow" aria-hidden="true">→</span>
-                  </a>
+                  <a
+                    href={p.href}
+                    data-track="cta_click"
+                    data-track-cta={PRACTICE_CTA[p.href] ?? 'practice'}
+                    data-track-location="home_hero_practices"
+                  >{p.title}</a>
                 ) : (
                   <>
                     <span class="mhero__practice-soon">{p.title}</span>
@@ -43,11 +81,6 @@ const practices = c.practices;
               </li>
             ))}
           </ul>
-          {c.heroDirectLabel && (
-            <p class="mhero__direct">
-              <a href={c.heroDirectHref}>{c.heroDirectLabel} <span aria-hidden="true">→</span></a>
-            </p>
-          )}
         </div>
       </div>
     </div>
@@ -57,7 +90,7 @@ const practices = c.practices;
   </section>
 
   <!-- ======================= origin ======================= -->
-  <section class="origin section--dark" id="origin">
+  <section class="origin section--dark" id="origin" data-section="origin">
     <div class="container origin__grid">
       <div class="origin__copy">
         <p class="label">{c.originLabel}</p>
@@ -80,7 +113,7 @@ const practices = c.practices;
   <!-- ======================= the three verbs ======================= -->
   <div id="values">
     {c.verbPanels.map((p) => (
-      <section class={`vpanel vpanel--${p._key}`} id={p._key} data-value={p._key}>
+      <section class={`vpanel vpanel--${p._key}`} id={p._key} data-value={p._key} data-section={p._key}>
         <div class="container vpanel__inner">
           <p class="vpanel__num">{p.num}</p>
           <p class="vword-wrap" aria-hidden="true"><span class="vword">{p.word}</span></p>
@@ -91,13 +124,36 @@ const practices = c.practices;
           <ul class="vchips">
             {p.chips.map((chip) => <li>{chip}</li>)}
           </ul>
+          {p._key === 'build' && (
+            /*
+              Off-ramp from the mission story to the practice that sells. Build
+              IS the web-presence practice, so this is the natural exit.
+              Absolutely positioned on desktop so it contributes NO flow height:
+              the panel is pinned at 100svh, and anything pushing past that
+              would be unreachable. Must never carry data-target — the handler
+              at the bottom of this file preventDefaults every such element.
+            */
+            <div class="container vofframp">
+              <p class="vofframp__text">
+                Websites, web channels, and the systems behind them — this is the
+                practice you can hire today.
+              </p>
+              <a
+                href="/web-strategy/websites/"
+                class="btn btn--primary"
+                data-track="cta_click"
+                data-track-cta="websites"
+                data-track-location="home_build"
+              >See how we build websites</a>
+            </div>
+          )}
         </div>
       </section>
     ))}
   </div>
 
   <!-- ======================= convergence ======================= -->
-  <section class="mconverge section section--dark">
+  <section class="mconverge section section--dark" data-section="converge">
     <div class="container mconverge__inner">
       <p class="mconverge__words" aria-hidden="true">
         <span>Build.</span> <span>Connect.</span> <span>Create.</span>
@@ -128,9 +184,9 @@ const practices = c.practices;
 
   <!-- rail: shown by JS while scrolling the three verbs -->
   <nav class="vrail" aria-label="Mission values">
-    <button class="vrail__dot" type="button" data-target="build"><span>Build</span></button>
-    <button class="vrail__dot" type="button" data-target="connect"><span>Connect</span></button>
-    <button class="vrail__dot" type="button" data-target="create"><span>Create</span></button>
+    <button class="vrail__dot" type="button" data-target="build" data-track="mission_jump" data-track-word="build" data-track-location="rail"><span>Build</span></button>
+    <button class="vrail__dot" type="button" data-target="connect" data-track="mission_jump" data-track-word="connect" data-track-location="rail"><span>Connect</span></button>
+    <button class="vrail__dot" type="button" data-target="create" data-track="mission_jump" data-track-word="create" data-track-location="rail"><span>Create</span></button>
   </nav>
 </Base>
 
@@ -200,77 +256,68 @@ const practices = c.practices;
     max-width: 38ch;
   }
 
+  .mhero__offer {
+    margin-top: 1.1rem;
+    font-size: 1rem;
+    line-height: 1.55;
+    max-width: 34ch;
+    color: var(--charcoal);
+  }
+
+  .mhero__offer strong { font-weight: 600; }
+
+  .mhero__cta { margin-top: 1.4rem; }
+
+  /* Demoted: a quiet footnote under the offer, not a menu competing with it. */
   .mhero__practices {
-    margin-top: 1.75rem;
-    padding-top: 1.4rem;
+    margin-top: 1.6rem;
+    padding-top: 1rem;
     border-top: 1px solid var(--line);
   }
 
   .mhero__practices-label {
-    font-size: 0.72rem;
+    font-size: 0.68rem;
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--bamboo-deep);
-    margin-bottom: 0.75rem;
+    color: var(--stone-deep);
+    margin-bottom: 0.5rem;
   }
 
   .mhero__practices-list {
     list-style: none;
     margin: 0;
     padding: 0;
-    display: grid;
-    gap: 0.55rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem 1rem;
   }
 
   .mhero__practices-list li {
     display: flex;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.5rem;
   }
 
   .mhero__practices-list a {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    font-weight: 500;
-    color: var(--charcoal);
-    text-decoration: none;
+    font-size: 0.88rem;
+    font-weight: 400;
+    color: var(--stone-deep);
+    text-decoration: underline;
+    text-decoration-color: var(--line);
+    text-underline-offset: 3px;
   }
 
   .mhero__practices-list a:hover,
   .mhero__practices-list a:focus-visible {
     color: var(--bamboo-deep);
-  }
-
-  .mhero__practice-arrow {
-    transition: transform 0.2s ease;
-  }
-
-  .mhero__practices-list a:hover .mhero__practice-arrow,
-  .mhero__practices-list a:focus-visible .mhero__practice-arrow {
-    transform: translateX(4px);
+    text-decoration-color: currentColor;
   }
 
   .mhero__practice-soon {
-    font-weight: 500;
+    font-size: 0.88rem;
     color: var(--stone-deep);
   }
-
-  .mhero__direct {
-    margin-top: 1rem;
-    padding-top: 0.9rem;
-    border-top: 1px solid var(--line);
-    font-size: 0.92rem;
-  }
-
-  .mhero__direct a {
-    color: var(--bamboo-deep);
-    font-weight: 500;
-    text-decoration: none;
-  }
-
-  .mhero__direct a:hover { text-decoration: underline; }
 
   .mhero__practice-tag {
     font-size: 0.62rem;
@@ -345,6 +392,7 @@ const practices = c.practices;
   /* --- value panels -------------------------------------------------------- */
 
   .vpanel {
+    position: relative; /* anchors the Build off-ramp */
     min-height: 100svh;
     display: flex;
     align-items: center;
@@ -424,6 +472,33 @@ const practices = c.practices;
   .vpanel--create .vchips li {
     background: rgba(38, 37, 31, 0.16);
     border-color: rgba(245, 241, 231, 0.3);
+  }
+
+  /* Out of flow on purpose: the panel is pinned at 100svh, so an in-flow band
+     could be pushed past the fold with no way to scroll to it. Sits inside the
+     panel's own bottom padding, the same way .mhero__cue does on the hero. */
+  .vofframp {
+    position: absolute;
+    inset-inline: 0;
+    bottom: clamp(0.9rem, 2.2vw, 1.5rem);
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.7rem 1.15rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .vofframp__text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--stone-deep);
+    max-width: 46ch;
+  }
+
+  .vofframp .btn {
+    padding: 0.7rem 1.15rem;
+    font-size: 0.92rem;
   }
 
   /* --- convergence ---------------------------------------------------------- */
@@ -519,6 +594,16 @@ const practices = c.practices;
 
   @media (max-width: 719px) {
     .vrail__dot span { display: none; }
+
+    /* Below the pin breakpoint the panels scroll normally, so the off-ramp
+       goes back into flow under the chips. It is already inside a .container,
+       so cancel the doubled inline padding. */
+    .vofframp {
+      position: static;
+      max-width: none;
+      padding-inline: 0;
+      margin-top: 1.6rem;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -707,4 +792,65 @@ const practices = c.practices;
       return () => bound.forEach(([el, handler]) => el.removeEventListener('click', handler));
     }
   );
+</script>
+
+<script>
+  // Where the mission scroll loses people. Deliberately outside the GSAP module
+  // above, which is gated by matchMedia and prefers-reduced-motion — this has to
+  // report at every breakpoint. Same fire-once pattern as the booking-embed
+  // observer on /consultation/.
+  //
+  // One event with a `section` dimension, not six event names: it makes the
+  // drop-off a single funnel exploration in GA4. Register `section` as a custom
+  // dimension or the param is collected but invisible.
+  const seen = new Set<string>();
+  // The consent banner appears 600ms in, so the hero — the denominator of this
+  // whole funnel — is almost always seen BEFORE the visitor decides. Sending
+  // straight to pantaTrack would silently drop those and make the top of the
+  // funnel look worse than it is, so buffer until consent and flush.
+  const pending: string[] = [];
+
+  const consented = () => {
+    try {
+      return localStorage.getItem('panta:consent') === 'granted';
+    } catch (_) {
+      return false;
+    }
+  };
+
+  const send = (section: string) => {
+    const track = (window as any).pantaTrack;
+    if (typeof track !== 'function' || !consented()) {
+      pending.push(section);
+      return;
+    }
+    track('home_section_view', { section });
+  };
+
+  // Registered after Analytics.astro's own listener, so gtag is configured by
+  // the time this runs.
+  document.addEventListener('panta:consent-granted', () => {
+    const queued = pending.splice(0);
+    const track = (window as any).pantaTrack;
+    if (typeof track !== 'function') return;
+    queued.forEach((section) => track('home_section_view', { section }));
+  });
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const id = (entry.target as HTMLElement).dataset.section ?? '';
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        send(id);
+        io.unobserve(entry.target);
+      }
+    },
+    { threshold: 0.4 }
+  );
+
+  document
+    .querySelectorAll<HTMLElement>('[data-section]')
+    .forEach((el) => io.observe(el));
 </script>

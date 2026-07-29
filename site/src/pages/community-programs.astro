@@ -38,8 +38,23 @@ const c = await getDoc('communityProgramsPage');
       <h2>{c.ctaTitle}</h2>
       <p class="lede" style="max-width: 54ch;">{c.ctaLede}</p>
       <div class="btn-row" style="margin-top: 1.5rem;">
-        <a href="/contact/" class="btn btn--primary">{c.ctaPrimaryLabel}</a>
-        <a href="/" class="btn btn--ghost">{c.ctaSecondaryLabel}</a>
+        <a
+          href="/contact/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="contact"
+          data-track-location="community_cta"
+        >{c.ctaPrimaryLabel}</a>
+        {/* Was "/" — which dropped the visitor back at the top of the mission
+            scroll. Points at the practice that's live instead. Paired Sanity
+            edit: ctaSecondaryLabel must no longer say "read the mission". */}
+        <a
+          href="/web-strategy/"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="web_strategy"
+          data-track-location="community_cta"
+        >{c.ctaSecondaryLabel}</a>
       </div>
     </div>
   </section>

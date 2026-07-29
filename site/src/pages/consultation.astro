@@ -6,19 +6,21 @@ const c = await getDoc('consultationPage');
 const settings = await getDoc('siteSettings');
 const projects = await getProjects();
 
-// Booking URLs are managed in Sanity → Site Settings. The owner is updating
-// the Google Calendar schedule to offer 30-minute slots to match this page.
+// Booking URLs are managed in Sanity → Site Settings.
 const SCHEDULE_URL = settings.scheduleUrl;
 const CAL_EMBED_URL = settings.calEmbedUrl;
 
+// "Audit", "scorecard" and "graded" belong to the paid Digital Presence Plan.
+// This page sells the free call, so it says "consultation" throughout —
+// otherwise prospects think the free call already delivered the paid plan.
 const description =
-  'A free 30-minute web presence audit for businesses at any stage — with or without a website. Walk away with an honest read on where you stand and a blueprint for what to do next.';
+  'A free 30-minute consultation for businesses at any stage — with or without a website. Walk away with an honest read on where you stand and a clear next step.';
 
 const consultSchema = [
   {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    name: 'Free Web Presence Audit',
+    name: 'Free 30-Minute Consultation',
     serviceType: 'Web strategy consultation',
     description,
     provider: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://panta.llc' },
@@ -28,7 +30,7 @@ const consultSchema = [
 ];
 ---
 <Base
-  title="Free Web Presence Audit — Panta"
+  title="Free 30-Minute Consultation — Panta"
   description={description}
   schema={consultSchema}
 >
@@ -52,7 +54,7 @@ const consultSchema = [
       </div>
 
       <!-- diagnostic panel: the whole picture we map together -->
-      <div class="panel" aria-label="What the audit maps">
+      <div class="panel" aria-label="What the consultation maps">
         <div class="panel-head">
           <span class="panel-label">{c.panelLabel}</span>
           <span class="panel-url">your web presence</span>
@@ -132,7 +134,7 @@ const consultSchema = [
       <div class="book-embed">
         <iframe
           src={CAL_EMBED_URL}
-          title="Book your free audit with Panta"
+          title="Book your free consultation with Panta"
           loading="lazy"
           width="100%"
           height="640"></iframe>

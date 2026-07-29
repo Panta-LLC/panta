@@ -4,6 +4,15 @@ import { getDoc } from '../../lib/sanity.js';
 
 const c = await getDoc('webStrategyPage');
 
+// Service card destinations come from Sanity, so the analytics identity has to
+// be derived from the href.
+const SVC_CTA = {
+  '/web-strategy/digital-presence-plan/': 'plan',
+  '/web-strategy/websites/': 'websites',
+  '/work/': 'work',
+  '/contact/': 'contact',
+};
+
 const dbcSchema = [
   {
     '@context': 'https://schema.org',
@@ -28,8 +37,20 @@ const dbcSchema = [
       <h1>{c.heroTitle}</h1>
       <p class="lede">{c.heroLede}</p>
       <div class="btn-row">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
-        <a href="#services" class="btn btn--ghost">See our services</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="web_strategy_hero"
+        >Start with the free consultation</a>
+        <a
+          href="#services"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="scroll_to_services"
+          data-track-location="web_strategy_hero"
+        >See our services</a>
       </div>
     </div>
   </section>
@@ -43,7 +64,13 @@ const dbcSchema = [
       </div>
       <div class="svc-cards">
         {c.services.map((s, i) => (
-          <a class="svc-card" href={s.href}>
+          <a
+            class="svc-card"
+            href={s.href}
+            data-track="cta_click"
+            data-track-cta={SVC_CTA[s.href] ?? 'service'}
+            data-track-location="web_strategy_services"
+          >
             <span class="svc-icon" aria-hidden="true">
               {i === 0 && (
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
@@ -120,7 +147,13 @@ const dbcSchema = [
         </p>
       )}
       <div class="btn-row" style="margin-top: 2rem;">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="web_strategy_process"
+        >Start with the free consultation</a>
         <span class="small">{c.ctaNote}</span>
       </div>
     </div>
