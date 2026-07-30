@@ -18,5 +18,8 @@ const { size = 40, class: className } = Astro.props;
 >
   <circle cx="24" cy="24" r="21" stroke="currentColor" stroke-width="1.4" />
   <circle cx="24" cy="24" r="13.5" stroke="currentColor" stroke-width="2.2" />
-  <circle cx="24" cy="24" r="6" stroke="#6F8B3C" stroke-width="3.4" />
+  {/* var so the mark can swap its accent on a bamboo surface, where the bamboo
+      ring would otherwise disappear. The fallback keeps every other use of the
+      mark pixel-identical. */}
+  <circle cx="24" cy="24" r="6" stroke="var(--ripple-accent, #6F8B3C)" stroke-width="3.4" />
 </svg>

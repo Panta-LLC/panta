@@ -16,36 +16,100 @@ const PRACTICE_CTA = {
   '/community-programs/': 'community_programs',
   '/product-development/': 'product_development',
 };
+
+// The hero is a four-state slideshow: state 0 is the mission statement (all
+// three words, the quote and the offer), states 1-3 are the verbs that used to
+// be pinned 100svh panels. Only the verbs are real slide elements — "intro" is
+// the absence of an active verb, which is also the no-JS state.
+//
+// `_key` doubles as the deep-link id AND as the `section` value reported to
+// GA4, so the existing home_section_view funnel (build/connect/create) survives
+// this rewrite — see the analytics script at the bottom of this file.
+const verbSlides = c.verbPanels;
+const slideCount = verbSlides.length + 1;
+const INTRO_LABEL = 'Build. Connect. Create.';
 ---
 <Base
   title="Panta — Build. Connect. Create."
-  description="Panta exists to support the people who support our community — through Web Strategy & Development, Community Program Development, and Product Development. Scroll the story of our three verbs."
+  description="Panta exists to support the people who support our community — through Web Strategy & Development, Community Program Development, and Product Development."
 >
-  <!-- ======================= hero (from the draft) ======================= -->
+  <!-- ======================= hero slideshow ======================= -->
   <section class="mhero" id="top" data-section="hero">
-    <div class="container mhero__grid">
-      <h1 class="mhero__words">
-        {/* Internal chapter jumps, not conversions — separate event so they
-            don't pollute cta_click. */}
-        <a class="mword" href="#build" data-target="build" data-track="mission_jump" data-track-word="build" data-track-location="hero"><span>Build</span></a>
-        <a class="mword" href="#connect" data-target="connect" data-track="mission_jump" data-track-word="connect" data-track-location="hero"><span>Connect</span></a>
-        <a class="mword" href="#create" data-target="create" data-track="mission_jump" data-track-word="create" data-track-location="hero"><span>Create</span></a>
-      </h1>
-      <div class="mhero__aside">
-        <p class="mhero__quote">{c.quote}</p>
-        <p class="mhero__sub">{c.summary}</p>
+    <div
+      class="container mhero__grid"
+      role="group"
+      aria-roledescription="carousel"
+      aria-label={INTRO_LABEL}
+      data-slides
+    >
+      <!-- The stage: three stacked rows. Rows 1 and 2 are shared across every
+           slide (the eyebrow and the display words, which wipe behind a mask);
+           row 3 stacks the three verb bodies in a single grid cell, so its
+           height is the tallest body's and never changes when slides swap. -->
+      <div class="mslides" id="hero-slides" aria-live="off">
+        <div class="mslides__eyebrows" aria-hidden="true">
+          {verbSlides.map((p) => (
+            <p class="mslide__eyebrow" data-eyebrow={p._key}>{p.num}</p>
+          ))}
+        </div>
 
-        {/*
-          HARDCODED: the mission story says what Panta believes but never what
-          it sells, so this states the offer inside the first viewport. There is
-          no missionPage field free to hold it and the Studio is a separate
-          project — to make it editable, add `heroOfferLine` to the missionPage
-          schema and swap this for {c.heroOfferLine}.
-        */}
-        <p class="mhero__offer">
-          Today that means one thing you can hire us for: your
-          <strong> web presence</strong> — planned, built, and kept working.
-        </p>
+        {/* Real anchors so they still deep-link with JS off; the slideshow
+            intercepts the click to swap slides instead. They must NOT carry
+            data-target — the handler that preventDefaulted every such element
+            left with the pinned panels, and nothing should resurrect it. */}
+        <h1 class="mhero__words">
+          {verbSlides.map((p) => (
+            <a
+              class="mword"
+              href={`#${p._key}`}
+              data-word={p._key}
+              data-track="mission_jump"
+              data-track-word={p._key}
+              data-track-location="hero"
+            ><span>{p.word}</span></a>
+          ))}
+        </h1>
+
+        {verbSlides.map((p, i) => (
+          <div
+            class="mslide"
+            id={p._key}
+            data-slide={p._key}
+            role="group"
+            aria-roledescription="slide"
+            aria-label={`${i + 2} of ${slideCount}: ${p.word}`}
+            inert
+          >
+            <h2 class="mslide__head" data-rise>{p.head}</h2>
+            <p class="mslide__story" data-rise>{p.story}</p>
+            <ul class="mslide__chips">
+              {p.chips.map((chip) => <li data-rise>{chip}</li>)}
+            </ul>
+          </div>
+        ))}
+      </div>
+
+      <!-- The frame: the offer and the practices never fade, so the thing you
+           can hire us for is on screen for the whole story. The intro copy
+           keeps its layout height when hidden (visibility, not display), which
+           is what keeps the CTA at the same y-position on all four slides. -->
+      <div class="mhero__frame">
+        <div class="mhero__intro-copy" data-intro-copy>
+          <p class="mhero__quote">{c.quote}</p>
+          <p class="mhero__sub">{c.summary}</p>
+
+          {/*
+            HARDCODED: the mission story says what Panta believes but never what
+            it sells, so this states the offer inside the first viewport. There is
+            no missionPage field free to hold it and the Studio is a separate
+            project — to make it editable, add `heroOfferLine` to the missionPage
+            schema and swap this for {c.heroOfferLine}.
+          */}
+          <p class="mhero__offer">
+            Today that means one thing you can hire us for: your
+            <strong> web presence</strong> — planned, built, and kept working.
+          </p>
+        </div>
 
         {c.heroDirectLabel && (
           <div class="btn-row mhero__cta">
@@ -82,8 +146,67 @@ const PRACTICE_CTA = {
             ))}
           </ul>
         </div>
+
+        <!-- Controls last, so the CTA keeps the first tab stop in the hero. -->
+        <div class="mslides__bar">
+          <button
+            class="mslides__arrow"
+            type="button"
+            data-slide-dir="-1"
+            aria-controls="hero-slides"
+            aria-label="Previous slide"
+          ><span aria-hidden="true">←</span></button>
+
+          <ul class="mslides__dots">
+            <li>
+              <button
+                class="mslides__dot is-active"
+                type="button"
+                data-slide-to="0"
+                aria-controls="hero-slides"
+                aria-current="true"
+                aria-label={`Slide 1 of ${slideCount}: ${INTRO_LABEL}`}
+                data-track="mission_jump"
+                data-track-word="intro"
+                data-track-location="dots"
+              ></button>
+            </li>
+            {verbSlides.map((p, i) => (
+              <li>
+                <button
+                  class="mslides__dot"
+                  type="button"
+                  data-slide-to={i + 1}
+                  aria-controls="hero-slides"
+                  aria-label={`Slide ${i + 2} of ${slideCount}: ${p.word}`}
+                  data-track="mission_jump"
+                  data-track-word={p._key}
+                  data-track-location="dots"
+                ></button>
+              </li>
+            ))}
+          </ul>
+
+          <button
+            class="mslides__arrow"
+            type="button"
+            data-slide-dir="1"
+            aria-controls="hero-slides"
+            aria-label="Next slide"
+          ><span aria-hidden="true">→</span></button>
+
+          {/* WCAG 2.2.2: content that auto-updates every 6s needs an explicit
+              stop that doesn't change the content. Hidden until JS actually
+              starts autoplay. */}
+          <button class="mslides__stop" type="button" aria-controls="hero-slides" hidden>Stop</button>
+
+          <p class="mslides__now" aria-hidden="true" data-intro-label={INTRO_LABEL}>
+            1 / {slideCount} · {INTRO_LABEL}
+          </p>
+        </div>
       </div>
     </div>
+
     <p class="mhero__cue" aria-hidden="true">
       <span class="mhero__cue-arrow">↓</span> scroll
     </p>
@@ -110,50 +233,10 @@ const PRACTICE_CTA = {
     </div>
   </section>
 
-  <!-- ======================= the three verbs ======================= -->
-  <div id="values">
-    {c.verbPanels.map((p) => (
-      <section class={`vpanel vpanel--${p._key}`} id={p._key} data-value={p._key} data-section={p._key}>
-        <div class="container vpanel__inner">
-          <p class="vpanel__num">{p.num}</p>
-          <p class="vword-wrap" aria-hidden="true"><span class="vword">{p.word}</span></p>
-          <h2 class="vpanel__head">{p.head}</h2>
-          <div class="vpanel__story">
-            <p>{p.story}</p>
-          </div>
-          <ul class="vchips">
-            {p.chips.map((chip) => <li>{chip}</li>)}
-          </ul>
-          {p._key === 'build' && (
-            /*
-              Off-ramp from the mission story to the practice that sells. Build
-              IS the web-presence practice, so this is the natural exit.
-              Absolutely positioned on desktop so it contributes NO flow height:
-              the panel is pinned at 100svh, and anything pushing past that
-              would be unreachable. Must never carry data-target — the handler
-              at the bottom of this file preventDefaults every such element.
-            */
-            <div class="container vofframp">
-              <p class="vofframp__text">
-                Websites, web channels, and the systems behind them — this is the
-                practice you can hire today.
-              </p>
-              <a
-                href="/web-strategy/websites/"
-                class="btn btn--primary"
-                data-track="cta_click"
-                data-track-cta="websites"
-                data-track-location="home_build"
-              >See how we build websites</a>
-            </div>
-          )}
-        </div>
-      </section>
-    ))}
-  </div>
-
   <!-- ======================= convergence ======================= -->
-  <section class="mconverge section section--dark" data-section="converge">
+  {/* Bamboo, not charcoal: the verb panels used to break up the page, and
+      without them origin would run straight into the footer as one dark block. */}
+  <section class="mconverge section section--bamboo" data-section="converge">
     <div class="container mconverge__inner">
       <p class="mconverge__words" aria-hidden="true">
         <span>Build.</span> <span>Connect.</span> <span>Create.</span>
@@ -181,38 +264,88 @@ const PRACTICE_CTA = {
       </div>
     </div>
   </section>
-
-  <!-- rail: shown by JS while scrolling the three verbs -->
-  <nav class="vrail" aria-label="Mission values">
-    <button class="vrail__dot" type="button" data-target="build" data-track="mission_jump" data-track-word="build" data-track-location="rail"><span>Build</span></button>
-    <button class="vrail__dot" type="button" data-target="connect" data-track="mission_jump" data-track-word="connect" data-track-location="rail"><span>Connect</span></button>
-    <button class="vrail__dot" type="button" data-target="create" data-track="mission_jump" data-track-word="create" data-track-location="rail"><span>Create</span></button>
-  </nav>
 </Base>
 
 <style>
   /* --- hero --------------------------------------------------------------- */
 
+  /* Pulled up under the sticky header so the per-slide tint reaches the top of
+     the viewport instead of leaving a cream strip above it. The header height
+     moves from min-height into padding-top, so the content budget is unchanged. */
   .mhero {
     position: relative;
-    min-height: calc(100svh - 4.5rem);
-    display: flex;
-    align-items: center;
-    padding-block: clamp(3rem, 8vw, 5rem);
+    margin-top: calc(var(--header-h) * -1);
+    min-height: 100svh;
+    display: grid;
+    align-content: start;
+    padding-block: calc(var(--header-h) + clamp(1.25rem, 3.5vw, 2.5rem))
+                   clamp(2.75rem, 7vw, 4.5rem);
+    background: var(--hero-bg);
+    color: var(--hero-ink);
+    transition: background-color 0.55s ease, color 0.55s ease;
   }
 
   .mhero__grid {
     display: grid;
-    gap: 2.5rem;
-    align-items: center;
+    gap: 1.75rem;
+    /* Everything top-aligned on purpose: the words then sit at the same y on
+       every slide, so the morph reads as anchored rather than drifting. */
+    align-items: start;
     width: 100%;
+    grid-template-areas: 'stage' 'frame';
   }
 
   @media (min-width: 860px) {
-    .mhero__grid { grid-template-columns: 1.2fr 1fr; gap: 3rem; }
+    .mhero__grid {
+      /* minmax(0,…) not bare fr, or the display word overflows its track */
+      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
+      grid-template-areas: 'stage frame';
+      gap: clamp(2rem, 4vw, 3.25rem);
+    }
   }
 
+  .mslides {
+    grid-area: stage;
+    display: grid;
+    grid-template-rows: auto auto auto;
+    align-content: start;
+  }
+
+  /* Row 1: the verb eyebrows, stacked in one cell. Empty-looking on the intro
+     slide, where none is active. */
+  .mslides__eyebrows {
+    grid-row: 1;
+    display: grid;
+    margin-bottom: 0.75rem;
+  }
+
+  .mslide__eyebrow {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0;
+    font-size: 0.7rem;
+    font-weight: 500;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--hero-muted);
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .mslide__eyebrow::before {
+    content: '';
+    width: 1.75rem;
+    height: 2px;
+    background: currentColor;
+    flex: none;
+  }
+
+  /* Row 2: the display words, shared across all four slides. */
   .mhero__words {
+    position: relative;
+    grid-row: 2;
     margin: 0;
     display: grid;
     justify-items: start;
@@ -223,10 +356,10 @@ const PRACTICE_CTA = {
     display: block;
     overflow: hidden;
     text-decoration: none;
-    color: var(--charcoal);
+    color: var(--hero-ink);
     font-family: 'Baloo 2', var(--font-sans);
     font-weight: 800;
-    font-size: clamp(3.2rem, 9vw, 7.2rem);
+    font-size: clamp(2.4rem, 7vw, 5.6rem);
     letter-spacing: 0.01em;
     text-transform: uppercase;
     line-height: 0.95;
@@ -239,7 +372,75 @@ const PRACTICE_CTA = {
   }
 
   .mword:hover,
-  .mword:focus-visible { color: var(--bamboo-deep); }
+  .mword:focus-visible { color: var(--hero-muted); }
+
+  /* A focused words block shows one word, at panel scale. display:none (not
+     opacity) for the other two, so they leave the tab order and the a11y tree.
+     The swap happens mid-transition, in the frame where every word is hidden
+     behind its own overflow mask — see the timeline in the script below. */
+  .mhero__words[data-focus] .mword:not(.is-hero) { display: none; }
+
+  .mhero__words .mword.is-hero {
+    font-size: clamp(3rem, 9vw, 7.5rem);
+    cursor: default;
+  }
+
+  /* Row 3: the three verb bodies share one grid cell, so the row is as tall as
+     the tallest body and never resizes mid-crossfade. Hidden slides keep
+     visibility:hidden — that is what preserves the height. */
+  .mslide {
+    grid-row: 3;
+    grid-column: 1;
+    display: grid;
+    align-content: start;
+    gap: 0.9rem;
+    margin-top: 1.1rem;
+    opacity: 0;
+    visibility: hidden;
+  }
+
+  .mslide > * { margin: 0; }
+
+  .mslide__head {
+    font-size: clamp(1.3rem, 2.3vw, 1.8rem);
+    max-width: 30ch;
+    color: var(--hero-ink);
+  }
+
+  .mslide__story {
+    font-size: 1.02rem;
+    line-height: 1.6;
+    max-width: 44ch;
+    color: var(--hero-ink);
+  }
+
+  .mslide__chips {
+    list-style: none;
+    margin: 0.35rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .mslide__chips li {
+    font-size: 0.82rem;
+    font-weight: 500;
+    padding: 0.45rem 0.85rem;
+    border-radius: 999px;
+    border: 1px solid var(--hero-line);
+    background: var(--hero-chip-bg);
+  }
+
+  /* --- the persistent frame ------------------------------------------------ */
+
+  .mhero__frame { grid-area: frame; }
+
+  /* Keeps its layout height when hidden (visibility, not display), which is
+     what stops the CTA from moving between slides.
+     Deliberately NO transition here: GSAP tweens this element's opacity, and a
+     CSS transition on the same property fights it frame by frame — that lag was
+     visible as a stutter on every slide change. */
 
   .mhero__quote {
     font-family: var(--font-serif);
@@ -252,7 +453,7 @@ const PRACTICE_CTA = {
 
   .mhero__sub {
     font-size: 0.98rem;
-    color: var(--stone-deep);
+    color: var(--hero-muted);
     max-width: 38ch;
   }
 
@@ -261,18 +462,28 @@ const PRACTICE_CTA = {
     font-size: 1rem;
     line-height: 1.55;
     max-width: 34ch;
-    color: var(--charcoal);
+    color: var(--hero-ink);
   }
 
   .mhero__offer strong { font-weight: 600; }
 
   .mhero__cta { margin-top: 1.4rem; }
 
+  .mhero__cta .btn--primary {
+    background: var(--hero-btn-bg);
+    color: var(--hero-btn-ink);
+  }
+
+  .mhero__cta .btn--primary:hover {
+    background: var(--hero-btn-hover-bg);
+    color: var(--hero-btn-hover-ink);
+  }
+
   /* Demoted: a quiet footnote under the offer, not a menu competing with it. */
   .mhero__practices {
     margin-top: 1.6rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--line);
+    border-top: 1px solid var(--hero-line);
   }
 
   .mhero__practices-label {
@@ -280,7 +491,7 @@ const PRACTICE_CTA = {
     font-weight: 600;
     letter-spacing: 0.16em;
     text-transform: uppercase;
-    color: var(--stone-deep);
+    color: var(--hero-muted);
     margin-bottom: 0.5rem;
   }
 
@@ -302,21 +513,21 @@ const PRACTICE_CTA = {
   .mhero__practices-list a {
     font-size: 0.88rem;
     font-weight: 400;
-    color: var(--stone-deep);
+    color: var(--hero-muted);
     text-decoration: underline;
-    text-decoration-color: var(--line);
+    text-decoration-color: var(--hero-line);
     text-underline-offset: 3px;
   }
 
   .mhero__practices-list a:hover,
   .mhero__practices-list a:focus-visible {
-    color: var(--bamboo-deep);
+    color: var(--hero-ink);
     text-decoration-color: currentColor;
   }
 
   .mhero__practice-soon {
     font-size: 0.88rem;
-    color: var(--stone-deep);
+    color: var(--hero-muted);
   }
 
   .mhero__practice-tag {
@@ -326,14 +537,114 @@ const PRACTICE_CTA = {
     text-transform: uppercase;
     padding: 2px 8px;
     border-radius: 999px;
-    border: 1px solid var(--line);
-    color: var(--stone-deep);
+    border: 1px solid var(--hero-line);
+    color: var(--hero-muted);
     white-space: nowrap;
+  }
+
+  /* --- slideshow controls -------------------------------------------------- */
+
+  .mslides__bar {
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.25rem 0.5rem;
+    margin-top: 1.4rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--hero-line);
+  }
+
+  .mslides__dots {
+    display: flex;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  /* A 36px button around an 11px dot: clears WCAG 2.5.8 without the overlapping
+     ::after hit-areas the old rail dots needed, and the focus ring is visible. */
+  .mslides__dot {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 0;
+    background: none;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+  }
+
+  .mslides__dot::before {
+    content: '';
+    width: 11px;
+    height: 11px;
+    border-radius: 50%;
+    border: 2px solid var(--hero-muted);
+    background: transparent;
+    transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+  }
+
+  .mslides__dot:hover::before { border-color: var(--hero-ink); }
+
+  .mslides__dot.is-active::before {
+    background: var(--hero-ink);
+    border-color: var(--hero-ink);
+    transform: scale(1.1);
+  }
+
+  .mslides__arrow {
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    cursor: pointer;
+    border: 1px solid var(--hero-line);
+    border-radius: 50%;
+    background: transparent;
+    color: var(--hero-ink);
+    font-size: 0.95rem;
+    line-height: 1;
+  }
+
+  .mslides__arrow:hover { border-color: var(--hero-ink); }
+
+  .mslides__stop {
+    margin-left: 0.35rem;
+    padding: 0.3rem 0.7rem;
+    cursor: pointer;
+    font-family: inherit;
+    font-size: 0.72rem;
+    font-weight: 500;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--hero-muted);
+    background: transparent;
+    border: 1px solid var(--hero-line);
+    border-radius: 999px;
+  }
+
+  .mslides__stop:hover { color: var(--hero-ink); border-color: var(--hero-ink); }
+
+  /* beats the UA sheet, which display:none's [hidden] but loses to display:flex */
+  .mslides__stop[hidden] { display: none; }
+
+  .mslides__stop[aria-disabled='true'] {
+    opacity: 0.55;
+    cursor: default;
+  }
+
+  /* One readout element, so four hover labels can never overlap each other. */
+  .mslides__now {
+    margin: 0;
+    flex: 1 0 100%;
+    font-size: 0.7rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--hero-muted);
   }
 
   .mhero__cue {
     position: absolute;
-    bottom: 1.25rem;
+    bottom: 1rem;
     left: 50%;
     transform: translateX(-50%);
     margin: 0;
@@ -341,7 +652,7 @@ const PRACTICE_CTA = {
     font-weight: 500;
     letter-spacing: 0.18em;
     text-transform: uppercase;
-    color: var(--stone-deep);
+    color: var(--hero-muted);
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
@@ -355,6 +666,63 @@ const PRACTICE_CTA = {
   @keyframes cue-bob {
     0%, 100% { transform: translateY(-1px); }
     50% { transform: translateY(3px); }
+  }
+
+  /* Single-column layout: reserving the tallest slide's height and the intro
+     copy's height costs ~370px and ~260px of dead space, which is what pushes
+     the CTA and the practices list off a phone screen. Nothing here needs the
+     reservation — the words stay top-anchored either way, so collapsing only
+     changes the page height, not the position of anything on screen. */
+  @media (max-width: 859px) {
+    .mslides__eyebrows { display: none; }
+    .mslides__eyebrows:has(.mslide__eyebrow.is-active) { display: grid; }
+    .mslide { display: none; }
+    .mslide.is-active { display: grid; }
+    /* not `[data-hero-theme='intro']`: with JS off there is no attribute at
+       all, and the intro copy has to be the thing that shows. */
+    html[data-hero-theme]:not([data-hero-theme='intro']) .mhero__intro-copy {
+      display: none;
+    }
+  }
+
+  @media (max-width: 719px) {
+    .mhero__grid { gap: 1.25rem; }
+    .mslide { gap: 0.6rem; margin-top: 0.9rem; }
+    .mslide__story { font-size: 0.92rem; line-height: 1.5; }
+    .mslide__chips li { font-size: 0.74rem; padding: 0.4rem 0.7rem; }
+    .mslide__head { font-size: 1.2rem; }
+    /* three stacked words plus quote + summary + offer is the tallest state the
+       hero has; these two lines are what keep the controls above the fold */
+    .mword { font-size: clamp(2.1rem, 9vw, 5.6rem); }
+    .mhero__quote { font-size: 1.25rem; margin-bottom: 0.85rem; }
+    .mhero__offer { margin-top: 0.8rem; }
+    .mhero__cta { margin-top: 1.1rem; }
+    .mhero__practices { margin-top: 1.2rem; padding-top: 0.8rem; }
+    .mslides__bar { margin-top: 1rem; padding-top: 0.7rem; }
+  }
+
+  /* Short viewports — a 667px phone, or a laptop with a lot of browser chrome.
+     Must come after the width blocks so it wins where both apply. Below 720px
+     of height the frame column (quote + summary + offer + CTA + practices +
+     controls) is taller than the space available, so something has to go: the
+     summary is the one element the quote and the offer line already cover, and
+     it is worth ~110px — the difference between the controls and the practices
+     being on screen or under the fold. */
+  @media (max-height: 720px) {
+    .mhero {
+      padding-block: calc(var(--header-h) + 0.5rem) 1.5rem;
+    }
+
+    .mhero__cue { display: none; }
+    .mword { font-size: clamp(1.9rem, 5vw, 3.4rem); }
+    .mhero__words .mword.is-hero { font-size: clamp(2.3rem, 6vw, 4.2rem); }
+    .mslide { gap: 0.55rem; margin-top: 0.7rem; }
+    .mhero__quote { font-size: 1.2rem; margin-bottom: 0.7rem; }
+    .mhero__sub { display: none; }
+    .mhero__offer { margin-top: 0; }
+    .mhero__cta { margin-top: 0.9rem; }
+    .mhero__practices { margin-top: 1rem; padding-top: 0.7rem; }
+    .mslides__bar { margin-top: 0.9rem; padding-top: 0.6rem; }
   }
 
   /* --- origin ------------------------------------------------------------- */
@@ -389,118 +757,6 @@ const PRACTICE_CTA = {
     color: var(--cream);
   }
 
-  /* --- value panels -------------------------------------------------------- */
-
-  .vpanel {
-    position: relative; /* anchors the Build off-ramp */
-    min-height: 100svh;
-    display: flex;
-    align-items: center;
-    padding-block: clamp(3.5rem, 8vw, 5rem);
-  }
-
-  .vpanel--build { background: var(--cream); color: var(--charcoal); }
-  .vpanel--connect { background: var(--charcoal); color: var(--cream); }
-  .vpanel--create { background: var(--bamboo); color: var(--cream); }
-
-  .vpanel__num {
-    font-size: 0.75rem;
-    font-weight: 500;
-    letter-spacing: 0.22em;
-    text-transform: uppercase;
-    margin-bottom: 1rem;
-    color: var(--stone-deep);
-  }
-
-  .vpanel--connect .vpanel__num,
-  .vpanel--create .vpanel__num { color: var(--sage); }
-
-  .vword-wrap {
-    margin: 0 0 1.25rem;
-    max-width: none;
-    overflow: hidden;
-    line-height: 0.9;
-  }
-
-  .vword {
-    display: block;
-    font-family: 'Baloo 2', var(--font-sans);
-    font-weight: 800;
-    font-size: clamp(4rem, 14vw, 11rem);
-    letter-spacing: 0.01em;
-    text-transform: uppercase;
-    line-height: 0.95;
-  }
-
-  .vpanel__head {
-    font-size: clamp(1.6rem, 3vw, 2.2rem);
-    max-width: 32ch;
-  }
-
-  .vpanel__story p {
-    font-size: 1.15rem;
-    line-height: 1.65;
-    max-width: 58ch;
-  }
-
-  .vpanel--connect .vpanel__story p,
-  .vpanel--create .vpanel__story p { color: var(--cream); }
-
-  .vchips {
-    list-style: none;
-    margin: 1.75rem 0 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.7rem;
-  }
-
-  .vchips li {
-    font-size: 0.95rem;
-    font-weight: 500;
-    padding: 0.6rem 1.05rem;
-    border-radius: 999px;
-    border: 1px solid var(--line);
-    background: var(--cream-soft);
-  }
-
-  .vpanel--connect .vchips li {
-    background: rgba(245, 241, 231, 0.07);
-    border-color: rgba(245, 241, 231, 0.25);
-  }
-
-  .vpanel--create .vchips li {
-    background: rgba(38, 37, 31, 0.16);
-    border-color: rgba(245, 241, 231, 0.3);
-  }
-
-  /* Out of flow on purpose: the panel is pinned at 100svh, so an in-flow band
-     could be pushed past the fold with no way to scroll to it. Sits inside the
-     panel's own bottom padding, the same way .mhero__cue does on the hero. */
-  .vofframp {
-    position: absolute;
-    inset-inline: 0;
-    bottom: clamp(0.9rem, 2.2vw, 1.5rem);
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.7rem 1.15rem;
-    padding-top: 0.85rem;
-    border-top: 1px solid var(--line);
-  }
-
-  .vofframp__text {
-    margin: 0;
-    font-size: 0.9rem;
-    color: var(--stone-deep);
-    max-width: 46ch;
-  }
-
-  .vofframp .btn {
-    padding: 0.7rem 1.15rem;
-    font-size: 0.92rem;
-  }
-
   /* --- convergence ---------------------------------------------------------- */
 
   .mconverge__inner {
@@ -520,295 +776,34 @@ const PRACTICE_CTA = {
     display: flex;
     gap: 0.9rem;
     flex-wrap: wrap;
-    color: var(--sage);
+    /* sage on bamboo is 3.1:1 */
+    color: var(--cream);
   }
 
   .mconverge__reveal { display: grid; gap: 1.25rem; justify-items: start; }
   .mconverge__reveal h2 { margin-bottom: 0; }
   .mconverge__reveal .lede { max-width: 54ch; }
 
-  /* --- rail ----------------------------------------------------------------- */
-
-  .vrail {
-    position: fixed;
-    right: clamp(0.6rem, 2vw, 1.75rem);
-    top: 50%;
-    transform: translateY(-50%);
-    display: grid;
-    gap: 1.5rem;
-    z-index: 60;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.35s ease;
-  }
-
-  .vrail.is-on {
-    opacity: 1;
-    pointer-events: auto;
-  }
-
-  .vrail__dot {
-    position: relative;
-    width: 12px;
-    height: 12px;
-    padding: 0;
-    border-radius: 50%;
-    border: 2px solid var(--stone);
-    background: var(--cream);
-    cursor: pointer;
-    transition: background 0.3s ease, border-color 0.3s ease;
-  }
-
-  .vrail__dot::after {
-    content: '';
-    position: absolute;
-    inset: -10px;
-    border-radius: 50%;
-  }
-
-  .vrail__dot:hover { border-color: var(--bamboo); }
-
-  .vrail__dot.is-active {
-    background: var(--bamboo);
-    border-color: var(--bamboo);
-  }
-
-  .vrail__dot span {
-    position: absolute;
-    right: 1.4rem;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    color: var(--stone-deep);
-    white-space: nowrap;
-    opacity: 0;
-    transition: opacity 0.25s ease;
-    pointer-events: none;
-  }
-
-  .vrail__dot:hover span,
-  .vrail__dot.is-active span { opacity: 1; }
-
-  @media (max-width: 719px) {
-    .vrail__dot span { display: none; }
-
-    /* Below the pin breakpoint the panels scroll normally, so the off-ramp
-       goes back into flow under the chips. It is already inside a .container,
-       so cancel the doubled inline padding. */
-    .vofframp {
-      position: static;
-      max-width: none;
-      padding-inline: 0;
-      margin-top: 1.6rem;
-    }
-  }
-
   @media (prefers-reduced-motion: reduce) {
     .mhero__cue-arrow { animation: none; }
   }
 </style>
 
-<style is:global>
-  /* CSS smooth-scrolling fights the JS-driven scrollTo on this page */
-  html { scroll-behavior: auto; }
-</style>
-
 <script>
-  import { gsap } from 'gsap';
-  import { ScrollTrigger } from 'gsap/ScrollTrigger';
-  import { ScrollToPlugin } from 'gsap/ScrollToPlugin';
-
-  gsap.registerPlugin(ScrollTrigger, ScrollToPlugin);
-
-  const mm = gsap.matchMedia();
-
-  mm.add(
-    {
-      desktop: '(min-width: 720px) and (prefers-reduced-motion: no-preference)',
-      mobile: '(max-width: 719px) and (prefers-reduced-motion: no-preference)',
-    },
-    (ctx) => {
-      const desktop = !!(ctx.conditions as { desktop: boolean }).desktop;
-      const triggers: Record<string, ScrollTrigger> = {};
-      const dots = gsap.utils.toArray<HTMLElement>('.vrail__dot');
-
-      const setActive = (value: string, on: boolean) => {
-        dots.forEach((d) => {
-          if (d.dataset.target === value) d.classList.toggle('is-active', on);
-        });
-      };
-
-      // --- hero entrance ---------------------------------------------------
-      gsap.from('.mword span', {
-        yPercent: 110,
-        duration: 0.9,
-        ease: 'power3.out',
-        stagger: 0.12,
-      });
-      gsap.from('.mhero__aside', { autoAlpha: 0, y: 18, duration: 0.8, delay: 0.5 });
-      gsap.from('.mhero__cue', { autoAlpha: 0, duration: 0.8, delay: 1.1 });
-
-      // --- origin: ripple grows as the story scrolls in ---------------------
-      gsap
-        .timeline({
-          scrollTrigger: {
-            trigger: '#origin',
-            start: 'top 75%',
-            end: 'center center',
-            scrub: 0.5,
-          },
-        })
-        .from('.origin-ripple circle', {
-          scale: 0.15,
-          autoAlpha: 0,
-          transformOrigin: '50% 50%',
-          stagger: { each: 0.22, from: 'end' },
-          ease: 'power1.out',
-        });
-
-      gsap.from('.origin__copy > *', {
-        scrollTrigger: { trigger: '#origin', start: 'top 70%' },
-        autoAlpha: 0,
-        y: 24,
-        duration: 0.7,
-        stagger: 0.12,
-        ease: 'power2.out',
-      });
-
-      // --- value panels ------------------------------------------------------
-      const panels = gsap.utils.toArray<HTMLElement>('.vpanel');
-
-      panels.forEach((panel) => {
-        const q = gsap.utils.selector(panel);
-        const value = panel.dataset.value ?? '';
-
-        if (desktop) {
-          // Pin each verb as a slide; its content plays in fully on arrival
-          // (time-based), not scrubbed by scroll progress.
-          const tl = gsap.timeline({ paused: true });
-
-          tl.from(q('.vword'), { yPercent: 105, duration: 0.55, ease: 'power2.out' })
-            .from(q('.vpanel__num'), { autoAlpha: 0, y: 14, duration: 0.25 }, 0.1)
-            .from(q('.vpanel__head'), { autoAlpha: 0, y: 26, duration: 0.35 }, 0.45)
-            .from(q('.vpanel__story p'), { autoAlpha: 0, y: 26, duration: 0.35 }, 0.65)
-            .from(
-              q('.vchips li'),
-              { autoAlpha: 0, y: 18, duration: 0.28, stagger: 0.12 },
-              0.85
-            );
-
-          triggers[value] = ScrollTrigger.create({
-            trigger: panel,
-            start: 'top top',
-            end: '+=75%',
-            pin: true,
-            anticipatePin: 1,
-            onToggle: (self) => {
-              setActive(value, self.isActive);
-              // Play once, whichever direction the slide is entered from;
-              // revealed content stays revealed.
-              if (self.isActive) tl.play();
-            },
-          });
-        } else {
-          // Mobile: lighter enter-reveals, no pinning.
-          gsap.from(
-            [
-              q('.vpanel__num'),
-              q('.vword'),
-              q('.vpanel__head'),
-              q('.vpanel__story p'),
-              q('.vchips li'),
-            ].flat(),
-            {
-              scrollTrigger: { trigger: panel, start: 'top 72%' },
-              autoAlpha: 0,
-              y: 26,
-              duration: 0.7,
-              stagger: 0.09,
-              ease: 'power2.out',
-            }
-          );
-          triggers[value] = ScrollTrigger.create({
-            trigger: panel,
-            start: 'top center',
-            end: 'bottom center',
-            onToggle: (self) => setActive(value, self.isActive),
-          });
-        }
-      });
-
-      // Rail appears only while scrolling the three verbs.
-      ScrollTrigger.create({
-        trigger: '#values',
-        start: 'top 60%',
-        end: 'bottom 40%',
-        toggleClass: { targets: '.vrail', className: 'is-on' },
-      });
-
-      // --- convergence -------------------------------------------------------
-      gsap.from('.mconverge__words span', {
-        scrollTrigger: { trigger: '.mconverge', start: 'top 70%' },
-        autoAlpha: 0,
-        y: 20,
-        duration: 0.55,
-        stagger: 0.18,
-        ease: 'power2.out',
-      });
-      gsap.from('.mconverge__reveal > *', {
-        scrollTrigger: { trigger: '.mconverge', start: 'top 55%' },
-        autoAlpha: 0,
-        y: 24,
-        duration: 0.7,
-        stagger: 0.14,
-        ease: 'power2.out',
-      });
-
-      // --- hero words + rail dots navigate to their chapter -------------------
-      const goTo = (value: string) => {
-        const st = triggers[value];
-        const panel = document.getElementById(value);
-        // Land at the slide's start — content plays in on arrival.
-        const y = st
-          ? st.start
-          : (panel?.getBoundingClientRect().top ?? 0) + window.scrollY;
-        gsap.to(window, { scrollTo: y, duration: 0.9, ease: 'power2.inOut' });
-      };
-
-      const bound: Array<[HTMLElement, (e: Event) => void]> = [];
-      document.querySelectorAll<HTMLElement>('[data-target]').forEach((el) => {
-        const handler = (e: Event) => {
-          e.preventDefault();
-          goTo(el.dataset.target ?? '');
-        };
-        el.addEventListener('click', handler);
-        bound.push([el, handler]);
-      });
-
-      // Re-running on a breakpoint change must not double-bind the handlers.
-      return () => bound.forEach(([el, handler]) => el.removeEventListener('click', handler));
-    }
-  );
-</script>
-
-<script>
-  // Where the mission scroll loses people. Deliberately outside the GSAP module
-  // above, which is gated by matchMedia and prefers-reduced-motion — this has to
+  // Where the mission story loses people. Deliberately outside the GSAP module
+  // below, which is gated by matchMedia and prefers-reduced-motion — this has to
   // report at every breakpoint. Same fire-once pattern as the booking-embed
   // observer on /consultation/.
   //
   // One event with a `section` dimension, not six event names: it makes the
-  // drop-off a single funnel exploration in GA4. Register `section` as a custom
-  // dimension or the param is collected but invisible.
+  // drop-off a single funnel exploration in GA4. Register `section` and `via` as
+  // custom dimensions or the params are collected but invisible.
   const seen = new Set<string>();
   // The consent banner appears 600ms in, so the hero — the denominator of this
   // whole funnel — is almost always seen BEFORE the visitor decides. Sending
   // straight to pantaTrack would silently drop those and make the top of the
   // funnel look worse than it is, so buffer until consent and flush.
-  const pending: string[] = [];
+  const pending: Array<[string, string]> = [];
 
   const consented = () => {
     try {
@@ -818,22 +813,57 @@ const PRACTICE_CTA = {
     }
   };
 
-  const send = (section: string) => {
-    const track = (window as any).pantaTrack;
-    if (typeof track !== 'function' || !consented()) {
-      pending.push(section);
+  // pantaTrack silently no-ops when gtag hasn't finished loading, which it
+  // hasn't for anything reported during page setup — a slide deep-link reports
+  // its slide synchronously, well before GA4 is up. So "ready" means consent
+  // AND gtag, and anything earlier waits in the queue.
+  const ready = () => {
+    const w = window as any;
+    return typeof w.pantaTrack === 'function' && typeof w.gtag === 'function' && consented();
+  };
+
+  let flushTimer = 0;
+
+  const flush = () => {
+    if (!pending.length) return;
+    if (!ready()) {
+      schedule();
       return;
     }
-    track('home_section_view', { section });
+    const track = (window as any).pantaTrack;
+    pending.splice(0).forEach(([section, via]) => track('home_section_view', { section, via }));
+  };
+
+  function schedule() {
+    if (flushTimer) return;
+    flushTimer = window.setTimeout(() => {
+      flushTimer = 0;
+      flush();
+    }, 400);
+  }
+
+  const send = (section: string, via = 'scroll') => {
+    if (!ready()) {
+      pending.push([section, via]);
+      schedule();
+      return;
+    }
+    (window as any).pantaTrack('home_section_view', { section, via });
   };
 
   // Registered after Analytics.astro's own listener, so gtag is configured by
   // the time this runs.
-  document.addEventListener('panta:consent-granted', () => {
-    const queued = pending.splice(0);
-    const track = (window as any).pantaTrack;
-    if (typeof track !== 'function') return;
-    queued.forEach((section) => track('home_section_view', { section }));
+  document.addEventListener('panta:consent-granted', flush);
+
+  // The three verbs are no longer scroll-into-view sections — they're slides.
+  // Same event name and the same section values, so the GA4 funnel keeps
+  // working; only the trigger changed, which `via` records. Reuses `seen` and
+  // `send`, so fire-once and the pre-consent buffer apply identically.
+  document.addEventListener('panta:slide', (e) => {
+    const section = (e as CustomEvent<{ section: string }>).detail?.section;
+    if (!section || seen.has(section)) return;
+    seen.add(section);
+    send(section, 'slide');
   });
 
   const io = new IntersectionObserver(
@@ -853,4 +883,452 @@ const PRACTICE_CTA = {
   document
     .querySelectorAll<HTMLElement>('[data-section]')
     .forEach((el) => io.observe(el));
+</script>
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  /* ===================== hero slideshow ==================================
+     Timer- and click-driven, NOT scroll-driven. The transition discipline is
+     lifted from the /journey/ stage (kill the running timeline, rebuild it with
+     fromTo so an interrupted tween can't leave an arbitrary opacity), but
+     nothing here hangs off ScrollTrigger.
+
+     Deliberately OUTSIDE gsap.matchMedia(): the controls must work at every
+     breakpoint AND under prefers-reduced-motion, where a matchMedia block would
+     tear the listeners down. Only the animation and the autoplay are
+     conditional. */
+  const root = document.querySelector<HTMLElement>('[data-slides]');
+  const hero = document.querySelector<HTMLElement>('.mhero');
+
+  if (root && hero) {
+    const stack = root.querySelector<HTMLElement>('.mslides')!;
+    const wordsEl = root.querySelector<HTMLElement>('.mhero__words')!;
+    const words = gsap.utils.toArray<HTMLElement>('.mword');
+    const slides = gsap.utils.toArray<HTMLElement>('.mslide');
+    const eyebrows = gsap.utils.toArray<HTMLElement>('.mslide__eyebrow');
+    const introCopy = root.querySelector<HTMLElement>('[data-intro-copy]');
+    const dots = gsap.utils.toArray<HTMLButtonElement>('[data-slide-to]');
+    const stopBtn = root.querySelector<HTMLButtonElement>('.mslides__stop');
+    const now = root.querySelector<HTMLElement>('.mslides__now');
+
+    // index 0 is the intro state — it has no slide element, it's the absence of
+    // an active verb, which is also what the server renders.
+    const KEYS = ['intro', ...slides.map((s) => s.dataset.slide ?? '')];
+    const LABELS = [
+      now?.dataset.introLabel ?? 'Build. Connect. Create.',
+      ...words.map((w) => w.textContent?.trim() ?? ''),
+    ];
+    const DWELL = 6000;
+
+    const motion = matchMedia('(prefers-reduced-motion: no-preference)');
+    let index = 0;
+    let tl: gsap.core.Timeline | null = null;
+    let timer = 0;
+    let stopped = false; // permanent — the first real interaction sets it
+    let onScreen = true;
+    let hovered = false;
+
+    // --- autoplay ---------------------------------------------------------
+    const clear = () => {
+      if (timer) {
+        clearTimeout(timer);
+        timer = 0;
+      }
+    };
+
+    // setTimeout, not gsap.delayedCall: GSAP's ticker is rAF-driven, so a
+    // backgrounded tab would come back and fire one big catch-up jump.
+    const canPlay = () =>
+      motion.matches &&
+      !stopped &&
+      onScreen &&
+      !hovered &&
+      document.visibilityState === 'visible';
+
+    const queue = () => {
+      clear();
+      if (canPlay()) timer = window.setTimeout(() => go(index + 1), DWELL);
+    };
+
+    const stopAuto = (viaButton = false) => {
+      if (stopped) return;
+      stopped = true;
+      clear();
+      // APG: announce slide changes only once the rotation has stopped.
+      stack.setAttribute('aria-live', 'polite');
+      if (viaButton) {
+        // Keep it focusable — hiding the element that has focus loses focus.
+        stopBtn?.setAttribute('aria-disabled', 'true');
+        if (stopBtn) stopBtn.textContent = 'Stopped';
+      } else {
+        stopBtn?.setAttribute('hidden', '');
+      }
+    };
+
+    // --- report to GA4 ----------------------------------------------------
+    const reported = new Set<string>();
+    const report = (i: number) => {
+      const section = KEYS[i];
+      // The intro state IS the hero section; the IntersectionObserver in the
+      // script above already reports that one.
+      if (!section || section === 'intro' || reported.has(section)) return;
+      reported.add(section);
+      // Deferred a task, not dispatched inline: a deep link reports during this
+      // module's own evaluation, and the two module scripts on this page are
+      // bundled separately — their execution order is not guaranteed, so the
+      // listener may not exist yet. Every other slide change happens long after
+      // load, where the 0ms hop costs nothing.
+      setTimeout(
+        () => document.dispatchEvent(new CustomEvent('panta:slide', { detail: { section } })),
+        0
+      );
+    };
+
+    // Word spans are what actually move. Each .mword is overflow:hidden, so
+    // sliding its span past the edge wipes the word behind a mask — the same
+    // reveal the hero plays on first load, reused for every slide change.
+    const spanOf = (w: HTMLElement) => w.querySelector('span') as HTMLElement;
+    const spansFor = (key: string) =>
+      (key === 'intro' ? words : words.filter((w) => w.dataset.word === key)).map(spanOf);
+
+    // Applying the target state changes the words row's height (three stacked
+    // words vs one big one) and display:none's the words that leave. It has to
+    // happen in the single frame when every word is hidden behind its mask,
+    // which is mid-timeline — so it's a callback, and `pendingSwap` lets an
+    // interrupted transition still be settled before the next one starts.
+    let pendingSwap: (() => void) | null = null;
+    const settlePending = () => {
+      if (!pendingSwap) return;
+      pendingSwap();
+      pendingSwap = null;
+    };
+
+    // --- slide change -----------------------------------------------------
+    function go(next: number, opts: { animate?: boolean } = {}) {
+      const count = KEYS.length;
+      next = ((next % count) + count) % count;
+      if (next === index) {
+        queue();
+        return;
+      }
+
+      tl?.kill();
+      tl = null;
+      settlePending();
+
+      const fromKey = KEYS[index];
+      const key = KEYS[next];
+      const animate = opts.animate ?? motion.matches;
+      index = next;
+
+      const nextSlide = slides.find((s) => s.dataset.slide === key) ?? null;
+      const nextEyebrow = eyebrows.find((e) => e.dataset.eyebrow === key) ?? null;
+
+      dots.forEach((d, i) => {
+        d.classList.toggle('is-active', i === next);
+        if (i === next) d.setAttribute('aria-current', 'true');
+        else d.removeAttribute('aria-current');
+      });
+
+      // The tint is a CSS transition on the consuming properties, so starting it
+      // now means the background is already crossfading while the old copy
+      // leaves — the colour change carries the whole transition.
+      document.documentElement.dataset.heroTheme = key;
+      if (now) now.textContent = `${next + 1} / ${count} · ${LABELS[next]}`;
+
+      // Eyebrow + body move as ONE unit. Staggering their parts is what made
+      // this read as several separate little slides instead of one change.
+      //
+      // The out-unit is everything that ISN'T arriving, not merely what was
+      // showing: an interrupted transition can leave any of these part-faded,
+      // and driving all of them to hidden every time is what makes the state
+      // self-healing. A tween on something already hidden costs nothing.
+      const inUnit: HTMLElement[] = [nextEyebrow, nextSlide].filter(Boolean) as HTMLElement[];
+      const outUnit: HTMLElement[] = [
+        ...eyebrows.filter((e) => e !== nextEyebrow),
+        ...slides.filter((s) => s !== nextSlide),
+      ];
+      if (introCopy) (key === 'intro' ? inUnit : outUnit).push(introCopy);
+
+      const outSpans = spansFor(fromKey);
+      const inSpans = spansFor(key);
+
+      const swap = () => {
+        if (key === 'intro') delete wordsEl.dataset.focus;
+        else wordsEl.dataset.focus = key;
+        words.forEach((w) =>
+          w.classList.toggle('is-hero', key !== 'intro' && w.dataset.word === key)
+        );
+        eyebrows.forEach((e) => e.classList.toggle('is-active', e === nextEyebrow));
+        slides.forEach((s) => {
+          const on = s === nextSlide;
+          s.classList.toggle('is-active', on);
+          // Out of the tab order and the a11y tree as soon as it stops being
+          // the active slide; inert doesn't affect painting.
+          s.toggleAttribute('inert', !on);
+        });
+      };
+
+      if (!animate) {
+        swap();
+        gsap.set(words.map(spanOf), { yPercent: 0 });
+        gsap.set(outUnit, { autoAlpha: 0, y: 0 });
+        gsap.set(inUnit, { autoAlpha: 1, y: 0 });
+        report(next);
+        queue();
+        return;
+      }
+
+      // Strictly sequential: everything leaving is gone before anything arrives.
+      // The slides share one grid cell, so overlapping the two halves paints the
+      // old copy on top of the new one.
+      const OUT = 0.26;
+      const IN = 0.28;
+
+      tl = gsap.timeline({
+        onComplete: () => {
+          tl = null;
+        },
+      });
+
+      tl.to(outSpans, { yPercent: -110, duration: OUT, ease: 'power2.in', stagger: 0.05 }, 0);
+      if (outUnit.length) {
+        tl.to(outUnit, { autoAlpha: 0, y: -10, duration: OUT, ease: 'power2.in' }, 0);
+      }
+
+      pendingSwap = swap;
+      tl.call(
+        () => {
+          swap();
+          pendingSwap = null;
+          // Start the arriving word below its mask and the arriving copy just
+          // under its resting place, in the same frame as the swap so neither
+          // is ever painted in the wrong position.
+          gsap.set(inSpans, { yPercent: 110 });
+          gsap.set(inUnit, { autoAlpha: 0, y: 14 });
+        },
+        undefined,
+        IN - 0.01
+      );
+
+      tl.to(inSpans, { yPercent: 0, duration: 0.55, ease: 'power3.out', stagger: 0.09 }, IN);
+      if (inUnit.length) {
+        tl.to(inUnit, { autoAlpha: 1, y: 0, duration: 0.42, ease: 'power2.out' }, IN + 0.08);
+      }
+
+      report(next);
+      queue();
+    }
+
+    // --- user interaction -------------------------------------------------
+    const jump = (next: number, where: string, track = true) => {
+      stopAuto();
+      const before = index;
+      go(next);
+      if (track && before !== index) {
+        // Arrow buttons carry no data-track word, and key presses produce no
+        // click at all, so these two need the explicit call.
+        (window as any).pantaTrack?.('mission_jump', {
+          word: KEYS[index],
+          location: where,
+        });
+      }
+      // replaceState, not location.hash: no scroll, no Back-button pollution.
+      history.replaceState(
+        null,
+        '',
+        index === 0 ? window.location.pathname : `#${KEYS[index]}`
+      );
+    };
+
+    // dots and the hero words already fire mission_jump declaratively
+    dots.forEach((d, i) => d.addEventListener('click', () => jump(i, 'dots', false)));
+
+    root.querySelectorAll<HTMLElement>('[data-slide-dir]').forEach((b) =>
+      b.addEventListener('click', () => jump(index + Number(b.dataset.slideDir), 'arrow'))
+    );
+
+    words.forEach((a) =>
+      a.addEventListener('click', (e) => {
+        const target = (a as HTMLAnchorElement).hash.slice(1);
+        const i = KEYS.indexOf(target);
+        if (i < 0) return; // unknown hash: let it behave natively
+        e.preventDefault();
+        jump(i, 'hero', false);
+      })
+    );
+
+    stopBtn?.addEventListener('click', () => stopAuto(true));
+
+    // Arrows are scoped to the carousel, so they never hijack the key elsewhere.
+    root.addEventListener('keydown', (e) => {
+      const map: Record<string, number> = {
+        ArrowLeft: index - 1,
+        ArrowRight: index + 1,
+        Home: 0,
+        End: KEYS.length - 1,
+      };
+      if (!(e.key in map)) return;
+      e.preventDefault();
+      jump(map[e.key], 'key');
+    });
+
+    // A #build link followed from elsewhere on the page is a same-document hash
+    // change, so the module never re-runs — without this the URL would name a
+    // slide the hero isn't showing.
+    window.addEventListener('hashchange', () => {
+      const i = KEYS.indexOf(window.location.hash.slice(1));
+      if (i < 0 || i === index) return;
+      stopAuto();
+      go(i);
+    });
+
+    root.addEventListener('focusin', () => stopAuto()); // tabbing in counts
+    root.addEventListener('mouseenter', () => {
+      hovered = true;
+      clear();
+    });
+    root.addEventListener('mouseleave', () => {
+      hovered = false;
+      queue();
+    });
+    document.addEventListener('visibilitychange', queue);
+    motion.addEventListener('change', () => {
+      clear();
+      if (motion.matches) queue();
+      else stopAuto();
+    });
+    window.addEventListener('pagehide', clear);
+
+    // Plain IntersectionObservers, not ScrollTrigger: both have to work with
+    // reduced motion on, where the matchMedia block below never runs.
+    new IntersectionObserver(
+      ([e]) => {
+        onScreen = e.isIntersecting;
+        queue();
+      },
+      { threshold: 0.25 }
+    ).observe(hero);
+
+    // Tells the sticky header whether it is floating on the hero tint or has
+    // scrolled onto ordinary page background.
+    const setHeaderState = (over: boolean) => {
+      document.documentElement.dataset.header = over ? 'over-hero' : 'stuck';
+    };
+    setHeaderState(window.scrollY < hero.offsetHeight - 72);
+    new IntersectionObserver(([e]) => setHeaderState(e.isIntersecting), {
+      rootMargin: '-72px 0px 0px 0px',
+      threshold: 0,
+    }).observe(hero);
+
+    // --- init -------------------------------------------------------------
+    document.documentElement.dataset.heroTheme = 'intro';
+    gsap.set(slides, { autoAlpha: 0 });
+    gsap.set(eyebrows, { autoAlpha: 0 });
+
+    const start = Math.max(0, KEYS.indexOf(window.location.hash.slice(1)));
+    if (start !== 0) {
+      // A deep link is a stated preference: land on it instantly, no autoplay.
+      go(start, { animate: false });
+      stopAuto();
+      // The slide lives inside the hero, so the browser's native jump to the
+      // anchor would push the hero — and the CTA with it — half off-screen.
+      // That jump lands after this module runs, hence the extra frame; the
+      // guard means a visitor who scrolls immediately isn't yanked back.
+      let userScrolled = false;
+      const noteScroll = () => {
+        userScrolled = true;
+      };
+      ['wheel', 'touchstart', 'keydown'].forEach((ev) =>
+        window.addEventListener(ev, noteScroll, { once: true, passive: true })
+      );
+      const settleTop = () => {
+        if (!userScrolled) window.scrollTo({ top: 0, behavior: 'auto' });
+      };
+      settleTop();
+      requestAnimationFrame(settleTop);
+    } else if (motion.matches) {
+      // The hero entrance, moved in here so it can't race the slide timeline
+      // on the same nodes.
+      gsap.from('.mword span', {
+        yPercent: 110,
+        duration: 0.9,
+        ease: 'power3.out',
+        stagger: 0.12,
+      });
+      gsap.from('.mhero__frame', { autoAlpha: 0, y: 18, duration: 0.8, delay: 0.4 });
+      gsap.from('.mhero__cue', { autoAlpha: 0, duration: 0.8, delay: 1.0 });
+    }
+
+    if (!motion.matches) stopAuto();
+    else if (!stopped) {
+      stopBtn?.removeAttribute('hidden');
+      queue();
+    }
+
+    if (location.hostname === 'localhost') {
+      (window as any).__hero = {
+        go,
+        jump,
+        stopAuto,
+        get index() {
+          return index;
+        },
+      };
+    }
+  }
+
+  /* ===================== scroll reveals below the hero ==================== */
+  const mm = gsap.matchMedia();
+
+  mm.add('(prefers-reduced-motion: no-preference)', () => {
+    // --- origin: ripple grows as the story scrolls in ---------------------
+    gsap
+      .timeline({
+        scrollTrigger: {
+          trigger: '#origin',
+          start: 'top 75%',
+          end: 'center center',
+          scrub: 0.5,
+        },
+      })
+      .from('.origin-ripple circle', {
+        scale: 0.15,
+        autoAlpha: 0,
+        transformOrigin: '50% 50%',
+        stagger: { each: 0.22, from: 'end' },
+        ease: 'power1.out',
+      });
+
+    gsap.from('.origin__copy > *', {
+      scrollTrigger: { trigger: '#origin', start: 'top 70%' },
+      autoAlpha: 0,
+      y: 24,
+      duration: 0.7,
+      stagger: 0.12,
+      ease: 'power2.out',
+    });
+
+    // --- convergence -------------------------------------------------------
+    gsap.from('.mconverge__words span', {
+      scrollTrigger: { trigger: '.mconverge', start: 'top 70%' },
+      autoAlpha: 0,
+      y: 20,
+      duration: 0.55,
+      stagger: 0.18,
+      ease: 'power2.out',
+    });
+    gsap.from('.mconverge__reveal > *', {
+      scrollTrigger: { trigger: '.mconverge', start: 'top 55%' },
+      autoAlpha: 0,
+      y: 24,
+      duration: 0.7,
+      stagger: 0.14,
+      ease: 'power2.out',
+    });
+  });
 </script>
