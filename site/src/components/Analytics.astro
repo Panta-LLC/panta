@@ -49,6 +49,31 @@ const enabled = measurementId.length > 0;
           window.gtag('event', event, params || {});
         };
 
+        // Declarative click tracking: any element carrying data-track fires that
+        // event name on click, and its data-track-* attributes become event
+        // params (data-track-cta-label -> cta_label). Keeps pages to markup
+        // instead of a script per CTA. Capture phase so a handler that stops
+        // propagation upstream can't silently swallow the event.
+        document.addEventListener(
+          'click',
+          function (e) {
+            const el =
+              e.target instanceof Element ? e.target.closest('[data-track]') : null;
+            if (!el) return;
+            const params = {};
+            for (const key in el.dataset) {
+              if (key === 'track' || key.indexOf('track') !== 0) continue;
+              const param = key
+                .slice(5)
+                .replace(/[A-Z]/g, (m) => '_' + m.toLowerCase())
+                .replace(/^_/, '');
+              params[param] = el.dataset[key];
+            }
+            window.pantaTrack(el.dataset.track, params);
+          },
+          true
+        );
+
         if (readConsent() === 'granted') {
           loadGa4();
         }

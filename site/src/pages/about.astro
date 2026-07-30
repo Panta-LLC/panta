@@ -66,7 +66,13 @@ const c = await getDoc('aboutPage');
       <h2>{c.auditTitle}</h2>
       <p>{c.auditBody}</p>
       <div class="btn-row" style="margin-top: 1.5rem;">
-        <a href="/contact/" class="btn btn--primary">{c.auditCtaLabel}</a>
+        <a
+          href="/contact/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="contact"
+          data-track-location="about_cta"
+        >{c.auditCtaLabel}</a>
       </div>
     </div>
   </section>

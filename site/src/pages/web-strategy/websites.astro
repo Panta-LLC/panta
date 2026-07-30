@@ -40,8 +40,20 @@ const websitesSchema = [
       <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">{c.heroTitle}</h1>
       <p class="lede">{c.heroLede}</p>
       <div class="btn-row">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
-        <a href="/work/" class="btn btn--ghost">See our work</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="websites_hero"
+        >Start with the free consultation</a>
+        <a
+          href="/work/"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="work"
+          data-track-location="websites_hero"
+        >See our work</a>
       </div>
     </div>
   </section>
@@ -61,17 +73,22 @@ const websitesSchema = [
       <h2>{c.workTitle}</h2>
       <div class="grid grid--3" style="margin-top: 2.5rem;">
         {featured.map((p) => (
-          <div class="card">
+          <a class="card work-card" href={p.slug ? `/work/${p.slug}/` : '/work/'}>
+            {p.thumbnail && (
+              <img
+                class="work-thumb"
+                src={p.thumbnail}
+                alt={p.imageAlt ?? `${p.name} website`}
+                width="640"
+                height="400"
+                loading="lazy"
+              />
+            )}
             <p class="card__kicker">{p.clientType}</p>
             <h3>{p.name}</h3>
-            {p.situation && <p>{p.situation}</p>}
-            {(p.contributions ?? []).length > 0 && (
-              <ul class="workline">
-                {p.contributions.map((item) => <li>{item}</li>)}
-              </ul>
-            )}
-            {p.outcome && <p class="small">{p.outcome}</p>}
-          </div>
+            {(p.summary || p.situation) && <p>{p.summary ?? p.situation}</p>}
+            <span class="work-more">Read the case study →</span>
+          </a>
         ))}
         <div class="card card--more">
           <h3>{c.moreCardTitle}</h3>
@@ -111,7 +128,13 @@ const websitesSchema = [
             <li><strong>{item.title}</strong> {item.body}</li>
           ))}
         </ul>
-        <a href="/web-strategy/" class="btn btn--primary">{c.pivotCtaLabel}</a>
+        <a
+          href="/web-strategy/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="web_strategy"
+          data-track-location="websites_pivot"
+        >{c.pivotCtaLabel}</a>
       </div>
     </div>
   </section>
@@ -142,7 +165,13 @@ const websitesSchema = [
         ))}
       </div>
       <div class="btn-row" style="margin-top: 2.5rem;">
-        <a href="/consultation/" class="btn btn--primary">Start with the free consultation</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="websites_faq"
+        >Start with the free consultation</a>
         <span class="small">{c.ctaNote}</span>
       </div>
     </div>
@@ -189,6 +218,47 @@ const websitesSchema = [
 
   .card--more {
     background: var(--cream-soft);
+  }
+
+  .work-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    overflow: hidden;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .work-card:hover {
+    transform: translateY(-4px);
+    border-color: var(--sage);
+    box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.35);
+  }
+
+  /* bleed the shot to the card edges: cancel .card's 1.75rem padding */
+  .work-thumb {
+    display: block;
+    width: calc(100% + 3.5rem);
+    height: auto;
+    margin: -1.75rem -1.75rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .work-more {
+    margin-top: auto;
+    padding-top: 0.4rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+  }
+
+  .work-card:hover .work-more { text-decoration: underline; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .work-card { transition: none; }
   }
 
   .workline {

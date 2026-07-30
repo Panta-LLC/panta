@@ -40,44 +40,65 @@ const orgSchema = {
   ],
 };
 
+// `desktop: false` keeps an item out of the header but still in the mobile
+// panel, where a list row costs nothing. Contact is desktop-false on purpose:
+// it and "Get started" are the same intent, and two adjacent header entries
+// meaning "talk to Panta" split the click away from the bookable one.
 const flatNavItems = [
-  { href: '/about/', label: 'About' },
-  { href: '/contact/', label: 'Contact' },
+  { href: '/about/', label: 'About', cta: 'about', desktop: true },
+  { href: '/contact/', label: 'Contact', cta: 'contact', desktop: false },
 ];
 
-// Practice cards shown in the "Our Work" mega menu.
-const megaPractices = [
-  {
-    href: '/web-strategy/',
-    label: 'Web Strategy & Development',
-    desc: 'Strategy and engineering from the same hands — a presence that finds, earns, and keeps your community.',
-    icon: 'web',
-  },
-  {
-    href: '/community-programs/',
-    label: 'Community Program Development',
-    desc: 'Programs that put advancement, enrichment, and connection within reach. Taking root now.',
-    icon: 'community',
-  },
-  {
-    href: '/product-development/',
-    label: 'Product Development',
-    desc: 'New ideas for old problems, built into products that serve community needs. Taking root now.',
-    icon: 'product',
-  },
+// The practice you can hire today gets its own top-level nav item — prospects
+// search for the thing, not for the practice name.
+const websitesNav = { href: '/web-strategy/websites/', label: 'Websites', cta: 'websites' };
+
+// The one practice with an offer. Full-size card in the mega menu.
+const megaPrimary = {
+  href: '/web-strategy/',
+  label: 'Web Strategy & Development',
+  desc: 'Strategy and engineering from the same hands — a presence that finds, earns, and keeps your community.',
+  cta: 'web_strategy',
+};
+
+// Roadmap practices: still linked, still indexed, visually subordinate.
+const megaNext = [
+  { href: '/community-programs/', label: 'Community Program Development', cta: 'community_programs' },
+  { href: '/product-development/', label: 'Product Development', cta: 'product_development' },
 ];
 
 const megaQuickLinks = [
-  { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan' },
-  { href: '/web-strategy/websites/', label: 'Websites & web channels' },
-  { href: '/consultation/', label: 'Free 30-minute audit' },
+  { href: '/consultation/', label: 'Free 30-minute consultation', cta: 'consultation' },
+  { href: '/web-strategy/websites/', label: 'Websites & web channels', cta: 'websites' },
+  { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
+  { href: '/work/', label: 'Client work', cta: 'work' },
+  { href: '/contact/', label: 'Contact', cta: 'contact' },
+];
+
+const footerLinks = [
+  { href: '/consultation/', label: 'Free 30-minute consultation', cta: 'consultation' },
+  { href: '/web-strategy/websites/', label: 'Websites & web channels', cta: 'websites' },
+  { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
+  { href: '/web-strategy/', label: 'Web Strategy & Development', cta: 'web_strategy' },
+  { href: '/work/', label: 'Client work', cta: 'work' },
+  { href: '/what-we-do/', label: 'What we do', cta: 'what_we_do' },
+  { href: '/about/', label: 'About Panta', cta: 'about' },
+  { href: '/contact/', label: 'Contact', cta: 'contact' },
+];
+
+const footerNextLinks = [
+  { href: '/community-programs/', label: 'Community Program Development', cta: 'community_programs' },
+  { href: '/product-development/', label: 'Product Development', cta: 'product_development' },
 ];
 
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
 
+// Websites is its own top-level item now, so it must not also light up the
+// "What we do" branch.
 const workActive =
-  ['/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
-  currentPath.startsWith('/web-strategy/');
+  currentPath !== websitesNav.href &&
+  (['/what-we-do/', '/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
+    currentPath.startsWith('/web-strategy/'));
 ---
 <!doctype html>
 <html lang="en">
@@ -118,83 +139,104 @@ const workActive =
           <span class="brand__word">panta</span>
         </a>
         <nav class="site-nav" aria-label="Main">
+          <a
+            href={websitesNav.href}
+            aria-current={currentPath === websitesNav.href ? 'page' : undefined}
+            data-track="cta_click"
+            data-track-cta={websitesNav.cta}
+            data-track-location="header"
+          >{websitesNav.label}</a>
           <div class:list={['nav-drop', { 'nav-drop--active': workActive }]}>
             <a
               class="nav-drop__trigger"
-              href="/work/"
-              aria-current={currentPath === '/work/' ? 'page' : undefined}
+              href="/what-we-do/"
+              aria-current={currentPath === '/what-we-do/' ? 'page' : undefined}
             >
-              Our Work
+              What we do
               <svg class="nav-drop__caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
                 <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
             </a>
-            <div class="nav-mega" aria-label="Our Work">
+            <div class="nav-mega" aria-label="What we do">
               <div class="container nav-mega__grid">
                 <div class="nav-mega__intro">
-                  <p class="nav-mega__label">Our Work</p>
+                  <p class="nav-mega__label">What we do</p>
                   <p class="nav-mega__head">One good move, felt everywhere.</p>
                   <p class="nav-mega__sub">
-                    Three practices supporting the people who support our
-                    community.
+                    One practice you can hire today — and two taking root.
                   </p>
                   <a class="nav-mega__worklink" href="/work/">See client work <span aria-hidden="true">→</span></a>
+                  <a class="nav-mega__overview" href="/what-we-do/">Company overview</a>
                 </div>
                 <div class="nav-mega__cards">
-                  {megaPractices.map((p) => (
-                    <a
-                      class="nav-mega__card"
-                      href={p.href}
-                      aria-current={currentPath === p.href ? 'page' : undefined}
-                    >
-                      <span class="nav-mega__icon" aria-hidden="true">
-                        {p.icon === 'web' && (
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="12" r="9" />
-                            <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" />
-                          </svg>
-                        )}
-                        {p.icon === 'community' && (
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <circle cx="12" cy="6.5" r="2.3" />
-                            <circle cx="6" cy="17" r="2.3" />
-                            <circle cx="18" cy="17" r="2.3" />
-                            <path d="M10.9 8.5L7.2 15M13.1 8.5l3.7 6.5M8.3 17h7.4" />
-                          </svg>
-                        )}
-                        {p.icon === 'product' && (
-                          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                            <path d="M12 3l2.2 4.9L19 10l-4.8 2.1L12 17l-2.2-4.9L5 10l4.8-2.1z" />
-                            <path d="M18.5 16.5l0.9 2 2 0.9-2 0.9-0.9 2-0.9-2-2-0.9 2-0.9z" />
-                          </svg>
-                        )}
-                      </span>
-                      <span class="nav-mega__card-title">{p.label}</span>
-                      <span class="nav-mega__card-desc">{p.desc}</span>
-                      <span class="nav-mega__card-arrow" aria-hidden="true">→</span>
-                    </a>
-                  ))}
+                  <a
+                    class="nav-mega__card"
+                    href={megaPrimary.href}
+                    aria-current={currentPath === megaPrimary.href ? 'page' : undefined}
+                    data-track="cta_click"
+                    data-track-cta={megaPrimary.cta}
+                    data-track-location="mega_menu"
+                  >
+                    <span class="nav-mega__icon" aria-hidden="true">
+                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="9" />
+                        <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" />
+                      </svg>
+                    </span>
+                    <span class="nav-mega__card-title">{megaPrimary.label}</span>
+                    <span class="nav-mega__card-desc">{megaPrimary.desc}</span>
+                    <span class="nav-mega__card-arrow" aria-hidden="true">→</span>
+                  </a>
+                  <div class="nav-mega__next">
+                    <p class="nav-mega__next-label">Growing next</p>
+                    {megaNext.map((p) => (
+                      <a
+                        class="nav-mega__nextlink"
+                        href={p.href}
+                        aria-current={currentPath === p.href ? 'page' : undefined}
+                        data-track="cta_click"
+                        data-track-cta={p.cta}
+                        data-track-location="mega_menu"
+                      >{p.label}<span aria-hidden="true"> →</span></a>
+                    ))}
+                    <p class="nav-mega__next-note">In development — talk to us if you want to shape them.</p>
+                  </div>
                 </div>
               </div>
               <div class="nav-mega__foot">
                 <div class="container nav-mega__foot-inner">
                   <span class="nav-mega__foot-label">Start here</span>
                   {megaQuickLinks.map((l) => (
-                    <a href={l.href} aria-current={currentPath === l.href ? 'page' : undefined}>{l.label}</a>
+                    <a
+                      href={l.href}
+                      aria-current={currentPath === l.href ? 'page' : undefined}
+                      data-track="cta_click"
+                      data-track-cta={l.cta}
+                      data-track-location="mega_menu"
+                    >{l.label}</a>
                   ))}
                 </div>
               </div>
             </div>
           </div>
-          {flatNavItems.map((item) => (
+          {flatNavItems.filter((item) => item.desktop).map((item) => (
             <a
               href={item.href}
               aria-current={currentPath === item.href ? 'page' : undefined}
+              data-track="cta_click"
+              data-track-cta={item.cta}
+              data-track-location="header"
             >
               {item.label}
             </a>
           ))}
-          <a href="/consultation/" class="btn btn--primary">{settings.headerCtaLabel}</a>
+          <a
+            href="/consultation/"
+            class="btn btn--primary"
+            data-track="cta_click"
+            data-track-cta="consultation"
+            data-track-location="header"
+          >{settings.headerCtaLabel}</a>
         </nav>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
           <span class="nav-toggle__bar"></span>
@@ -204,33 +246,80 @@ const workActive =
       </div>
       <div class="mobile-nav" id="mobile-nav">
         <nav class="container mobile-nav__inner" aria-label="Mobile">
-          <p class="mobile-nav__label">Our Work</p>
           <ul class="mobile-nav__list">
-            {megaPractices.map((p, i) => (
-              <>
-                <li>
-                  <a href={p.href} aria-current={currentPath === p.href ? 'page' : undefined}>{p.label}</a>
-                </li>
-                {i === 0 && (
-                  <li>
-                    {megaQuickLinks.map((l) => (
-                      <a class="mobile-nav__sub" href={l.href} aria-current={currentPath === l.href ? 'page' : undefined}>{l.label}</a>
-                    ))}
-                  </li>
-                )}
-              </>
+            <li>
+              <a
+                href={websitesNav.href}
+                aria-current={currentPath === websitesNav.href ? 'page' : undefined}
+                data-track="cta_click"
+                data-track-cta={websitesNav.cta}
+                data-track-location="mobile_nav"
+              >{websitesNav.label}</a>
+            </li>
+          </ul>
+          <p class="mobile-nav__label">What we do</p>
+          <ul class="mobile-nav__list">
+            <li>
+              <a href="/what-we-do/" aria-current={currentPath === '/what-we-do/' ? 'page' : undefined}>Company overview</a>
+            </li>
+            <li>
+              <a
+                href={megaPrimary.href}
+                aria-current={currentPath === megaPrimary.href ? 'page' : undefined}
+                data-track="cta_click"
+                data-track-cta={megaPrimary.cta}
+                data-track-location="mobile_nav"
+              >{megaPrimary.label}</a>
+            </li>
+            <li>
+              {megaQuickLinks.map((l) => (
+                <a
+                  class="mobile-nav__sub"
+                  href={l.href}
+                  aria-current={currentPath === l.href ? 'page' : undefined}
+                  data-track="cta_click"
+                  data-track-cta={l.cta}
+                  data-track-location="mobile_nav"
+                >{l.label}</a>
+              ))}
+            </li>
+          </ul>
+          <p class="mobile-nav__label">Growing next</p>
+          <ul class="mobile-nav__list">
+            {megaNext.map((p) => (
+              <li>
+                <a
+                  class="mobile-nav__sub"
+                  href={p.href}
+                  aria-current={currentPath === p.href ? 'page' : undefined}
+                  data-track="cta_click"
+                  data-track-cta={p.cta}
+                  data-track-location="mobile_nav"
+                >{p.label}</a>
+              </li>
             ))}
-            <li><a href="/work/" aria-current={currentPath === '/work/' ? 'page' : undefined}>Client work</a></li>
           </ul>
           <p class="mobile-nav__label">Panta</p>
           <ul class="mobile-nav__list">
             {flatNavItems.map((item) => (
               <li>
-                <a href={item.href} aria-current={currentPath === item.href ? 'page' : undefined}>{item.label}</a>
+                <a
+                  href={item.href}
+                  aria-current={currentPath === item.href ? 'page' : undefined}
+                  data-track="cta_click"
+                  data-track-cta={item.cta}
+                  data-track-location="mobile_nav"
+                >{item.label}</a>
               </li>
             ))}
           </ul>
-          <a href="/consultation/" class="btn btn--primary mobile-nav__cta">Get started</a>
+          <a
+            href="/consultation/"
+            class="btn btn--primary mobile-nav__cta"
+            data-track="cta_click"
+            data-track-cta="consultation"
+            data-track-location="mobile_nav"
+          >{settings.headerCtaLabel}</a>
         </nav>
       </div>
     </header>
@@ -287,16 +376,29 @@ const workActive =
           <nav aria-label="Footer">
             <p class="label" style="color: var(--sage);">Explore</p>
             <ul class="footer-list">
-              <li><a href="/consultation/">Free 30-minute audit</a></li>
-              <li><a href="/what-we-do/">What we do</a></li>
-              <li><a href="/web-strategy/">Web Strategy &amp; Development</a></li>
-              <li><a href="/web-strategy/digital-presence-plan/">The Digital Presence Plan</a></li>
-              <li><a href="/web-strategy/websites/">Websites &amp; web channels</a></li>
-              <li><a href="/community-programs/">Community Program Development</a></li>
-              <li><a href="/product-development/">Product Development</a></li>
-              <li><a href="/work/">Client work</a></li>
-              <li><a href="/about/">About Panta</a></li>
-              <li><a href="/contact/">Contact</a></li>
+              {footerLinks.map((l) => (
+                <li>
+                  <a
+                    href={l.href}
+                    data-track="cta_click"
+                    data-track-cta={l.cta}
+                    data-track-location="footer"
+                  >{l.label}</a>
+                </li>
+              ))}
+            </ul>
+            <p class="label" style="color: var(--sage); margin-top: 1.5rem;">Growing next</p>
+            <ul class="footer-list">
+              {footerNextLinks.map((l) => (
+                <li>
+                  <a
+                    href={l.href}
+                    data-track="cta_click"
+                    data-track-cta={l.cta}
+                    data-track-location="footer"
+                  >{l.label}</a>
+                </li>
+              ))}
             </ul>
           </nav>
           <div>

@@ -30,6 +30,49 @@
   --measure: 62ch;
   --container: 68rem;
   --radius: 6px;
+  --header-h: 4.5rem;
+
+  /* Hero theme. The homepage hero is a slideshow that recolours per slide, and
+     the sticky header sits ON it — so these live on :root, where both the hero
+     and the header can read them. JS sets html[data-hero-theme] to switch.
+     Changing a custom property doesn't transition, but the properties consuming
+     it do, which is what gives the colour crossfade. */
+  --hero-bg: var(--cream);
+  --hero-ink: var(--charcoal);
+  --hero-muted: var(--stone-deep);
+  --hero-line: var(--line);
+  --hero-chip-bg: var(--cream-soft);
+  --hero-btn-bg: var(--charcoal);
+  --hero-btn-ink: var(--cream);
+  --hero-btn-hover-bg: var(--bamboo);
+  --hero-btn-hover-ink: var(--charcoal);
+}
+
+html[data-hero-theme='connect'] {
+  --hero-bg: var(--charcoal);
+  --hero-ink: var(--cream);
+  --hero-muted: var(--sage); /* sage on charcoal = 7.9:1 */
+  --hero-line: rgba(245, 241, 231, 0.28);
+  --hero-chip-bg: rgba(245, 241, 231, 0.07);
+  --hero-btn-bg: var(--cream);
+  --hero-btn-ink: var(--charcoal);
+  /* matches .section--dark .btn--primary:hover */
+  --hero-btn-hover-bg: var(--sage);
+  --hero-btn-hover-ink: var(--charcoal);
+}
+
+/* bamboo-deep, not bamboo: cream on #6f8b3c is 2.97:1 and charcoal on it is
+   3.98:1 — neither passes AA for body text. Cream on #55692d is 4.63:1. */
+html[data-hero-theme='create'] {
+  --hero-bg: var(--bamboo-deep);
+  --hero-ink: var(--cream);
+  --hero-muted: rgba(245, 241, 231, 0.9); /* sage on bamboo-deep is only 3.1:1 */
+  --hero-line: rgba(245, 241, 231, 0.3);
+  --hero-chip-bg: rgba(38, 37, 31, 0.16);
+  --hero-btn-bg: var(--cream);
+  --hero-btn-ink: var(--charcoal);
+  --hero-btn-hover-bg: var(--sage);
+  --hero-btn-hover-ink: var(--charcoal);
 }
 
 * {
@@ -38,6 +81,9 @@
 
 html {
   scroll-behavior: smooth;
+  /* The header is sticky, so an anchor scrolled to the viewport top would land
+     underneath it. */
+  scroll-padding-top: var(--header-h);
 }
 
 body {
@@ -99,8 +145,10 @@ em { font-family: var(--font-serif); }
 .section--dark a { color: var(--sage); }
 .section--dark a:hover { color: var(--cream); }
 
+/* bamboo-deep, not the official bamboo: cream on #6f8b3c is 2.97:1. Same hue
+   family, AA-safe for the body copy these sections carry (4.63:1). */
 .section--bamboo {
-  background: var(--bamboo);
+  background: var(--bamboo-deep);
   color: var(--cream);
 }
 
@@ -116,8 +164,9 @@ em { font-family: var(--font-serif); }
   margin: 0 0 1.25rem;
 }
 
-.section--dark .label,
-.section--bamboo .label { color: var(--sage); }
+.section--dark .label { color: var(--sage); }
+/* sage on bamboo-deep is 3.1:1, so labels there stay cream */
+.section--bamboo .label { color: rgba(245, 241, 231, 0.9); }
 
 .lede {
   font-size: 1.2rem;
@@ -170,6 +219,24 @@ em { font-family: var(--font-serif); }
 }
 
 .section--dark .btn--ghost:hover { border-color: var(--cream); color: var(--cream); }
+
+/* Bamboo surfaces had no button rules — a charcoal primary on bamboo reads as
+   a hole, and a charcoal ghost border disappears. */
+.section--bamboo .btn--primary {
+  background: var(--cream);
+  color: var(--charcoal);
+}
+
+.section--bamboo .btn--primary:hover { background: var(--sage); }
+
+.section--bamboo .btn--ghost {
+  color: var(--cream);
+  border-color: rgba(245, 241, 231, 0.5);
+}
+
+.section--bamboo .btn--ghost:hover { border-color: var(--cream); color: var(--cream); }
+
+.section--bamboo a:not(.btn) { color: var(--cream); }
 
 .btn-row {
   display: flex;
@@ -253,6 +320,9 @@ th {
 .site-header {
   background: var(--cream);
   border-bottom: 1px solid var(--line);
+  /* The homepage hero recolours underneath this bar, so both surface and ink
+     have to be able to cross-fade with it. */
+  transition: background-color 0.55s ease, color 0.55s ease, border-color 0.55s ease;
 }
 
 .site-header__inner {
@@ -313,8 +383,99 @@ th {
 /* "Our Work" mega menu — opens on hover and keyboard focus, no JS.
    The panel anchors to .site-header (full width), so .nav-drop stays static. */
 .site-header {
-  position: relative;
+  /* sticky, not fixed: it keeps its flow space, so no page needs a
+     compensating body offset. The homepage hero cancels the strip with a
+     negative margin so its tint reaches the top of the viewport. */
+  position: sticky;
+  top: 0;
   z-index: 80;
+}
+
+/* --- header over a tinted hero -------------------------------------------
+   On the homepage the bar dissolves into the hero: no surface, no border, and
+   every ink token follows the hero theme. `data-hero-theme` only exists on
+   pages that have a hero slideshow, so every other page is untouched. */
+
+html[data-hero-theme][data-header='over-hero'] .site-header {
+  background: transparent;
+  border-bottom-color: transparent;
+}
+
+html[data-hero-theme][data-header='over-hero'] .brand,
+html[data-hero-theme][data-header='over-hero'] .site-nav a,
+html[data-hero-theme][data-header='over-hero'] .nav-drop__trigger {
+  color: var(--hero-ink);
+}
+
+/* --bamboo-deep hover ink is darker than charcoal and bamboo backgrounds */
+html[data-hero-theme][data-header='over-hero'] .site-nav a:hover,
+html[data-hero-theme][data-header='over-hero'] .nav-drop__trigger:hover {
+  color: var(--hero-muted);
+}
+
+/* the --bamboo underline vanishes on the bamboo theme */
+html[data-hero-theme][data-header='over-hero'] .site-nav a[aria-current='page'],
+html[data-hero-theme][data-header='over-hero'] .nav-drop--active > .nav-drop__trigger {
+  color: var(--hero-ink);
+  box-shadow: inset 0 -2px 0 var(--hero-ink);
+}
+
+html[data-hero-theme][data-header='over-hero'] .nav-toggle__bar {
+  background: var(--hero-ink);
+}
+
+html[data-hero-theme][data-header='over-hero'] .site-nav .btn--primary {
+  background: var(--hero-btn-bg);
+  color: var(--hero-btn-ink);
+}
+
+html[data-hero-theme][data-header='over-hero'] .site-nav .btn--primary:hover {
+  background: var(--hero-btn-hover-bg);
+  color: var(--hero-btn-hover-ink);
+}
+
+/* The ripple's inner ring is bamboo, which disappears on the bamboo theme. */
+html[data-hero-theme][data-header='over-hero'] .brand {
+  --ripple-accent: var(--sage);
+}
+
+/* An open dropdown restores the solid bar — a cream panel hanging off a
+   transparent header over a charcoal hero reads as a bug. Re-asserts the
+   default ink so it beats the theme block above. */
+html[data-hero-theme] .site-header:has(.nav-drop:hover),
+html[data-hero-theme] .site-header:has(.nav-drop:focus-within),
+html[data-hero-theme] .site-header:has(.mobile-nav.is-open) {
+  background: var(--cream);
+  border-bottom-color: var(--line);
+}
+
+html[data-hero-theme] .site-header:has(.nav-drop:hover) .brand,
+html[data-hero-theme] .site-header:has(.nav-drop:focus-within) .brand,
+html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .brand,
+html[data-hero-theme] .site-header:has(.nav-drop:hover) .site-nav a,
+html[data-hero-theme] .site-header:has(.nav-drop:focus-within) .site-nav a,
+html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav a {
+  color: var(--charcoal);
+  --ripple-accent: #6f8b3c;
+}
+
+html[data-hero-theme] .site-header:has(.nav-drop:hover) .site-nav a:hover,
+html[data-hero-theme] .site-header:has(.nav-drop:focus-within) .site-nav a:hover,
+html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav a:hover {
+  color: var(--bamboo-deep);
+}
+
+html[data-hero-theme] .site-header:has(.nav-drop:hover) .nav-toggle__bar,
+html[data-hero-theme] .site-header:has(.nav-drop:focus-within) .nav-toggle__bar,
+html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .nav-toggle__bar {
+  background: var(--charcoal);
+}
+
+html[data-hero-theme] .site-header:has(.nav-drop:hover) .site-nav .btn--primary,
+html[data-hero-theme] .site-header:has(.nav-drop:focus-within) .site-nav .btn--primary,
+html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--primary {
+  background: var(--charcoal);
+  color: var(--cream);
 }
 
 .nav-drop__trigger {
@@ -409,19 +570,42 @@ th {
 }
 
 .site-nav .nav-mega__worklink {
+  display: inline-block;
   font-size: 0.92rem;
   font-weight: 500;
   color: var(--charcoal);
   text-decoration: none;
+  padding: 0.5rem 0.9rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--cream-soft);
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+
+.site-nav .nav-mega__worklink:hover {
+  border-color: var(--sage);
+  color: var(--bamboo-deep);
+}
+
+.site-nav .nav-mega__overview {
+  display: block;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--stone-deep);
+  text-decoration: none;
   padding: 0;
 }
 
+.site-nav .nav-mega__overview:hover { color: var(--bamboo-deep); }
+
 .nav-mega__worklink:hover { color: var(--bamboo-deep); }
 
+/* One card for the practice that sells, one narrow column for the roadmap. */
 .nav-mega__cards {
   display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 1rem;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: clamp(1rem, 2.5vw, 1.75rem);
+  align-items: start;
 }
 
 /* .site-nav prefix: outranks the generic `.site-nav a` padding rule */
@@ -442,8 +626,18 @@ th {
   translate: 0 8px;
 }
 
+/* Roadmap column: shares the card's entrance, not its surface. */
+.nav-mega__next {
+  padding-left: clamp(1rem, 2vw, 1.5rem);
+  border-left: 1px solid var(--line);
+  opacity: 0;
+  translate: 0 8px;
+}
+
 .nav-drop:hover .nav-mega__card,
-.nav-drop:focus-within .nav-mega__card {
+.nav-drop:focus-within .nav-mega__card,
+.nav-drop:hover .nav-mega__next,
+.nav-drop:focus-within .nav-mega__next {
   opacity: 1;
   translate: 0 0;
   transition:
@@ -451,10 +645,38 @@ th {
     opacity 0.35s ease, translate 0.35s ease;
 }
 
-.nav-drop:hover .nav-mega__card:nth-child(2),
-.nav-drop:focus-within .nav-mega__card:nth-child(2) { transition-delay: 0.06s; }
-.nav-drop:hover .nav-mega__card:nth-child(3),
-.nav-drop:focus-within .nav-mega__card:nth-child(3) { transition-delay: 0.12s; }
+.nav-drop:hover .nav-mega__next,
+.nav-drop:focus-within .nav-mega__next { transition-delay: 0.06s; }
+
+.nav-mega__next-label {
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  margin-bottom: 0.6rem;
+}
+
+.site-nav .nav-mega__nextlink {
+  display: block;
+  padding: 0.3rem 0;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--charcoal);
+  text-decoration: none;
+}
+
+.site-nav .nav-mega__nextlink:hover { color: var(--bamboo-deep); }
+
+.site-nav .nav-mega__nextlink[aria-current='page'] { color: var(--bamboo-deep); }
+
+.nav-mega__next-note {
+  font-size: 0.78rem;
+  line-height: 1.5;
+  color: var(--stone-deep);
+  margin: 0.6rem 0 0;
+  max-width: 24ch;
+}
 
 .nav-mega__card:hover {
   transform: translateY(-3px);
@@ -591,7 +813,7 @@ th {
   visibility: hidden;
   transform: translateY(10px);
   transition: opacity 0.3s ease, transform 0.3s ease, visibility 0s linear 0.3s;
-  max-height: calc(100dvh - 4.5rem);
+  max-height: calc(100dvh - var(--header-h));
   overflow-y: auto;
   z-index: 70;
 }
@@ -626,6 +848,8 @@ th {
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(4) { transition-delay: 0.15s; }
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(5) { transition-delay: 0.2s; }
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(6) { transition-delay: 0.25s; }
+.mobile-nav.is-open .mobile-nav__inner > :nth-child(7) { transition-delay: 0.3s; }
+.mobile-nav.is-open .mobile-nav__inner > :nth-child(8) { transition-delay: 0.35s; }
 
 .mobile-nav__label {
   font-size: 0.68rem;
@@ -683,6 +907,7 @@ th {
 @media (prefers-reduced-motion: reduce) {
   .nav-mega,
   .site-nav .nav-mega__card,
+  .nav-mega__next,
   .nav-drop__caret,
   .nav-mega__card-arrow,
   .nav-toggle__bar,

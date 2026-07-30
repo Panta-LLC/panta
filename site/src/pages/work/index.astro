@@ -23,22 +23,37 @@ const testimonial = await getTestimonial();
   <section class="section">
     <div class="container">
       <div class="grid grid--3">
-        {projects.map((p) => (
-          <div class="card">
-            <p class="card__kicker">{p.clientType}</p>
-            <h3>{p.name}</h3>
-            {p.situation && <p>{p.situation}</p>}
-            {(p.contributions ?? []).length > 0 && (
-              <ul class="workline">
-                {p.contributions.map((item) => <li>{item}</li>)}
-              </ul>
-            )}
-            {p.outcome && <p class="small">{p.outcome}</p>}
-            {p.url && (
-              <a href={p.url} target="_blank" rel="noopener noreferrer">Visit the site →</a>
-            )}
-          </div>
-        ))}
+        {projects.map((p) => {
+          const Card = p.slug ? 'a' : 'div';
+          const props = p.slug ? { href: `/work/${p.slug}/` } : {};
+          return (
+            <Card class:list={['card', 'work-card', { 'work-card--link': p.slug }]} {...props}>
+              {p.thumbnail && (
+                <img
+                  class="work-thumb"
+                  src={p.thumbnail}
+                  alt={p.imageAlt ?? `${p.name} website`}
+                  width="640"
+                  height="400"
+                  loading="lazy"
+                />
+              )}
+              <p class="card__kicker">{p.clientType}{p.year && ` · ${p.year}`}</p>
+              <h3>{p.name}</h3>
+              {(p.summary || p.situation) && <p>{p.summary ?? p.situation}</p>}
+              {(p.contributions ?? []).length > 0 && (
+                <ul class="workline">
+                  {p.contributions.map((item) => <li>{item}</li>)}
+                </ul>
+              )}
+              {p.slug ? (
+                <span class="work-more">Read the case study →</span>
+              ) : (
+                p.outcome && <p class="small">{p.outcome}</p>
+              )}
+            </Card>
+          );
+        })}
       </div>
       <p class="small" style="margin-top: 2rem;">
         {c.footNote} <a href="/web-strategy/websites/">{c.footLinkLabel}</a>
@@ -64,14 +79,70 @@ const testimonial = await getTestimonial();
       <h2>{c.ctaTitle}</h2>
       <p class="lede" style="max-width: 54ch;">{c.ctaLede}</p>
       <div class="btn-row" style="margin-top: 1.5rem;">
-        <a href="/consultation/" class="btn btn--primary">{c.ctaPrimaryLabel}</a>
-        <a href="/web-strategy/digital-presence-plan/" class="btn btn--ghost">{c.ctaSecondaryLabel}</a>
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="work_cta"
+        >{c.ctaPrimaryLabel}</a>
+        <a
+          href="/web-strategy/digital-presence-plan/"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="plan"
+          data-track-location="work_cta"
+        >{c.ctaSecondaryLabel}</a>
       </div>
     </div>
   </section>
 </Base>
 
 <style>
+  .work-card {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+    overflow: hidden;
+  }
+
+  .work-card--link {
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
+  }
+
+  .work-card--link:hover {
+    transform: translateY(-4px);
+    border-color: var(--sage);
+    box-shadow: 0 20px 40px -24px rgba(0, 0, 0, 0.35);
+  }
+
+  /* bleed the shot to the card edges: cancel .card's 1.75rem padding */
+  .work-thumb {
+    display: block;
+    width: calc(100% + 3.5rem);
+    height: auto;
+    margin: -1.75rem -1.75rem 1.1rem;
+    border-bottom: 1px solid var(--line);
+    border-radius: var(--radius) var(--radius) 0 0;
+  }
+
+  .work-more {
+    margin-top: auto;
+    padding-top: 0.4rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+  }
+
+  .work-card--link:hover .work-more { text-decoration: underline; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .work-card--link { transition: none; }
+  }
+
   .workline {
     list-style: none;
     padding: 0;
