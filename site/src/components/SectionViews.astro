@@ -1,0 +1,87 @@
+---
+// Section-view tracking for any page whose sections carry data-section.
+// Extracted from index.astro when the mission sections (verbs/origin) moved to
+// /about/ — both pages now report through this one component instead of the
+// homepage owning a private copy.
+//
+// The event name stays `home_section_view` even off the homepage: the GA4
+// build/connect/create series has already changed shape twice (scroll → slide →
+// scroll), and renaming the event would orphan it entirely. The sections that
+// moved to /about/ keep their series; annotate the deploy in GA4.
+---
+<script>
+  // One event with a `section` dimension, not N event names: it makes drop-off
+  // a single funnel exploration in GA4. Register `section` and `via` as custom
+  // dimensions or the params are collected but invisible.
+  const seen = new Set<string>();
+  // The consent banner appears 600ms in, so early sections — the denominator of
+  // the funnel — are almost always seen BEFORE the visitor decides. Sending
+  // straight to pantaTrack would silently drop those, so buffer until consent.
+  const pending: Array<[string, string]> = [];
+
+  const consented = () => {
+    try {
+      return localStorage.getItem('panta:consent') === 'granted';
+    } catch (_) {
+      return false;
+    }
+  };
+
+  // pantaTrack silently no-ops when gtag hasn't finished loading, so "ready"
+  // means consent AND gtag, and anything earlier waits in the queue.
+  const ready = () => {
+    const w = window as any;
+    return typeof w.pantaTrack === 'function' && typeof w.gtag === 'function' && consented();
+  };
+
+  let flushTimer = 0;
+
+  const flush = () => {
+    if (!pending.length) return;
+    if (!ready()) {
+      schedule();
+      return;
+    }
+    const track = (window as any).pantaTrack;
+    pending.splice(0).forEach(([section, via]) => track('home_section_view', { section, via }));
+  };
+
+  function schedule() {
+    if (flushTimer) return;
+    flushTimer = window.setTimeout(() => {
+      flushTimer = 0;
+      flush();
+    }, 400);
+  }
+
+  const send = (section: string, via = 'scroll') => {
+    if (!ready()) {
+      pending.push([section, via]);
+      schedule();
+      return;
+    }
+    (window as any).pantaTrack('home_section_view', { section, via });
+  };
+
+  // Registered after Analytics.astro's own listener, so gtag is configured by
+  // the time this runs.
+  document.addEventListener('panta:consent-granted', flush);
+
+  const io = new IntersectionObserver(
+    (entries) => {
+      for (const entry of entries) {
+        if (!entry.isIntersecting) continue;
+        const id = (entry.target as HTMLElement).dataset.section ?? '';
+        if (!id || seen.has(id)) continue;
+        seen.add(id);
+        send(id);
+        io.unobserve(entry.target);
+      }
+    },
+    { threshold: 0.4 }
+  );
+
+  document
+    .querySelectorAll<HTMLElement>('[data-section]')
+    .forEach((el) => io.observe(el));
+</script>

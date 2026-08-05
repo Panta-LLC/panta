@@ -1,0 +1,44 @@
+---
+/**
+ * Content that is not real yet.
+ *
+ * PULSE-HOME-BUILD.md §7.4: "No invented metrics — bracketed placeholders must
+ * block launch, not ship." So a placeholder is deliberately conspicuous AND
+ * machine-detectable: it carries `data-placeholder`, which
+ * `npm run check:launch` greps for in the built output and fails on.
+ *
+ * The alternative — hiding the section until content exists — is available per
+ * slot, but hiding the case study would mean never seeing its layout before the
+ * metric arrives.
+ */
+interface Props {
+  /** What still has to be sourced, e.g. "one honest metric". Shown in the tag. */
+  note: string;
+}
+const { note } = Astro.props;
+---
+<span class="ph" data-placeholder={note}>
+  <span class="ph__tag">Needs: {note}</span>
+  <slot />
+</span>
+
+<style>
+  .ph {
+    display: inline-block;
+    position: relative;
+    padding: 0.35rem 0.55rem;
+    border: 1px dashed #b4462f;
+    border-radius: 3px;
+    color: inherit;
+  }
+
+  .ph__tag {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: #b4462f;
+    margin-bottom: 0.15rem;
+  }
+</style>

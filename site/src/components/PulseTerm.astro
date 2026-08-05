@@ -1,0 +1,218 @@
+---
+/**
+ * CTA microcopy with the words "Pulse Check" turned into a definition link.
+ *
+ * The button never says "Pulse Check" — buttons describe, copy brands, so the
+ * brand name only ever appears in the line underneath (see homeHero.ctaLabel's
+ * description in the Studio). That leaves the name doing work with nothing to
+ * explain it: a first-time reader sees a term of art with no definition. This
+ * gives it one on hover or focus, and makes the term itself the link to the
+ * page that explains it properly.
+ *
+ * The term is found in the text rather than composed around it because the
+ * microcopy is CMS-editable — an editor can rewrite the line, move the phrase,
+ * or drop it entirely, and this keeps working. No match means the text renders
+ * exactly as written, so nothing can break by editing it.
+ *
+ * Interaction notes:
+ *  - the trigger is a real link, so touch (no hover) still gets the answer by
+ *    tapping through to /consultation/, and keyboard gets the tip on focus;
+ *  - the tip holds no interactive content, which is what makes a hover/focus
+ *    popover legitimate here rather than something needing dismiss handling;
+ *  - `aria-describedby` means screen readers get the definition without
+ *    depending on the visual affordance at all.
+ */
+interface Props {
+  /** The full microcopy line. Rendered verbatim apart from the matched term. */
+  text: string;
+  /** Distinguishes this instance's tip id and its analytics event. Must be unique per page. */
+  location: string;
+  /** Overrides for pages where the default definition is the wrong length. */
+  tip?: string;
+  cue?: string;
+}
+
+const {
+  text,
+  location,
+  tip = 'A free 30-minute conversation about where things stand — plus a one-page readout within 48 hours: three observations and one recommendation, yours to keep whether we work together or not.',
+  cue = 'See what’s included',
+} = Astro.props;
+
+const HREF = '/consultation/';
+
+// First occurrence only. Two tooltips in one short line is noise, not help.
+const match = text.match(/pulse check/i);
+const before = match ? text.slice(0, match.index) : text;
+const label = match?.[0] ?? null;
+const after = match ? text.slice((match.index ?? 0) + match[0].length) : '';
+
+const tipId = `pulse-tip-${location}`;
+---
+{/* Inline content only, no wrapper element: the caller keeps its own <p> so
+    that paragraph still lives in the caller's template and its scoped styles
+    (.hero__micro and friends) keep applying. */}
+<Fragment>
+  {before}{label && (
+    <span class="pulse-term">
+      <a
+        class="pulse-term__trigger"
+        href={HREF}
+        aria-describedby={tipId}
+        data-track="cta_click"
+        data-track-cta="pulse_term"
+        data-track-location={location}
+      >{label}</a>
+      {/* Kept in the layout (visibility, not display) so the script can measure
+          it before it is shown — a display:none element has no box to measure. */}
+      <span class="pulse-term__tip" id={tipId} role="tooltip">
+        <span class="pulse-term__tip-body">{tip}</span>
+        <span class="pulse-term__tip-cue">{cue} <span aria-hidden="true">→</span></span>
+      </span>
+    </span>
+  )}{after}
+</Fragment>
+
+<style>
+  .pulse-term {
+    position: relative;
+    display: inline-block;
+  }
+
+  /* Dotted, not solid: this is a definition, and it should not read as one
+     more link competing with the button directly above it. */
+  .pulse-term__trigger {
+    color: inherit;
+    text-decoration: underline dotted;
+    text-underline-offset: 0.25em;
+    text-decoration-thickness: 1px;
+    cursor: pointer;
+  }
+
+  /* Set --pulse-term-accent on the containing paragraph where bamboo-deep
+     would not survive the background — the closing CTA on service pages runs
+     cream text on bamboo. Custom properties inherit through the component
+     boundary, so the caller can do this from its own scoped styles. */
+  .pulse-term__trigger:hover,
+  .pulse-term__trigger:focus-visible {
+    color: var(--pulse-term-accent, var(--bamboo-deep));
+    text-decoration-style: solid;
+  }
+
+  /* Below the term, not above it: this microcopy always sits directly under a
+     CTA button, and a tip opening upward covers the button the moment someone
+     leans in to find out what they are about to click. The script flips it
+     back up only when there is no room below. */
+  .pulse-term__tip {
+    position: absolute;
+    top: calc(100% + 0.6rem);
+    left: 50%;
+    transform: translateX(calc(-50% + var(--shift, 0px)));
+    z-index: 20;
+
+    width: max-content;
+    max-width: min(20rem, calc(100vw - 2rem));
+    padding: 0.75rem 0.85rem;
+
+    background: var(--charcoal);
+    color: var(--cream);
+    border-radius: var(--radius);
+    box-shadow: 0 8px 24px rgba(38, 37, 31, 0.22);
+
+    /* The tip explains microcopy set in mono at 0.68rem — it has to step back
+       up to a readable size and family or it is no easier to read than the
+       thing it is explaining. */
+    font-family: var(--font-sans);
+    font-size: 0.8rem;
+    line-height: 1.45;
+    letter-spacing: normal;
+    text-align: left;
+    white-space: normal;
+
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: opacity 0.15s ease, visibility 0.15s;
+  }
+
+  .pulse-term__tip.is-above {
+    top: auto;
+    bottom: calc(100% + 0.6rem);
+  }
+
+  .pulse-term__tip::after {
+    content: '';
+    position: absolute;
+    bottom: 100%;
+    /* Follows the trigger, not the box: when the script shifts the tip to stay
+       on screen, an arrow centred on the box would point at empty space. */
+    left: calc(50% - var(--shift, 0px));
+    transform: translateX(-50%);
+    border: 6px solid transparent;
+    border-bottom-color: var(--charcoal);
+  }
+
+  .pulse-term__tip.is-above::after {
+    bottom: auto;
+    top: 100%;
+    border-bottom-color: transparent;
+    border-top-color: var(--charcoal);
+  }
+
+  .pulse-term__tip-body {
+    display: block;
+  }
+
+  .pulse-term__tip-cue {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--sage);
+    font-weight: 500;
+  }
+
+  .pulse-term:hover .pulse-term__tip,
+  .pulse-term:focus-within .pulse-term__tip {
+    opacity: 1;
+    visibility: visible;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pulse-term__tip {
+      transition: none;
+    }
+  }
+</style>
+
+<script>
+  // Keep the tip inside the viewport. Pure CSS can centre it on the term but
+  // cannot pull it back when the term sits near an edge, which on a phone is
+  // most of the time.
+  const PAD = 12;
+
+  for (const term of document.querySelectorAll<HTMLElement>('.pulse-term')) {
+    const tip = term.querySelector<HTMLElement>('.pulse-term__tip');
+    if (!tip) continue;
+
+    const place = () => {
+      tip.classList.remove('is-above');
+      tip.style.setProperty('--shift', '0px');
+
+      const box = tip.getBoundingClientRect();
+
+      let shift = 0;
+      if (box.right > window.innerWidth - PAD) shift = window.innerWidth - PAD - box.right;
+      else if (box.left < PAD) shift = PAD - box.left;
+      tip.style.setProperty('--shift', `${shift}px`);
+
+      // Flip up only if there is no room below AND there is room above —
+      // otherwise a term near the bottom of a short viewport would flip into
+      // an equally clipped position for nothing.
+      const spaceBelow = window.innerHeight - box.bottom;
+      const spaceAbove = term.getBoundingClientRect().top - box.height;
+      if (spaceBelow < PAD && spaceAbove > PAD) tip.classList.add('is-above');
+    };
+
+    term.addEventListener('pointerenter', place);
+    term.addEventListener('focusin', place);
+  }
+</script>

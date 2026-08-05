@@ -1,0 +1,243 @@
+---
+/**
+ * Pulse newsletter signup. Posts to /api/subscribe — the single swappable seam
+ * (PULSE-HOME-BUILD.md §2), so the provider decision never touches this file.
+ *
+ * `variant` controls loudness, which is a conversion rule, not taste:
+ *   - "quiet"  (homepage) — outline button. §3 allows two filled buttons per
+ *     page and the homepage spends both on the hero and final CTAs.
+ *   - "primary" (Pulse index, article end) — filled. There the newsletter IS
+ *     the conversion (§5a: the only filled CTA on the page).
+ */
+interface Props {
+  /** Reported to the API so signups can be attributed per surface. */
+  source: string;
+  variant?: 'quiet' | 'primary';
+  heading?: string;
+  body?: string;
+  class?: string;
+}
+const {
+  source,
+  variant = 'quiet',
+  heading = 'Get Pulse in your inbox.',
+  body = 'One useful idea every other week. No fluff, no funnels.',
+  class: className,
+} = Astro.props;
+---
+<div class:list={['nl', `nl--${variant}`, className]} data-newsletter>
+  <div class="nl__copy">
+    <h3 class="nl__head">{heading}</h3>
+    <p class="nl__body">{body}</p>
+  </div>
+
+  <form class="nl__form" method="POST" action="/api/subscribe" novalidate>
+    <input type="hidden" name="source" value={source} />
+    {/* Honeypot — real visitors never fill this. */}
+    <input
+      class="nl__pot"
+      type="text"
+      name="company"
+      tabindex="-1"
+      autocomplete="off"
+      aria-hidden="true"
+    />
+    <label class="nl__label" for={`nl-email-${source}`}>Email address</label>
+    <div class="nl__row">
+      <input
+        class="nl__input"
+        id={`nl-email-${source}`}
+        type="email"
+        name="email"
+        required
+        placeholder="you@yourorg.org"
+        autocomplete="email"
+      />
+      <button class="nl__btn" type="submit">Subscribe</button>
+    </div>
+    {/* aria-live so the result is announced without moving focus. */}
+    <p class="nl__msg" data-nl-msg role="status" aria-live="polite"></p>
+  </form>
+</div>
+
+<style>
+  .nl {
+    display: grid;
+    gap: 1.25rem;
+    padding: clamp(1.5rem, 3vw, 2rem);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream-soft);
+  }
+
+  @media (min-width: 860px) {
+    .nl {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.1fr);
+      align-items: center;
+      gap: 2.5rem;
+    }
+  }
+
+  .nl__head {
+    font-family: var(--font-serif);
+    font-size: 1.25rem;
+    line-height: 1.3;
+    margin: 0 0 0.4rem;
+  }
+
+  .nl__body {
+    font-size: 0.92rem;
+    line-height: 1.55;
+    color: var(--stone-deep);
+    margin: 0;
+  }
+
+  /* Visible label, not placeholder-as-label: the placeholder is an example
+     address, which is a different thing from the field's name. */
+  .nl__label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    margin-bottom: 0.4rem;
+  }
+
+  .nl__row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+  }
+
+  .nl__input {
+    flex: 1 1 14rem;
+    min-width: 0;
+    padding: 0.7rem 0.85rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    color: var(--charcoal);
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .nl__input:focus-visible {
+    outline: 2px solid var(--bamboo-deep);
+    outline-offset: 1px;
+  }
+
+  .nl__btn {
+    padding: 0.7rem 1.25rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    font-weight: 500;
+    border-radius: var(--radius);
+    cursor: pointer;
+    border: 1px solid var(--charcoal);
+    background: transparent;
+    color: var(--charcoal);
+    transition: background 0.2s ease, color 0.2s ease;
+  }
+
+  .nl__btn:hover {
+    background: var(--charcoal);
+    color: var(--cream);
+  }
+
+  /* Where the newsletter is the page's conversion, it gets the filled treatment. */
+  .nl--primary .nl__btn {
+    background: var(--charcoal);
+    color: var(--cream);
+  }
+
+  .nl--primary .nl__btn:hover {
+    background: var(--bamboo-deep);
+    border-color: var(--bamboo-deep);
+  }
+
+  .nl__pot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    opacity: 0;
+  }
+
+  .nl__msg {
+    margin: 0.6rem 0 0;
+    font-size: 0.85rem;
+    min-height: 1.2em;
+    color: var(--stone-deep);
+  }
+
+  .nl__msg[data-state='error'] { color: #b4462f; }
+  .nl__msg[data-state='ok'] { color: var(--bamboo-deep); }
+
+  /* Dark surfaces (homepage Pulse strip) */
+  :global(.section--dark) .nl {
+    background: transparent;
+    border-color: rgba(245, 241, 231, 0.28);
+  }
+  :global(.section--dark) .nl__body,
+  :global(.section--dark) .nl__label { color: var(--sage); }
+  :global(.section--dark) .nl__input {
+    background: transparent;
+    border-color: rgba(245, 241, 231, 0.35);
+    color: var(--cream);
+  }
+  :global(.section--dark) .nl__btn {
+    border-color: var(--cream);
+    color: var(--cream);
+  }
+  :global(.section--dark) .nl__btn:hover {
+    background: var(--cream);
+    color: var(--charcoal);
+  }
+</style>
+
+<script>
+  // Progressive enhancement: without JS the form still posts and the JSON
+  // response is shown as a page. With JS it stays in place.
+  document.querySelectorAll<HTMLFormElement>('.nl__form').forEach((form) => {
+    const msg = form.querySelector<HTMLElement>('[data-nl-msg]');
+    const btn = form.querySelector<HTMLButtonElement>('.nl__btn');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!msg || !btn) return;
+
+      const email = new FormData(form).get('email');
+      if (!email || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(String(email))) {
+        msg.dataset.state = 'error';
+        msg.textContent = 'Enter a valid email address.';
+        return;
+      }
+
+      btn.disabled = true;
+      msg.dataset.state = '';
+      msg.textContent = 'Subscribing…';
+
+      try {
+        const res = await fetch('/api/subscribe', {method: 'POST', body: new FormData(form)});
+        const data = await res.json();
+        if (data.ok) {
+          msg.dataset.state = 'ok';
+          msg.textContent = 'You’re on the list. Watch for the next one.';
+          form.reset();
+          (window as any).pantaTrack?.('newsletter_subscribe', {
+            location: form.querySelector<HTMLInputElement>('[name=source]')?.value ?? 'unknown',
+          });
+        } else {
+          msg.dataset.state = 'error';
+          msg.textContent = data.error ?? 'Something went wrong.';
+        }
+      } catch {
+        msg.dataset.state = 'error';
+        msg.textContent = 'Something went wrong. Try again in a moment.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+</script>

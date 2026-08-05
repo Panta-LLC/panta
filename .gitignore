@@ -4,3 +4,9 @@ dist/
 .astro/
 .vercel
 .env*
+.claude/
+
+# Sanity Studio build / generated output
+studio/dist/
+studio/.sanity/
+studio/.schema-manifest*.json

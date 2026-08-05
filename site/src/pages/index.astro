@@ -1,1221 +1,1354 @@
 ---
 import '@fontsource/baloo-2/800.css';
+import '@fontsource/ibm-plex-mono/400.css';
 import Base from '../layouts/Base.astro';
 import RippleMark from '../components/RippleMark.astro';
-import { getDoc } from '../lib/sanity.js';
+import SectionViews from '../components/SectionViews.astro';
+import NewsletterForm from '../components/NewsletterForm.astro';
+import Placeholder from '../components/Placeholder.astro';
+import PulseTerm from '../components/PulseTerm.astro';
+import LeadForm from '../components/LeadForm.astro';
+import { getDoc, getFeaturedCaseStudy, getPillars, getPosts, getProjects, getServices } from '../lib/sanity.js';
+import { serviceHref, orderServices } from '../lib/pillars.js';
+import { faqSchema } from '../lib/schema.js';
 
-const c = await getDoc('missionPage');
-// Entries without an href render as "coming soon" — add the href in Sanity
-// once the practice has a page and it becomes a link.
-const practices = c.practices;
-
-// Sanity gives practices only a title and href, so the analytics identity has
-// to be derived from the destination.
-const PRACTICE_CTA = {
-  '/web-strategy/': 'web_strategy',
-  '/community-programs/': 'community_programs',
-  '/product-development/': 'product_development',
-};
-
-// The hero is a four-state slideshow: state 0 is the mission statement (all
-// three words, the quote and the offer), states 1-3 are the verbs that used to
-// be pinned 100svh panels. Only the verbs are real slide elements — "intro" is
-// the absence of an active verb, which is also the no-JS state.
+// Homepage per PULSE-HOME-BUILD.md §4 and panta-homepage-copy.md. Nine
+// sections, every CTA routing to the Pulse Check except the editorial strip.
 //
-// `_key` doubles as the deep-link id AND as the `section` value reported to
-// GA4, so the existing home_section_view funnel (build/connect/create) survives
-// this rewrite — see the analytics script at the bottom of this file.
-const verbSlides = c.verbPanels;
-const slideCount = verbSlides.length + 1;
-const INTRO_LABEL = 'Build. Connect. Create.';
+// Copy lives in this file rather than Sanity by design: the brief's schema (§6)
+// puts only the DYNAMIC slots in the CMS — trust bar logos, featured case
+// study, newsletter blurb, Pulse posts. Section prose is launch copy from the
+// deck and is version-controlled with it.
+//
+// Two exceptions, both because the same copy appears on more than one page and
+// drifted when it was duplicated: the hero (Home hero singleton) and the three
+// pillars (`pillar` documents, also rendered on the services overview).
+const settings = await getDoc('siteSettings');
+
+// Hero copy is editable in the Studio (Home hero). Every field falls back to
+// the launch copy from panta-homepage-copy.md §1, so an empty or missing
+// document renders the shipped page rather than a blank hero — and the deck's
+// alternate headlines can be tested without a deploy.
+const hero = (await getDoc('homeHero')) ?? {};
+const HERO = {
+  headline: hero.headline || 'For organizations that serve people, not algorithms.',
+  subhead:
+    hero.subhead ||
+    'Panta helps small businesses and community organizations get found, run smoother, and tell their story — without the agency runaround.',
+  ctaLabel: hero.ctaLabel || 'Book a free 30-minute review',
+  ctaMicrocopy: hero.ctaMicrocopy || 'We call it the Pulse Check · written readout in 48 hours',
+  secondaryLabel: hero.secondaryLabel || 'See our work',
+};
+const caseStudy = await getFeaturedCaseStudy();
+const posts = await getPosts(3);
+
+// Booking destination. /consultation/ is the Pulse Check page — the URL is
+// unchanged so existing inbound links keep working.
+const BOOK = '/consultation/';
+// Deep link straight to the scheduler embed, for buttons whose label promises
+// booking rather than reading. #book is the booking section on /consultation/.
+const BOOK_FORM = '/consultation/#book';
+
+// §4.1 — the hero's "What we do" index, from Sanity. Each service links to
+// its own page once `pageReady` is set, and to its block on the overview
+// before that — serviceHref() owns that decision so nothing here hardcodes
+// either form. Every service page ends in its own review CTA, which is what
+// makes these scenic routes rather than leaks.
+const PILLARS = await getPillars();
+const SERVICES = orderServices(PILLARS, await getServices()).map((s) => ({
+  label: s.indexLabel ?? s.title,
+  href: serviceHref(s),
+}));
+
+
+const STEPS = [
+  {
+    n: '1',
+    title: 'Pulse Check.',
+    // Deliberately does NOT restate the offer: §4.4 pitches it in full about a
+    // screen above this, and the two ran word-for-word identical. A process
+    // step should say what happens, not re-sell what was already sold.
+    body: 'In 30 minutes, we discuss where things stand today and explore the best path forward. You tell us your top priorities and we share our recommendations on what the best first step might be. We follow up with a written summary, which you can use to make a decision or hand off to someone else.',
+  },
+  {
+    n: '2',
+    title: 'Plan together.',
+    body: 'We follow up on the Pulse Check with a detailed plan of action, agree on a scope of work, set a timeline, and get started. The path forward is always in your hands.'
+  },
+  {
+    n: '3',
+    title: 'Build and support.',
+    body: 'We execute on the plan, review progress on an agreed-upon cadence, and make adjustments as needed. We stay reachable and responsive to your feedback and questions. Upon delivery, we hand over the project, answer any final questions, and offer ongoing support as agreed upon.',
+  },
+];
+
+// The §4.2 trust bar is gone: the case study now occupies that slot, and a row
+// of two logos under "trusted by" was doing less work than the work itself.
+// `siteSettings.trustBarClients` and getTrustBarLogos() are untouched — no
+// other page reads them today, but the curation still exists in the Studio if
+// a logo wall is ever wanted back.
+
+// §4.6 — the case section showed one project while two exist. Both now render
+// as full previews: the featured study first, then the rest of /work/. Nothing
+// here is new content, and the two queries project the same fields the card
+// needs (name, thumbnail, summary, outcome, slug, client.sector), so they
+// compose into one list without a shape mismatch.
+const otherProjects = ((await getProjects()) ?? [])
+  .filter((p) => p.slug && p.slug !== caseStudy?.slug);
+const CASES = [caseStudy, ...otherProjects].filter(Boolean).slice(0, 2);
+
+// The objection set, placed immediately before the ask. Launch prose, so it
+// lives here rather than in Sanity for the same reason STEPS does (see the
+// header comment): these are claims about how Panta works, and the copy bans
+// in check-launch.mjs are a build-time grep — copy that must clear a lint
+// belongs where the lint runs. If these ever need editing without a deploy,
+// `homeHero` is the right home; it already declares itself that exception.
+//
+// Note question 1: "fixed price, plain terms" is promised in STEPS[1] and no
+// number appears anywhere on the site. This is where that gets an answer.
+const FAQS = [
+  {
+    q: 'What does working together cost?',
+    a: 'Projects are quoted at a fixed price before anything starts. We start with a free review of your current priorites and goals, and then we can discuss the best path forward. Once a project is scoped, we provide a detailed estimate and proposal, and work to finalize a scope of work within your budget.',
+  },
+  {
+    q: 'How long does it take?',
+    a: 'We start with a free 30 minute review of your current situation, then we discuss a scope and timeline that fits your budget and time constraints.',
+  },
+  {
+    q: 'What if we decide not to work together?',
+    a: 'We aim to provide you value each step of the way. Our goal is to be available for you and deliver the best possible results within our scope of work. When that work is complete, we hope you continue to use Panta as a partner and a resource, but you are under no obligation outside of our agreed-upon scope of work.',
+  },
+  {
+    q: 'Are we locked in afterward?',
+    a: 'No. each project is delivered with your ownership and control. We are always available to answer questions and provide support, but you are not locked in to working with us. You can continue to use Panta as a partner and a resource, or you can choose to work with someone else.'
+  },
+];
 ---
+{/* The title is deliberately NOT derived from HERO.headline: the headline is
+    meant to be A/B tested from the Studio, and the title tag should not churn
+    with it — nor inherit a headline longer than the ~60 characters search
+    results display. */}
 <Base
-  title="Panta — Build. Connect. Create."
-  description="Panta exists to support the people who support our community — through Web Strategy & Development, Community Program Development, and Product Development."
+  title="Panta — Digital, strategic, and creative support"
+  description="Panta helps small businesses and community organizations get found, run smoother, and tell their story — without the agency runaround."
+  schema={[faqSchema(FAQS)].filter(Boolean)}
 >
-  <!-- ======================= hero slideshow ======================= -->
-  <section class="mhero" id="top" data-section="hero">
-    <div
-      class="container mhero__grid"
-      role="group"
-      aria-roledescription="carousel"
-      aria-label={INTRO_LABEL}
-      data-slides
-    >
-      <!-- The stage: three stacked rows. Rows 1 and 2 are shared across every
-           slide (the eyebrow and the display words, which wipe behind a mask);
-           row 3 stacks the three verb bodies in a single grid cell, so its
-           height is the tallest body's and never changes when slides swap. -->
-      <div class="mslides" id="hero-slides" aria-live="off">
-        <div class="mslides__eyebrows" aria-hidden="true">
-          {verbSlides.map((p) => (
-            <p class="mslide__eyebrow" data-eyebrow={p._key}>{p.num}</p>
-          ))}
+  <!-- ===================== 1. hero ===================== -->
+  <!-- Two columns: the claim on the left, what we actually do on the right.
+       The service index is hairline rows with arrows, NOT cards or buttons —
+       nothing may compete with the one filled button (§3, §4.1). -->
+  <section class="hero" id="top" data-section="hero">
+    <div class="container hero__grid">
+      <div class="hero__claim">
+        <h1 class="hero__headline">{HERO.headline}</h1>
+        <p class="hero__sub">{HERO.subhead}</p>
+        <a
+          class="hero__quiet"
+          href="/work/"
+          data-track="cta_click"
+          data-track-cta="work"
+          data-track-location="home_hero"
+        >{HERO.secondaryLabel} <span aria-hidden="true">→</span></a>
+      </div>
+
+      {/* The index and the button are wrapped separately so mobile can put the
+          button first — see .hero__index in the stylesheet. */}
+      <div class="hero__index">
+        <div class="hero__svc">
+          <p class="kicker">What we do</p>
+          <ul class="svc-index">
+            {SERVICES.map((s) => (
+              <li>
+                <a
+                  href={s.href}
+                  data-track="cta_click"
+                  data-track-cta="service_index"
+                  data-track-location="home_hero"
+                >
+                  <span>{s.label}</span>
+                  <span class="svc-index__arrow" aria-hidden="true">→</span>
+                </a>
+              </li>
+            ))}
+          </ul>
         </div>
 
-        {/* Real anchors so they still deep-link with JS off; the slideshow
-            intercepts the click to swap slides instead. They must NOT carry
-            data-target — the handler that preventDefaulted every such element
-            left with the pinned panels, and nothing should resurrect it. */}
-        <h1 class="mhero__words">
-          {verbSlides.map((p) => (
-            <a
-              class="mword"
-              href={`#${p._key}`}
-              data-word={p._key}
-              data-track="mission_jump"
-              data-track-word={p._key}
-              data-track-location="hero"
-            ><span>{p.word}</span></a>
-          ))}
-        </h1>
+        <div class="hero__act">
+          <a
+            class="btn btn--filled hero__cta"
+            href={BOOK}
+            data-track="cta_click"
+            data-track-cta="pulse_check"
+            data-track-location="home_hero"
+          >{HERO.ctaLabel}</a>
+          <p class="hero__micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
+        </div>
+      </div>
+    </div>
+  </section>
 
-        {verbSlides.map((p, i) => (
-          <div
-            class="mslide"
-            id={p._key}
-            data-slide={p._key}
-            role="group"
-            aria-roledescription="slide"
-            aria-label={`${i + 2} of ${slideCount}: ${p.word}`}
-            inert
-          >
-            <h2 class="mslide__head" data-rise>{p.head}</h2>
-            <p class="mslide__story" data-rise>{p.story}</p>
-            <ul class="mslide__chips">
-              {p.chips.map((chip) => <li data-rise>{chip}</li>)}
+  <!-- ===================== 2. featured case study ===================== -->
+  <!-- Was §4.6, four screens down, behind the pillars and the process. It now
+       occupies the trust bar's slot: the claim is followed immediately by the
+       evidence for it, which is the move both reference sites make. The logo
+       row that used to sit here is gone — two logos under "trusted by" read
+       thinner than the work itself does.
+       The sector line and the 48-hour promise survive as the closing strip,
+       since they were the rest of what the trust bar was doing. -->
+  {CASES.length > 0 && (
+    <section class="section case" data-section="case">
+      <div class="container">
+        <p class="kicker">Recent work</p>
+        <div class="case__grid">
+          {CASES.map((c, i) => (
+            <article class="case__item">
+              <a class="case__media" href={`/work/${c.slug}/`} tabindex="-1" aria-hidden="true">
+                {c.thumbnail ? (
+                  <img src={c.thumbnail.replace('-thumb', '')} alt="" loading="lazy" decoding="async" />
+                ) : (
+                  <div class="case__media-empty"></div>
+                )}
+              </a>
+              {/* The quote moved up to the pillars close, so each preview leads
+                  on the client's name — it says what the work was, which is
+                  what a visitor is here for by this point. */}
+              <h2 class="case__head">{c.name}</h2>
+              <p class="case__meta">{c.client?.sector ?? c.clientType}</p>
+              <p class="case__body">{c.summary}</p>
+
+              {/* `project.contributions` — the scope of the engagement. It says
+                  what Panta actually did, which the summary describes and the
+                  outcome doesn't. Inline rather than stacked rows: three items
+                  as hairline rows would be taller than the summary above it. */}
+              {(c.contributions ?? []).length > 0 && (
+                <div class="case__did">
+                  <p class="kicker">What we did</p>
+                  <p class="case__did-list">{c.contributions.join(' · ')}</p>
+                </div>
+              )}
+
+              {/* §7.4 still holds — nothing here may be invented. What changed
+                  is that the slot no longer demands a NUMBER: `project.outcome`
+                  is a real field ("Short outcome line shown on cards") the
+                  query already selects, so a true sentence fills it. The
+                  blocking placeholder is kept for the FEATURED case only:
+                  making every card demand one would add launch blockers for
+                  secondary work that was never promised an outcome line. */}
+              {c.outcome ? (
+                <p class="case__outcome">{c.outcome}</p>
+              ) : i === 0 ? (
+                <p class="case__outcome-ph">
+                  <Placeholder note={`the outcome line for ${c.name} — a sentence, not a number`}>
+                    [What changed for them — one sentence]
+                  </Placeholder>
+                </p>
+              ) : null}
+
+              <a
+                class="case__link"
+                href={`/work/${c.slug}/`}
+                data-track="cta_click"
+                data-track-cta={i === 0 ? 'case_study' : 'case_study_secondary'}
+                data-track-location="home_case"
+              >Read the full story <span aria-hidden="true">→</span></a>
+            </article>
+          ))}
+        </div>
+      </div>
+
+      <div class="container case__trust">
+        <p class="case__trust-claim">
+          Nonprofits, independent practitioners, and small businesses across Northern California.
+        </p>
+        <p class="case__trust-promise">
+          Free 30-minute review · written readout within 48 hours · yours to keep either way
+        </p>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== 3. problem framing ===================== -->
+  <!-- Voice surface: serif, centered, narrow measure. -->
+  <!-- <section class="section problem" data-section="problem">
+    <div class="container problem__inner">
+      <p class="problem__lead">Your work matters to real people in a real place.</p>
+      <p class="problem__body">
+        But the website hasn’t kept up. The systems live in one person’s head. And the story
+        that makes people show up, donate, or book isn’t reaching them.
+      </p>
+      <p class="problem__turn">You don’t need a digital transformation. You need a partner who gets it.</p>
+    </div>
+  </section> -->
+
+  <!-- ===================== 4. service pillars ===================== -->
+  <!-- Structure surface: sans. Green appears here as the pillar icons only. -->
+  <section class="section section--dark" id="services" data-section="pillars">
+    <div class="container">
+      <h2 class="pillars__head">Three ways we help.</h2>
+      {PILLARS.length === 0 && (
+        <Placeholder note="the three pillar documents (Studio → Pillars)" />
+      )}
+      <div class="pillars">
+        {/* The mark is chosen by pillar id, not position: pillars are content
+            now, and reordering them in the Studio must not hand Creative the
+            magnifying glass. The numeral IS positional — it counts columns. */}
+        {PILLARS.map((p, i) => (
+          <article class="pillar">
+            <div class="pillar__rule">
+              <span class="pillar__icon" aria-hidden="true">
+                {p.id === 'digital' && (
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="11" cy="11" r="7" />
+                    <path d="M16.5 16.5L21 21" />
+                  </svg>
+                )}
+                {p.id === 'strategic' && (
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M4 7h10M4 12h16M4 17h7" />
+                    <circle cx="18" cy="7" r="2.2" />
+                    <circle cx="14" cy="17" r="2.2" />
+                  </svg>
+                )}
+                {p.id === 'creative' && (
+                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M12 3l2.4 5.4 5.6.6-4.2 3.9 1.2 5.6L12 15.8 6.9 18.5l1.2-5.6L4 9l5.6-.6z" />
+                  </svg>
+                )}
+              </span>
+              <span class="pillar__n" aria-hidden="true">{`0${i + 1}`}</span>
+            </div>
+            <p class="pillar__kicker">{p.kicker}</p>
+            <h3 class="pillar__head">{p.head}</h3>
+            <p class="pillar__lede">{p.lede}</p>
+            <ul class="pillar__list">
+              {(p.bullets ?? []).map((item) => <li>{item}</li>)}
             </ul>
-          </div>
+          </article>
         ))}
       </div>
-
-      <!-- The frame: the offer and the practices never fade, so the thing you
-           can hire us for is on screen for the whole story. The intro copy
-           keeps its layout height when hidden (visibility, not display), which
-           is what keeps the CTA at the same y-position on all four slides. -->
-      <div class="mhero__frame">
-        <div class="mhero__intro-copy" data-intro-copy>
-          <p class="mhero__quote">{c.quote}</p>
-          <p class="mhero__sub">{c.summary}</p>
-
-          {/*
-            HARDCODED: the mission story says what Panta believes but never what
-            it sells, so this states the offer inside the first viewport. There is
-            no missionPage field free to hold it and the Studio is a separate
-            project — to make it editable, add `heroOfferLine` to the missionPage
-            schema and swap this for {c.heroOfferLine}.
-          */}
-          <p class="mhero__offer">
-            Today that means one thing you can hire us for: your
-            <strong> web presence</strong> — planned, built, and kept working.
+      <div class="pillars__close">
+        <div>
+          <p class="pillars__cta">
+            Not sure where to start? Our Pulse Check is a free 30-minute conversation about where things stand. You’ll get a one-page readout within 48 hours — three observations and one recommendation, yours to keep either way.
           </p>
-        </div>
-
-        {c.heroDirectLabel && (
-          <div class="btn-row mhero__cta">
+          <div class="pillars__actions">
+            {/* Ghost, not filled. §7.3 caps the page at two filled buttons and
+                they are now spent on the hero (first ask) and the form in the
+                close (the on-page conversion). On charcoal a cream-outlined
+                button is still unmistakably a button — and this is the third
+                ask inside two screens, sitting beside two text links and a
+                testimonial, so it was the one competing rather than earning. */}
             <a
-              href={c.heroDirectHref}
-              class="btn btn--primary"
+              href={BOOK_FORM}
+              class="btn btn--ghost"
               data-track="cta_click"
-              data-track-cta="websites"
-              data-track-location="home_hero"
-            >{c.heroDirectLabel}</a>
+              data-track-cta="pulse_check"
+              data-track-location="home_pillars"
+            >Book a free 30-minute review</a>
+            <a href={BOOK} class="pillars__learn-more" data-track="cta_click" data-track-cta="learn_more_pulse_check" data-track-location="home_pillars_more">
+              Learn more <span aria-hidden="true">→</span>
+            </a>
           </div>
-        )}
-
-        {/* The umbrella stays visible, but as a footnote — not as the menu. */}
-        <div class="mhero__practices">
-          <p class="mhero__practices-label">{c.practicesLabel}</p>
-          <ul class="mhero__practices-list">
-            {practices.map((p) => (
-              <li>
-                {p.href ? (
-                  <a
-                    href={p.href}
-                    data-track="cta_click"
-                    data-track-cta={PRACTICE_CTA[p.href] ?? 'practice'}
-                    data-track-location="home_hero_practices"
-                  >{p.title}</a>
-                ) : (
-                  <>
-                    <span class="mhero__practice-soon">{p.title}</span>
-                    <span class="mhero__practice-tag">Coming soon</span>
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
+          {/* Escape hatch: a calendar is a commitment, and some visitors want to
+              ask a question first. Kept quiet and text-only so it never competes
+              with the booking button — it catches the people who'd otherwise
+              leave, not the ones already reaching for a time slot.
+              Now points at the form in the close rather than off to /contact/:
+              the same escape, without leaving the page. */}
+          <!-- <p class="pillars__escape">
+            Not ready to put a time on the calendar?
+            <a href="#start" data-track="cta_click" data-track-cta="message_instead" data-track-location="home_pillars">
+              Tell us what&rsquo;s going on instead <span aria-hidden="true">→</span>
+            </a>
+          </p> -->
         </div>
 
-        <!-- Controls last, so the CTA keeps the first tab stop in the hero. -->
-        <div class="mslides__bar">
-          <button
-            class="mslides__arrow"
-            type="button"
-            data-slide-dir="-1"
-            aria-controls="hero-slides"
-            aria-label="Previous slide"
-          ><span aria-hidden="true">←</span></button>
+        {/* The featured quote is testimony about the Pulse Check itself — "found
+            in 30 minutes what two other people missed for months" — so it earns
+            the booking button, not the case study four screens down where it
+            used to sit describing a website rebuild it isn't about. Same
+            `caseStudy` document; §4.6 keeps the image, summary and story link. */}
+        {caseStudy?.quote && (
+          <figure class="pillars__proof">
+            <blockquote>“{caseStudy.quote}”</blockquote>
+            {caseStudy.quoteAuthor && (
+              <figcaption>
+                — {caseStudy.quoteAuthor}{caseStudy.quoteRole ? `, ${caseStudy.quoteRole}` : ''}
+              </figcaption>
+            )}
+          </figure>
+        )}
+      </div>
+    </div>
+  </section>
 
-          <ul class="mslides__dots">
-            <li>
-              <button
-                class="mslides__dot is-active"
-                type="button"
-                data-slide-to="0"
-                aria-controls="hero-slides"
-                aria-current="true"
-                aria-label={`Slide 1 of ${slideCount}: ${INTRO_LABEL}`}
-                data-track="mission_jump"
-                data-track-word="intro"
-                data-track-location="dots"
-              ></button>
-            </li>
-            {verbSlides.map((p, i) => (
-              <li>
-                <button
-                  class="mslides__dot"
-                  type="button"
-                  data-slide-to={i + 1}
-                  aria-controls="hero-slides"
-                  aria-label={`Slide ${i + 2} of ${slideCount}: ${p.word}`}
-                  data-track="mission_jump"
-                  data-track-word={p._key}
-                  data-track-location="dots"
-                ></button>
-              </li>
-            ))}
-          </ul>
+  <!-- ===================== 5. how it works ===================== -->
+  <section class="section" data-section="process">
+    <div class="container">
+      <h2 class="steps__head">A clear path to growth and impact.</h2>
+      <ol class="steps">
+        {STEPS.map((s) => (
+          <li class="step">
+            <span class="step__n" aria-hidden="true">{s.n}</span>
+            <div>
+              <h3 class="step__title">{s.title}</h3>
+              <p class="step__body">{s.body}</p>
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
 
-          <button
-            class="mslides__arrow"
-            type="button"
-            data-slide-dir="1"
-            aria-controls="hero-slides"
-            aria-label="Next slide"
-          ><span aria-hidden="true">→</span></button>
-
-          {/* WCAG 2.2.2: content that auto-updates every 6s needs an explicit
-              stop that doesn't change the content. Hidden until JS actually
-              starts autoplay. */}
-          <button class="mslides__stop" type="button" aria-controls="hero-slides" hidden>Stop</button>
-
-          <p class="mslides__now" aria-hidden="true" data-intro-label={INTRO_LABEL}>
-            1 / {slideCount} · {INTRO_LABEL}
+  <!-- ===================== 7. Pulse strip ===================== -->
+  <!-- The one section that does NOT route to the Pulse Check (§7.2): it routes
+       to Pulse and to subscribe. -->
+  <section class="section section--dark pulse-strip" data-section="pulse">
+    <div class="container">
+      <div class="pulse-strip__top">
+        <div>
+          <h2 class="pulse-strip__masthead">Pulse</h2>
+          <p class="pulse-strip__tagline">
+            We're always busy finding new ways to support our communities and the  businesses and organizations that serve them. This is where we share our latest insights, ideas, and resources.
           </p>
         </div>
+        <a
+          class="pulse-strip__all"
+          href="/pulse/"
+          data-track="cta_click"
+          data-track-cta="pulse_index"
+          data-track-location="home_pulse"
+        >Read all of Pulse <span aria-hidden="true">→</span></a>
       </div>
-    </div>
 
-    <p class="mhero__cue" aria-hidden="true">
-      <span class="mhero__cue-arrow">↓</span> scroll
-    </p>
+      {posts.length > 0 ? (
+        <ul class="pulse-cards">
+          {posts.map((p) => (
+            <li class="pulse-card">
+              <a href={`/pulse/${p.slug}/`} data-track="cta_click" data-track-cta="post" data-track-location="home_pulse">
+                <h3 class="pulse-card__title">{p.title}</h3>
+                <p class="kicker pulse-card__meta">
+                  {p.category?.name}
+                  {p.contentType === 'guide' ? ' · Guide' : ''}
+                  {p.readTime ? ` · ${p.readTime} min read` : ''}
+                </p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        /* §9 launch blocker: the strip cannot ship empty. Visible and
+           machine-detectable rather than silently absent. */
+        <p class="pulse-empty">
+          <Placeholder note="three published Pulse pieces (one per category preferred)">
+            [Pulse strip has no posts — homepage cannot ship in this state]
+          </Placeholder>
+        </p>
+      )}
+
+      <NewsletterForm
+        source="home_pulse"
+        variant="quiet"
+        body={settings?.newsletterBlurb ?? 'One useful idea every other week. No fluff, no funnels.'}
+        class="pulse-strip__nl"
+      />
+    </div>
   </section>
 
-  <!-- ======================= origin ======================= -->
-  <section class="origin section--dark" id="origin" data-section="origin">
-    <div class="container origin__grid">
-      <div class="origin__copy">
-        <p class="label">{c.originLabel}</p>
-        <h2>{c.originTitle}</h2>
-        <p class="lede">{c.originLede}</p>
-        <p>{c.originBody}</p>
-        <p class="origin__turn"><em>{c.originTurn}</em></p>
+  <!-- ===================== 8. founder note ===================== -->
+  <section class="section founder" data-section="founder">
+    <div class="container founder__grid">
+      <div class="founder__photo">
+        <Placeholder note="founder photo in a natural setting — not a headshot against a wall">
+          [Photo: Damon]
+        </Placeholder>
       </div>
-      <div class="origin__mark" aria-hidden="true">
-        <svg viewBox="0 0 200 200" class="origin-ripple">
-          <circle cx="100" cy="100" r="88" stroke="currentColor" stroke-width="1" fill="none" />
-          <circle cx="100" cy="100" r="62" stroke="currentColor" stroke-width="1.6" fill="none" />
-          <circle cx="100" cy="100" r="38" stroke="currentColor" stroke-width="2.6" fill="none" />
-          <circle cx="100" cy="100" r="16" stroke="#6F8B3C" stroke-width="5" fill="none" />
-        </svg>
+      <div class="founder__copy">
+        <!-- <p>
+          I started Panta because the organizations doing the most important work are usually
+          the ones with the least support. Big agencies don’t want the account. DIY tools eat
+          your weekends. So the work that holds communities together stays invisible.
+        </p> -->
+        <p>
+          I started Panta because I believe the small businesses and organizations that serve our communities deserve the capabilities and support that larger companies take for granted. Our mission is to help them build and grow in a way that is sustainable and impactful.
+        </p>
+        <p>
+          I’ve spent over 15 years building for companies of every size. Now I bring that experience to the
+          people that serve people. If that’s you, We’d love to talk.
+        </p>
+        <p class="founder__sign">
+          — Damon<br />
+          <span>Founder, Panta</span>
+        </p>
       </div>
     </div>
   </section>
 
-  <!-- ======================= convergence ======================= -->
-  {/* Bamboo, not charcoal: the verb panels used to break up the page, and
-      without them origin would run straight into the footer as one dark block. */}
-  <section class="mconverge section section--bamboo" data-section="converge">
-    <div class="container mconverge__inner">
-      <p class="mconverge__words" aria-hidden="true">
-        <span>Build.</span> <span>Connect.</span> <span>Create.</span>
-      </p>
-      <div class="mconverge__reveal">
-        <RippleMark size={56} />
-        <h2>{c.convergeTitle}</h2>
-        <p class="lede">{c.convergeLede}</p>
-        <div class="btn-row">
+  <!-- ===================== 8.5 FAQ ===================== -->
+  <!-- Objections sit adjacent to the ask, so the answers are still on screen
+       while the visitor decides. Sans (structure surface) — it also breaks the
+       page's only three-serif run: case → pulse → founder → FAQ → final. -->
+  <section class="section faq" data-section="faq">
+    <div class="container faq__inner">
+      <p class="kicker">Questions we get</p>
+      <h2 class="faq__head">Before you book, the honest answers.</h2>
+      <p class="faq__lede">If yours isn’t here, ask it on the call — or send it below.</p>
+      <div class="faq__list">
+        {/* Native <details>: keyboard, screen readers and find-in-page all work
+            with no JS, which a hand-rolled aria-expanded accordion does not.
+            Deliberately NOT name="home-faq" — exclusive accordions collapse the
+            answer you were comparing against and jump the scroll position. */}
+        {FAQS.map((f) => (
+          <details class="faq__item">
+            <summary class="faq__q">
+              <span>{f.q}</span>
+              <span class="faq__mark" aria-hidden="true"></span>
+            </summary>
+            <div class="faq__panel"><p>{f.a}</p></div>
+          </details>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 9. final CTA ===================== -->
+  <!-- The close is now the conversion, not a signpost to one. Two ways to make
+       the same request (§7.2 is one conversion BEHAVIOR per surface, not one
+       mechanism): the form for people who won't open a calendar, the link for
+       people who will. -->
+  <section class="section section--bamboo final" id="start" data-section="final">
+    <div class="container final__grid">
+      <div class="final__inner">
+        <RippleMark size={48} class="ripple-mark" />
+        <h2 class="final__head">Start with a Pulse Check — a free 30-minute review.</h2>
+        <p class="final__body">
+          A short conversation about where things stand. We'll discuss your current priorities and goals, and explore options to serve your most important needs. We'll follow up with a written summary, recommendations for next steps, and an invitation to continue the conversation. No strings attached, whether we work together or not.
+        </p>
+      </div>
+
+      <div class="final__act">
+        <LeadForm source="home_final">
           <a
-            href="/web-strategy/"
-            class="btn btn--primary"
+            slot="aside"
+            class="final__book"
+            href={BOOK}
             data-track="cta_click"
-            data-track-cta="web_strategy"
-            data-track-location="home_converge"
-          >{c.primaryCtaLabel}</a>
-          <a
-            href="/consultation/"
-            class="btn btn--ghost"
-            data-track="cta_click"
-            data-track-cta="consultation"
-            data-track-location="home_converge"
-          >{c.secondaryCtaLabel}</a>
-        </div>
+            data-track-cta="pulse_check"
+            data-track-location="home_final"
+          >or pick a time now <span aria-hidden="true">→</span></a>
+        </LeadForm>
       </div>
     </div>
   </section>
 </Base>
 
 <style>
-  /* --- hero --------------------------------------------------------------- */
+  /* ---------------------------------------------------------------- hero -- */
 
-  /* Pulled up under the sticky header so the per-slide tint reaches the top of
-     the viewport instead of leaving a cream strip above it. The header height
-     moves from min-height into padding-top, so the content budget is unchanged. */
-  .mhero {
-    position: relative;
+  .hero {
     margin-top: calc(var(--header-h) * -1);
-    min-height: 100svh;
-    display: grid;
-    align-content: start;
-    padding-block: calc(var(--header-h) + clamp(1.25rem, 3.5vw, 2.5rem))
-                   clamp(2.75rem, 7vw, 4.5rem);
-    background: var(--hero-bg);
-    color: var(--hero-ink);
-    transition: background-color 0.55s ease, color 0.55s ease;
+    padding-block: calc(var(--header-h) + clamp(2.5rem, 7vw, 3rem)) clamp(3rem, 7vw, 5rem);
+    background: var(--cream);
   }
 
-  .mhero__grid {
+  .hero__grid {
     display: grid;
-    gap: 1.75rem;
-    /* Everything top-aligned on purpose: the words then sit at the same y on
-       every slide, so the morph reads as anchored rather than drifting. */
+    gap: clamp(2.5rem, 5vw, 4rem);
     align-items: start;
-    width: 100%;
-    grid-template-areas: 'stage' 'frame';
   }
 
-  @media (min-width: 860px) {
-    .mhero__grid {
-      /* minmax(0,…) not bare fr, or the display word overflows its track */
-      grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr);
-      grid-template-areas: 'stage frame';
-      gap: clamp(2rem, 4vw, 3.25rem);
-    }
+  /* 60/40 per §4.1. Mobile stacks headline → subhead → index → CTA, which is
+     source order, so no reordering is needed. */
+  @media (min-width: 900px) {
+    .hero__grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
   }
 
-  .mslides {
-    grid-area: stage;
-    display: grid;
-    grid-template-rows: auto auto auto;
-    align-content: start;
-  }
-
-  /* Row 1: the verb eyebrows, stacked in one cell. Empty-looking on the intro
-     slide, where none is active. */
-  .mslides__eyebrows {
-    grid-row: 1;
-    display: grid;
-    margin-bottom: 0.75rem;
-  }
-
-  .mslide__eyebrow {
-    grid-area: 1 / 1;
-    display: flex;
-    align-items: center;
-    gap: 0.6rem;
-    margin: 0;
-    font-size: 0.7rem;
-    font-weight: 500;
-    letter-spacing: 0.2em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  .mslide__eyebrow::before {
-    content: '';
-    width: 1.75rem;
-    height: 2px;
-    background: currentColor;
-    flex: none;
-  }
-
-  /* Row 2: the display words, shared across all four slides. */
-  .mhero__words {
-    position: relative;
-    grid-row: 2;
-    margin: 0;
-    display: grid;
-    justify-items: start;
-    line-height: 0.92;
-  }
-
-  .mword {
-    display: block;
-    overflow: hidden;
-    text-decoration: none;
-    color: var(--hero-ink);
+  /* Baloo carries the hero — Panta's display face stays the loudest voice on
+     the page. The brief's other "voice" surfaces (problem framing, quotes,
+     Pulse masthead, founder note, final CTA) use Spectral, so the serif/sans
+     alternation below the fold is preserved. */
+  .hero__headline {
     font-family: 'Baloo 2', var(--font-sans);
     font-weight: 800;
-    font-size: clamp(2.4rem, 7vw, 5.6rem);
-    letter-spacing: 0.01em;
-    text-transform: uppercase;
-    line-height: 0.95;
-    transition: color 0.2s ease;
+    font-size: clamp(2.1rem, 4.2vw, 3.2rem);
+    line-height: 1.08;
+    letter-spacing: 0.005em;
+    max-width: 16ch;
+    margin: 0 0 1.35rem;
   }
 
-  .mword span {
-    display: block;
-    transform: translateY(0);
+  .hero__sub {
+    font-size: clamp(1rem, 1.25vw, 1.1rem);
+    line-height: 1.65;
+    color: var(--stone-deep);
+    max-width: 46ch;
+    margin: 0 0 1.5rem;
   }
 
-  .mword:hover,
-  .mword:focus-visible { color: var(--hero-muted); }
-
-  /* A focused words block shows one word, at panel scale. display:none (not
-     opacity) for the other two, so they leave the tab order and the a11y tree.
-     The swap happens mid-transition, in the frame where every word is hidden
-     behind its own overflow mask — see the timeline in the script below. */
-  .mhero__words[data-focus] .mword:not(.is-hero) { display: none; }
-
-  .mhero__words .mword.is-hero {
-    font-size: clamp(3rem, 9vw, 7.5rem);
-    cursor: default;
+  .hero__quiet {
+    font-size: 0.95rem;
+    font-weight: 500;
+    color: var(--charcoal);
+    text-decoration: none;
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 2px;
   }
 
-  /* Row 3: the three verb bodies share one grid cell, so the row is as tall as
-     the tallest body and never resizes mid-crossfade. Hidden slides keep
-     visibility:hidden — that is what preserves the height. */
-  .mslide {
-    grid-row: 3;
-    grid-column: 1;
+  .hero__quiet:hover { border-bottom-color: var(--charcoal); }
+
+  /* Stacked, the five-row service index used to push the one filled button to
+     839px on a 375px phone — a full screen below the fold, on the one breakpoint
+     where the header's CTA is also hidden behind the hamburger. So below 900px
+     the button leads and the index becomes the scenic route under it; desktop
+     keeps the brief's order (§4.1), index then button. */
+  .hero__index {
+    display: grid;
+    row-gap: 2.25rem;
+  }
+
+  .hero__act { order: -1; }
+
+  @media (min-width: 900px) {
+    .hero__act { order: 0; }
+  }
+
+  .svc-index {
+    list-style: none;
+    padding: 0;
+    /* Bottom spacing is .hero__index's row-gap now — a margin here would apply
+       in whichever order the two blocks happen to be in, and trail off the
+       bottom of the hero on mobile. */
+    margin: 0.9rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .svc-index li { border-bottom: 1px solid var(--line); }
+
+  .svc-index a {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.7rem 0;
+    font-size: 0.95rem;
+    color: var(--charcoal);
+    text-decoration: none;
+  }
+
+  .svc-index a:hover { color: var(--bamboo-deep); }
+
+  .svc-index__arrow {
+    color: var(--stone);
+    transition: transform 0.2s ease;
+  }
+
+  .svc-index a:hover .svc-index__arrow {
+    color: var(--bamboo-deep);
+    transform: translateX(3px);
+  }
+
+  .hero__micro {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--stone-deep);
+    margin: 0.7rem 0 0;
+  }
+
+  /* ------------------------------------------------------ hero motion -- */
+  /* The hero animates in CSS, not GSAP, unlike every section below it.
+     `gsap.from` sets its start state when the tween is CREATED, and Astro
+     ships module scripts deferred — so the browser can paint the hero at its
+     final position, then GSAP yanks it back to opacity 0 and replays. Below
+     the fold nobody sees that hand-off; here it is a visible flash on the LCP
+     element. Keyframes start at first paint and need no JS. */
+  @keyframes rise {
+    from { opacity: 0; transform: translateY(16px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .hero__headline,
+  .hero__sub,
+  .hero__quiet,
+  .hero__svc .kicker,
+  .svc-index li,
+  .hero__act > * {
+    animation: rise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  }
+
+  .hero__headline { animation-delay: 0.05s; }
+  .hero__sub { animation-delay: 0.14s; }
+  .hero__quiet { animation-delay: 0.22s; }
+  .hero__svc .kicker { animation-delay: 0.18s; }
+  .svc-index li:nth-child(1) { animation-delay: 0.26s; }
+  .svc-index li:nth-child(2) { animation-delay: 0.31s; }
+  .svc-index li:nth-child(3) { animation-delay: 0.36s; }
+  .svc-index li:nth-child(4) { animation-delay: 0.41s; }
+  .svc-index li:nth-child(5) { animation-delay: 0.46s; }
+  .svc-index li:nth-child(6) { animation-delay: 0.51s; }
+  .hero__act > * { animation-delay: 0.30s; }
+
+  /* Mobile puts .hero__act first (order: -1), so the button must animate on an
+     early beat or it visibly lags the copy it now sits above. */
+  @media (max-width: 899px) {
+    .hero__act > * { animation-delay: 0.20s; }
+  }
+
+  /* ----------------------------------------------------------- problem -- */
+
+  .problem__inner {
+    max-width: 34rem;
+    margin-inline: auto;
+    text-align: center;
+  }
+
+  .problem__lead {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
+    line-height: 1.35;
+    margin: 0 0 1.25rem;
+  }
+
+  .problem__body,
+  .problem__turn {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--stone-deep);
+    margin: 0 0 1rem;
+  }
+
+  .problem__turn {
+    color: var(--charcoal);
+    font-weight: 500;
+  }
+
+  /* ----------------------------------------------------------- pillars -- */
+
+  .pillars__head {
+    font-family: var(--font-sans);
+    font-size: clamp(2rem, 4vw, 2.9rem);
+    letter-spacing: -0.02em;
+    margin-bottom: clamp(2.25rem, 4vw, 3rem);
+  }
+
+  .pillars {
+    display: grid;
+    gap: clamp(2.25rem, 3vw, 3rem);
+  }
+
+  @media (min-width: 820px) {
+    .pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .pillar {
     display: grid;
     align-content: start;
-    gap: 0.9rem;
-    margin-top: 1.1rem;
-    opacity: 0;
-    visibility: hidden;
-  }
-
-  .mslide > * { margin: 0; }
-
-  .mslide__head {
-    font-size: clamp(1.3rem, 2.3vw, 1.8rem);
-    max-width: 30ch;
-    color: var(--hero-ink);
-  }
-
-  .mslide__story {
-    font-size: 1.02rem;
-    line-height: 1.6;
-    max-width: 44ch;
-    color: var(--hero-ink);
-  }
-
-  .mslide__chips {
-    list-style: none;
-    margin: 0.35rem 0 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
     gap: 0.5rem;
-  }
-
-  .mslide__chips li {
-    font-size: 0.82rem;
-    font-weight: 500;
-    padding: 0.45rem 0.85rem;
-    border-radius: 999px;
-    border: 1px solid var(--hero-line);
-    background: var(--hero-chip-bg);
-  }
-
-  /* --- the persistent frame ------------------------------------------------ */
-
-  .mhero__frame { grid-area: frame; }
-
-  /* Keeps its layout height when hidden (visibility, not display), which is
-     what stops the CTA from moving between slides.
-     Deliberately NO transition here: GSAP tweens this element's opacity, and a
-     CSS transition on the same property fights it frame by frame — that lag was
-     visible as a stutter on every slide change. */
-
-  .mhero__quote {
-    font-family: var(--font-serif);
-    font-weight: 300;
-    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
-    line-height: 1.4;
-    max-width: 24ch;
-    margin-bottom: 1.25rem;
-  }
-
-  .mhero__sub {
-    font-size: 0.98rem;
-    color: var(--hero-muted);
-    max-width: 38ch;
-  }
-
-  .mhero__offer {
-    margin-top: 1.1rem;
-    font-size: 1rem;
-    line-height: 1.55;
-    max-width: 34ch;
-    color: var(--hero-ink);
-  }
-
-  .mhero__offer strong { font-weight: 600; }
-
-  .mhero__cta { margin-top: 1.4rem; }
-
-  .mhero__cta .btn--primary {
-    background: var(--hero-btn-bg);
-    color: var(--hero-btn-ink);
-  }
-
-  .mhero__cta .btn--primary:hover {
-    background: var(--hero-btn-hover-bg);
-    color: var(--hero-btn-hover-ink);
-  }
-
-  /* Demoted: a quiet footnote under the offer, not a menu competing with it. */
-  .mhero__practices {
-    margin-top: 1.6rem;
     padding-top: 1rem;
-    border-top: 1px solid var(--hero-line);
+    border-top: 1px solid rgba(245, 241, 231, 0.28);
+    transition: border-top-color 0.25s ease;
   }
 
-  .mhero__practices-label {
-    font-size: 0.68rem;
-    font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
-    margin-bottom: 0.5rem;
-  }
-
-  .mhero__practices-list {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.3rem 1rem;
-  }
-
-  .mhero__practices-list li {
+  /* The rule row: the green mark on the left, its index on the right. Reads as
+     a masthead line for the column rather than a card header. */
+  .pillar__rule {
     display: flex;
     align-items: center;
-    gap: 0.5rem;
+    justify-content: space-between;
+    margin-bottom: 0.85rem;
   }
 
-  .mhero__practices-list a {
-    font-size: 0.88rem;
-    font-weight: 400;
-    color: var(--hero-muted);
-    text-decoration: underline;
-    text-decoration-color: var(--hero-line);
+  /* One of the four places green is allowed (§3). */
+  .pillar__icon {
+    color: var(--sage);
+    display: block;
+    transition: transform 0.25s ease;
+  }
+
+  .pillar__n {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.14em;
+    color: rgba(245, 241, 231, 0.4);
+    transition: color 0.25s ease;
+  }
+
+  .pillar:hover { border-top-color: var(--sage); }
+  .pillar:hover .pillar__icon { transform: translateY(-2px); }
+  .pillar:hover .pillar__n { color: var(--cream); }
+
+  .pillar__kicker {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin: 0;
+  }
+
+  .pillar__head {
+    font-size: clamp(1.45rem, 2.2vw, 1.75rem);
+    margin: 0;
+    color: var(--cream);
+  }
+
+  .pillar__lede {
+    font-size: 1rem;
+    line-height: 1.6;
+    color: var(--cream);
+    margin: 0;
+  }
+
+  /* Hairline rows, matching the hero's service index — the dotted list read as
+     three loose fragments; ruled rows give the column a spine. */
+  .pillar__list {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    border-top: 1px solid rgba(245, 241, 231, 0.14);
+  }
+
+  .pillar__list li {
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--sage);
+    padding: 0.7rem 0;
+    border-bottom: 1px solid rgba(245, 241, 231, 0.14);
+  }
+
+  /* The rule that used to sit on .pillars__cta — it now has to span the offer
+     and the quote beside it. */
+  .pillars__close {
+    margin-top: clamp(2.5rem, 5vw, 3.5rem);
+    padding-top: 1.35rem;
+    border-top: 1px solid rgba(245, 241, 231, 0.28);
+    display: grid;
+    gap: clamp(1.75rem, 4vw, 3rem);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .pillars__close { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  }
+
+  .pillars__cta {
+    margin: 0 0 1.35rem;
+    max-width: 54ch;
+    font-size: 1.05rem;
+    color: var(--cream);
+  }
+
+  /* Sage rule rather than a card: the pillar columns above already read as
+     ruled text, and a box here would be the only one on the page. */
+  .pillars__proof {
+    margin: 0;
+    padding-left: clamp(1rem, 2vw, 1.5rem);
+    border-left: 2px solid var(--sage);
+  }
+
+  .pillars__proof blockquote {
+    font-family: var(--font-serif);
+    font-size: clamp(1.15rem, 1.9vw, 1.45rem);
+    line-height: 1.4;
+    color: var(--cream);
+    margin: 0 0 0.7rem;
+  }
+
+  .pillars__proof figcaption {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--sage);
+  }
+
+  .pillars__cta a { color: var(--sage); }
+
+  .pillars__actions {
+    display: flex;
+    align-items: center;
+    gap: clamp(1.25rem, 3vw, 2rem);
+    flex-wrap: wrap;
+  }
+
+  .pillars__learn-more {
+    color: var(--sage);
+    font-size: 0.95rem;
+  }
+
+  .pillars__escape {
+    margin-top: 1.25rem;
+    max-width: none;
+    font-size: 0.9rem;
+    color: var(--sage);
+  }
+
+  .pillars__escape a {
+    color: var(--cream);
     text-underline-offset: 3px;
   }
 
-  .mhero__practices-list a:hover,
-  .mhero__practices-list a:focus-visible {
-    color: var(--hero-ink);
-    text-decoration-color: currentColor;
+  @media (prefers-reduced-motion: reduce) {
+    .pillar,
+    .pillar__icon,
+    .pillar__n { transition: none; }
+    .pillar:hover .pillar__icon { transform: none; }
+
+    /* The global backstop (global.css:1121-1124) kills `transition` site-wide
+       but says nothing about `animation` — every keyframe on this page has to
+       be switched off here by hand, or reduced-motion users get exactly the
+       motion they asked not to have. GSAP is handled separately: its tweens
+       live inside a matchMedia('no-preference') block and never run. */
+    .hero__headline,
+    .hero__sub,
+    .hero__quiet,
+    .hero__svc .kicker,
+    .svc-index li,
+    .hero__act > *,
+    .faq__item[open] .faq__panel { animation: none !important; }
+
+    /* :hover transforms are a state, not a transition, so the backstop misses
+       these too. */
+    .step:hover .step__n,
+    .case__media:hover img { transform: none; }
   }
 
-  .mhero__practice-soon {
-    font-size: 0.88rem;
-    color: var(--hero-muted);
+  /* ------------------------------------------------------------- steps -- */
+
+  .steps__head {
+    font-family: var(--font-sans);
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    margin-bottom: clamp(2rem, 4vw, 3rem);
   }
 
-  .mhero__practice-tag {
-    font-size: 0.62rem;
-    font-weight: 600;
+  .steps {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    display: grid;
+    gap: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  @media (min-width: 820px) {
+    .steps { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .step {
+    display: grid;
+    grid-template-columns: auto minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+  }
+
+  /* Green step numerals — no boxes; the trust copy is the payload (§4.5). */
+  .step__n {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    line-height: 1;
+    color: var(--bamboo-deep);
+    transition: transform 0.25s ease;
+  }
+
+  /* Mirrors .pillar:hover .pillar__icon — same gesture, same distance. */
+  .step:hover .step__n { transform: translateY(-2px); }
+
+  .step__title {
+    font-size: 1.05rem;
+    margin: 0 0 0.4rem;
+  }
+
+  .step__body {
+    font-size: 0.93rem;
+    line-height: 1.65;
+    color: var(--stone-deep);
+    margin: 0;
+  }
+
+  /* -------------------------------------------------------- case study -- */
+
+  /* Two equal previews rather than one feature plus a text row: with exactly
+     two projects, a hero-and-footnote layout made the second look like an
+     afterthought. Equal columns say both are the work. */
+  .case__grid {
+    display: grid;
+    gap: clamp(2.25rem, 5vw, 3.5rem);
+    /* stretch, not start: with .case__item a column flex and .case__link on
+       margin-top:auto, equal card heights put both "Read the full story" links
+       on the same baseline. */
+    align-items: stretch;
+    margin-top: 1.25rem;
+  }
+
+  @media (min-width: 820px) {
+    .case__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .case__item {
+    display: flex;
+    flex-direction: column;
+    align-items: start;
+  }
+
+  /* Crop on the wrapper so the image can scale inside it without bleeding.
+     It is a link for pointer users but aria-hidden + tabindex="-1": the title
+     and "Read the full story" below already go to the same place, and three
+     tab stops per card to one destination is noise for keyboard and screen
+     reader users. */
+  .case__media {
+    display: block;
+    overflow: hidden;
+    border-radius: var(--radius);
+    width: 100%;
+    margin-bottom: 1.1rem;
+  }
+
+  /* Fixed ratio so the two previews are a matched pair — the source thumbnails
+     are site screenshots with different natural aspect ratios, which otherwise
+     staggers the copy below them. Top-anchored crop: on a screenshot the header
+     and hero are the recognizable part, so lose the footer, not the masthead. */
+  .case__media img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    object-position: top center;
+    display: block;
+    transition: transform 0.4s ease;
+  }
+
+  .case__media:hover img { transform: scale(1.03); }
+
+  .case__media-empty {
+    aspect-ratio: 4 / 3;
+    background: var(--cream-soft);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  .case__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 2.2vw, 1.75rem);
+    line-height: 1.25;
+    margin: 0 0 0.35rem;
+  }
+
+  .case__meta {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
     letter-spacing: 0.1em;
     text-transform: uppercase;
-    padding: 2px 8px;
-    border-radius: 999px;
-    border: 1px solid var(--hero-line);
-    color: var(--hero-muted);
+    color: var(--stone-deep);
+    margin: 0 0 0.8rem;
+  }
+
+  .case__body {
+    font-size: 0.95rem;
+    line-height: 1.65;
+    color: var(--stone-deep);
+    margin: 0 0 1.1rem;
+  }
+
+  .case__did {
+    margin: 0 0 1.1rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+    width: 100%;
+  }
+
+  .case__did-list {
+    font-size: 0.9rem;
+    line-height: 1.55;
+    margin: 0.35rem 0 0;
+  }
+
+  /* Carries the weight the missing number was supposed to carry: serif, and a
+     bamboo rule so it reads as the section's finding rather than more body. */
+  .case__outcome {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    line-height: 1.5;
+    margin: 0 0 1.25rem;
+    padding-left: 1rem;
+    border-left: 2px solid var(--bamboo-deep);
+  }
+
+  .case__outcome-ph { margin: 0 0 1.25rem; }
+
+  /* Pushes the link to the bottom of the card so both read the same height
+     regardless of how long each summary runs. */
+  .case__link { margin-top: auto; }
+
+  /* What survives of the trust bar: the sector line and the 48-hour promise,
+     the two things it said that weren't logos. */
+  .case__trust {
+    margin-top: clamp(2.5rem, 5vw, 3.5rem);
+    padding-top: 1.35rem;
+    border-top: 1px solid var(--line);
+  }
+
+  .case__trust-claim {
+    font-size: 0.95rem;
+    margin: 0;
+  }
+
+  .case__trust-promise {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--stone-deep);
+    margin: 0.45rem 0 0;
+  }
+
+  .case__link {
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
+  }
+
+  .case__link:hover { text-decoration: underline; }
+
+  /* ------------------------------------------------------ Pulse strip -- */
+
+  .pulse-strip__top {
+    display: grid;
+    gap: 1rem;
+    align-items: end;
+    margin-bottom: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  @media (min-width: 760px) {
+    .pulse-strip__top {
+      grid-template-columns: minmax(0, 1fr) auto;
+    }
+  }
+
+  .pulse-strip__masthead {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 4vw, 2.8rem);
+    line-height: 1;
+    margin: 0 0 0.5rem;
+    color: var(--cream);
+  }
+
+  .pulse-strip__tagline {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--sage);
+    max-width: 48ch;
+    margin: 0;
+  }
+
+  .pulse-strip__all {
+    font-size: 0.92rem;
+    font-weight: 500;
+    color: var(--cream);
     white-space: nowrap;
   }
 
-  /* --- slideshow controls -------------------------------------------------- */
-
-  .mslides__bar {
-    display: flex;
-    align-items: center;
-    flex-wrap: wrap;
-    gap: 0.25rem 0.5rem;
-    margin-top: 1.4rem;
-    padding-top: 0.9rem;
-    border-top: 1px solid var(--hero-line);
-  }
-
-  .mslides__dots {
-    display: flex;
+  /* Rule-line cards (§4.7): a top border and text, not boxes. */
+  .pulse-cards {
     list-style: none;
-    margin: 0;
     padding: 0;
-  }
-
-  /* A 36px button around an 11px dot: clears WCAG 2.5.8 without the overlapping
-     ::after hit-areas the old rail dots needed, and the focus ring is visible. */
-  .mslides__dot {
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    border: 0;
-    background: none;
-    display: grid;
-    place-items: center;
-    cursor: pointer;
-  }
-
-  .mslides__dot::before {
-    content: '';
-    width: 11px;
-    height: 11px;
-    border-radius: 50%;
-    border: 2px solid var(--hero-muted);
-    background: transparent;
-    transition: background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
-  }
-
-  .mslides__dot:hover::before { border-color: var(--hero-ink); }
-
-  .mslides__dot.is-active::before {
-    background: var(--hero-ink);
-    border-color: var(--hero-ink);
-    transform: scale(1.1);
-  }
-
-  .mslides__arrow {
-    width: 2.25rem;
-    height: 2.25rem;
-    padding: 0;
-    cursor: pointer;
-    border: 1px solid var(--hero-line);
-    border-radius: 50%;
-    background: transparent;
-    color: var(--hero-ink);
-    font-size: 0.95rem;
-    line-height: 1;
-  }
-
-  .mslides__arrow:hover { border-color: var(--hero-ink); }
-
-  .mslides__stop {
-    margin-left: 0.35rem;
-    padding: 0.3rem 0.7rem;
-    cursor: pointer;
-    font-family: inherit;
-    font-size: 0.72rem;
-    font-weight: 500;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
-    background: transparent;
-    border: 1px solid var(--hero-line);
-    border-radius: 999px;
-  }
-
-  .mslides__stop:hover { color: var(--hero-ink); border-color: var(--hero-ink); }
-
-  /* beats the UA sheet, which display:none's [hidden] but loses to display:flex */
-  .mslides__stop[hidden] { display: none; }
-
-  .mslides__stop[aria-disabled='true'] {
-    opacity: 0.55;
-    cursor: default;
-  }
-
-  /* One readout element, so four hover labels can never overlap each other. */
-  .mslides__now {
-    margin: 0;
-    flex: 1 0 100%;
-    font-size: 0.7rem;
-    letter-spacing: 0.1em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
-  }
-
-  .mhero__cue {
-    position: absolute;
-    bottom: 1rem;
-    left: 50%;
-    transform: translateX(-50%);
-    margin: 0;
-    font-size: 0.8rem;
-    font-weight: 500;
-    letter-spacing: 0.18em;
-    text-transform: uppercase;
-    color: var(--hero-muted);
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-  }
-
-  .mhero__cue-arrow {
-    display: inline-block;
-    animation: cue-bob 1.4s ease-in-out infinite;
-  }
-
-  @keyframes cue-bob {
-    0%, 100% { transform: translateY(-1px); }
-    50% { transform: translateY(3px); }
-  }
-
-  /* Single-column layout: reserving the tallest slide's height and the intro
-     copy's height costs ~370px and ~260px of dead space, which is what pushes
-     the CTA and the practices list off a phone screen. Nothing here needs the
-     reservation — the words stay top-anchored either way, so collapsing only
-     changes the page height, not the position of anything on screen. */
-  @media (max-width: 859px) {
-    .mslides__eyebrows { display: none; }
-    .mslides__eyebrows:has(.mslide__eyebrow.is-active) { display: grid; }
-    .mslide { display: none; }
-    .mslide.is-active { display: grid; }
-    /* not `[data-hero-theme='intro']`: with JS off there is no attribute at
-       all, and the intro copy has to be the thing that shows. */
-    html[data-hero-theme]:not([data-hero-theme='intro']) .mhero__intro-copy {
-      display: none;
-    }
-  }
-
-  @media (max-width: 719px) {
-    .mhero__grid { gap: 1.25rem; }
-    .mslide { gap: 0.6rem; margin-top: 0.9rem; }
-    .mslide__story { font-size: 0.92rem; line-height: 1.5; }
-    .mslide__chips li { font-size: 0.74rem; padding: 0.4rem 0.7rem; }
-    .mslide__head { font-size: 1.2rem; }
-    /* three stacked words plus quote + summary + offer is the tallest state the
-       hero has; these two lines are what keep the controls above the fold */
-    .mword { font-size: clamp(2.1rem, 9vw, 5.6rem); }
-    .mhero__quote { font-size: 1.25rem; margin-bottom: 0.85rem; }
-    .mhero__offer { margin-top: 0.8rem; }
-    .mhero__cta { margin-top: 1.1rem; }
-    .mhero__practices { margin-top: 1.2rem; padding-top: 0.8rem; }
-    .mslides__bar { margin-top: 1rem; padding-top: 0.7rem; }
-  }
-
-  /* Short viewports — a 667px phone, or a laptop with a lot of browser chrome.
-     Must come after the width blocks so it wins where both apply. Below 720px
-     of height the frame column (quote + summary + offer + CTA + practices +
-     controls) is taller than the space available, so something has to go: the
-     summary is the one element the quote and the offer line already cover, and
-     it is worth ~110px — the difference between the controls and the practices
-     being on screen or under the fold. */
-  @media (max-height: 720px) {
-    .mhero {
-      padding-block: calc(var(--header-h) + 0.5rem) 1.5rem;
-    }
-
-    .mhero__cue { display: none; }
-    .mword { font-size: clamp(1.9rem, 5vw, 3.4rem); }
-    .mhero__words .mword.is-hero { font-size: clamp(2.3rem, 6vw, 4.2rem); }
-    .mslide { gap: 0.55rem; margin-top: 0.7rem; }
-    .mhero__quote { font-size: 1.2rem; margin-bottom: 0.7rem; }
-    .mhero__sub { display: none; }
-    .mhero__offer { margin-top: 0; }
-    .mhero__cta { margin-top: 0.9rem; }
-    .mhero__practices { margin-top: 1rem; padding-top: 0.7rem; }
-    .mslides__bar { margin-top: 0.9rem; padding-top: 0.6rem; }
-  }
-
-  /* --- origin ------------------------------------------------------------- */
-
-  .origin {
-    background: var(--charcoal);
-    color: var(--cream);
-    padding-block: clamp(4rem, 10vw, 7rem);
-  }
-
-  .origin__grid {
-    display: grid;
-    gap: 3rem;
-    align-items: center;
-  }
-
-  @media (min-width: 860px) {
-    .origin__grid { grid-template-columns: 1.3fr 1fr; }
-  }
-
-  .origin__turn {
-    font-family: var(--font-serif);
-    font-size: 1.3rem;
-    color: var(--sage);
-    margin-top: 2.25rem;
-  }
-
-  .origin__mark { display: grid; justify-items: center; }
-
-  .origin-ripple {
-    width: min(320px, 70vw);
-    color: var(--cream);
-  }
-
-  /* --- convergence ---------------------------------------------------------- */
-
-  .mconverge__inner {
+    margin: 0 0 clamp(2rem, 4vw, 3rem);
     display: grid;
     gap: 1.5rem;
-    justify-items: start;
   }
 
-  .mconverge__words {
-    max-width: none;
-    font-family: 'Baloo 2', var(--font-sans);
-    font-weight: 800;
-    font-size: clamp(1.5rem, 3.4vw, 2.4rem);
-    text-transform: uppercase;
-    letter-spacing: 0.02em;
-    margin: 0;
-    display: flex;
-    gap: 0.9rem;
-    flex-wrap: wrap;
-    /* sage on bamboo is 3.1:1 */
+  @media (min-width: 820px) {
+    .pulse-cards { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .pulse-card { border-top: 1px solid rgba(245, 241, 231, 0.28); }
+
+  .pulse-card a {
+    display: block;
+    padding-top: 0.9rem;
+    text-decoration: none;
+  }
+
+  .pulse-card__title {
+    font-family: var(--font-serif);
+    font-size: 1.15rem;
+    line-height: 1.35;
+    margin: 0 0 0.5rem;
     color: var(--cream);
   }
 
-  .mconverge__reveal { display: grid; gap: 1.25rem; justify-items: start; }
-  .mconverge__reveal h2 { margin-bottom: 0; }
-  .mconverge__reveal .lede { max-width: 54ch; }
+  .pulse-card a:hover .pulse-card__title { color: var(--sage); }
 
-  @media (prefers-reduced-motion: reduce) {
-    .mhero__cue-arrow { animation: none; }
+  .pulse-card__meta { color: var(--sage); }
+
+  .pulse-empty { margin: 0 0 clamp(2rem, 4vw, 3rem); }
+
+  .pulse-strip__nl { margin-top: 0; }
+
+  /* ----------------------------------------------------------- founder -- */
+
+  .founder__grid {
+    display: grid;
+    gap: clamp(2rem, 4vw, 3rem);
+    align-items: center;
   }
+
+  @media (min-width: 820px) {
+    .founder__grid { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
+  }
+
+  .founder__copy p {
+    font-family: var(--font-serif);
+    font-size: clamp(1.02rem, 1.5vw, 1.15rem);
+    line-height: 1.7;
+    margin: 0 0 1.1rem;
+  }
+
+  .founder__sign {
+    font-family: var(--font-sans) !important;
+    font-size: 0.92rem !important;
+    color: var(--stone-deep);
+    margin-top: 1.5rem !important;
+  }
+
+  .founder__sign span { font-size: 0.85rem; }
+
+  /* --------------------------------------------------------------- faq -- */
+
+  .faq__inner { max-width: 44rem; }
+
+  .faq__head {
+    /* Sans: structure surface, per §3's voice/structure alternation. */
+    font-family: var(--font-sans);
+    font-size: clamp(1.5rem, 2.6vw, 2rem);
+    margin: 0.4rem 0 0.7rem;
+  }
+
+  .faq__lede {
+    color: var(--stone-deep);
+    font-size: 0.95rem;
+    margin: 0 0 1.75rem;
+  }
+
+  .faq__list { border-top: 1px solid var(--line); }
+  .faq__item { border-bottom: 1px solid var(--line); }
+
+  .faq__q {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1.5rem;
+    padding: 1rem 0;
+    font-weight: 500;
+    font-size: 1.02rem;
+    cursor: pointer;
+    list-style: none;
+  }
+
+  .faq__q::-webkit-details-marker { display: none; }
+  .faq__item:hover .faq__q { color: var(--bamboo-deep); }
+
+  /* A "+" drawn from two rules so it can rotate into an "×" — generated
+     content can't be transformed, a real element can. Stone rather than
+     bamboo: §3 allows green in exactly four places and this is not one. */
+  .faq__mark {
+    position: relative;
+    flex: none;
+    width: 12px;
+    height: 12px;
+    transition: transform 0.25s ease;
+  }
+
+  .faq__mark::before,
+  .faq__mark::after {
+    content: '';
+    position: absolute;
+    inset: 50% 0 auto 0;
+    height: 1px;
+    background: var(--stone-deep);
+  }
+
+  .faq__mark::after { transform: rotate(90deg); }
+  .faq__item[open] .faq__mark { transform: rotate(135deg); }
+
+  .faq__panel p {
+    margin: 0 0 1.1rem;
+    max-width: 60ch;
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--stone-deep);
+  }
+
+  /* <details> height isn't transitionable, and the closed panel is display:none
+     so there is no start frame to animate from. A keyframe on the panel works
+     because the panel only exists once [open] — open animates, close is
+     instant, which is invisible because the element is already gone. */
+  @keyframes faq-open {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .faq__item[open] .faq__panel {
+    animation: faq-open 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* ------------------------------------------------------------- final -- */
+
+  .final__grid {
+    display: grid;
+    gap: clamp(2.5rem, 5vw, 4rem);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .final__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+
+  .final__inner {
+    display: grid;
+    gap: 1.1rem;
+    justify-items: start;
+    max-width: 44rem;
+  }
+
+  .final__book {
+    font-size: 0.92rem;
+    color: var(--cream);
+    white-space: nowrap;
+  }
+
+  .final__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.6rem, 3vw, 2.3rem);
+    line-height: 1.25;
+    margin: 0;
+    color: var(--cream);
+  }
+
+  .final__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--cream);
+    margin: 0;
+    max-width: 54ch;
+  }
+
+  .final__micro {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--cream);
+    opacity: 0.85;
+    margin: 0;
+  }
+
+
 </style>
 
-<script>
-  // Where the mission story loses people. Deliberately outside the GSAP module
-  // below, which is gated by matchMedia and prefers-reduced-motion — this has to
-  // report at every breakpoint. Same fire-once pattern as the booking-embed
-  // observer on /consultation/.
-  //
-  // One event with a `section` dimension, not six event names: it makes the
-  // drop-off a single funnel exploration in GA4. Register `section` and `via` as
-  // custom dimensions or the params are collected but invisible.
-  const seen = new Set<string>();
-  // The consent banner appears 600ms in, so the hero — the denominator of this
-  // whole funnel — is almost always seen BEFORE the visitor decides. Sending
-  // straight to pantaTrack would silently drop those and make the top of the
-  // funnel look worse than it is, so buffer until consent and flush.
-  const pending: Array<[string, string]> = [];
-
-  const consented = () => {
-    try {
-      return localStorage.getItem('panta:consent') === 'granted';
-    } catch (_) {
-      return false;
-    }
-  };
-
-  // pantaTrack silently no-ops when gtag hasn't finished loading, which it
-  // hasn't for anything reported during page setup — a slide deep-link reports
-  // its slide synchronously, well before GA4 is up. So "ready" means consent
-  // AND gtag, and anything earlier waits in the queue.
-  const ready = () => {
-    const w = window as any;
-    return typeof w.pantaTrack === 'function' && typeof w.gtag === 'function' && consented();
-  };
-
-  let flushTimer = 0;
-
-  const flush = () => {
-    if (!pending.length) return;
-    if (!ready()) {
-      schedule();
-      return;
-    }
-    const track = (window as any).pantaTrack;
-    pending.splice(0).forEach(([section, via]) => track('home_section_view', { section, via }));
-  };
-
-  function schedule() {
-    if (flushTimer) return;
-    flushTimer = window.setTimeout(() => {
-      flushTimer = 0;
-      flush();
-    }, 400);
-  }
-
-  const send = (section: string, via = 'scroll') => {
-    if (!ready()) {
-      pending.push([section, via]);
-      schedule();
-      return;
-    }
-    (window as any).pantaTrack('home_section_view', { section, via });
-  };
-
-  // Registered after Analytics.astro's own listener, so gtag is configured by
-  // the time this runs.
-  document.addEventListener('panta:consent-granted', flush);
-
-  // The three verbs are no longer scroll-into-view sections — they're slides.
-  // Same event name and the same section values, so the GA4 funnel keeps
-  // working; only the trigger changed, which `via` records. Reuses `seen` and
-  // `send`, so fire-once and the pre-consent buffer apply identically.
-  document.addEventListener('panta:slide', (e) => {
-    const section = (e as CustomEvent<{ section: string }>).detail?.section;
-    if (!section || seen.has(section)) return;
-    seen.add(section);
-    send(section, 'slide');
-  });
-
-  const io = new IntersectionObserver(
-    (entries) => {
-      for (const entry of entries) {
-        if (!entry.isIntersecting) continue;
-        const id = (entry.target as HTMLElement).dataset.section ?? '';
-        if (!id || seen.has(id)) continue;
-        seen.add(id);
-        send(id);
-        io.unobserve(entry.target);
-      }
-    },
-    { threshold: 0.4 }
-  );
-
-  document
-    .querySelectorAll<HTMLElement>('[data-section]')
-    .forEach((el) => io.observe(el));
-</script>
+<SectionViews />
 
 <script>
-  import { gsap } from 'gsap';
-  import { ScrollTrigger } from 'gsap/ScrollTrigger';
-
-  gsap.registerPlugin(ScrollTrigger);
-
-  /* ===================== hero slideshow ==================================
-     Timer- and click-driven, NOT scroll-driven. The transition discipline is
-     lifted from the /journey/ stage (kill the running timeline, rebuild it with
-     fromTo so an interrupted tween can't leave an arbitrary opacity), but
-     nothing here hangs off ScrollTrigger.
-
-     Deliberately OUTSIDE gsap.matchMedia(): the controls must work at every
-     breakpoint AND under prefers-reduced-motion, where a matchMedia block would
-     tear the listeners down. Only the animation and the autoplay are
-     conditional. */
-  const root = document.querySelector<HTMLElement>('[data-slides]');
-  const hero = document.querySelector<HTMLElement>('.mhero');
-
-  if (root && hero) {
-    const stack = root.querySelector<HTMLElement>('.mslides')!;
-    const wordsEl = root.querySelector<HTMLElement>('.mhero__words')!;
-    const words = gsap.utils.toArray<HTMLElement>('.mword');
-    const slides = gsap.utils.toArray<HTMLElement>('.mslide');
-    const eyebrows = gsap.utils.toArray<HTMLElement>('.mslide__eyebrow');
-    const introCopy = root.querySelector<HTMLElement>('[data-intro-copy]');
-    const dots = gsap.utils.toArray<HTMLButtonElement>('[data-slide-to]');
-    const stopBtn = root.querySelector<HTMLButtonElement>('.mslides__stop');
-    const now = root.querySelector<HTMLElement>('.mslides__now');
-
-    // index 0 is the intro state — it has no slide element, it's the absence of
-    // an active verb, which is also what the server renders.
-    const KEYS = ['intro', ...slides.map((s) => s.dataset.slide ?? '')];
-    const LABELS = [
-      now?.dataset.introLabel ?? 'Build. Connect. Create.',
-      ...words.map((w) => w.textContent?.trim() ?? ''),
-    ];
-    const DWELL = 6000;
-
-    const motion = matchMedia('(prefers-reduced-motion: no-preference)');
-    let index = 0;
-    let tl: gsap.core.Timeline | null = null;
-    let timer = 0;
-    let stopped = false; // permanent — the first real interaction sets it
-    let onScreen = true;
-    let hovered = false;
-
-    // --- autoplay ---------------------------------------------------------
-    const clear = () => {
-      if (timer) {
-        clearTimeout(timer);
-        timer = 0;
-      }
-    };
-
-    // setTimeout, not gsap.delayedCall: GSAP's ticker is rAF-driven, so a
-    // backgrounded tab would come back and fire one big catch-up jump.
-    const canPlay = () =>
-      motion.matches &&
-      !stopped &&
-      onScreen &&
-      !hovered &&
-      document.visibilityState === 'visible';
-
-    const queue = () => {
-      clear();
-      if (canPlay()) timer = window.setTimeout(() => go(index + 1), DWELL);
-    };
-
-    const stopAuto = (viaButton = false) => {
-      if (stopped) return;
-      stopped = true;
-      clear();
-      // APG: announce slide changes only once the rotation has stopped.
-      stack.setAttribute('aria-live', 'polite');
-      if (viaButton) {
-        // Keep it focusable — hiding the element that has focus loses focus.
-        stopBtn?.setAttribute('aria-disabled', 'true');
-        if (stopBtn) stopBtn.textContent = 'Stopped';
-      } else {
-        stopBtn?.setAttribute('hidden', '');
-      }
-    };
-
-    // --- report to GA4 ----------------------------------------------------
-    const reported = new Set<string>();
-    const report = (i: number) => {
-      const section = KEYS[i];
-      // The intro state IS the hero section; the IntersectionObserver in the
-      // script above already reports that one.
-      if (!section || section === 'intro' || reported.has(section)) return;
-      reported.add(section);
-      // Deferred a task, not dispatched inline: a deep link reports during this
-      // module's own evaluation, and the two module scripts on this page are
-      // bundled separately — their execution order is not guaranteed, so the
-      // listener may not exist yet. Every other slide change happens long after
-      // load, where the 0ms hop costs nothing.
-      setTimeout(
-        () => document.dispatchEvent(new CustomEvent('panta:slide', { detail: { section } })),
-        0
-      );
-    };
-
-    // Word spans are what actually move. Each .mword is overflow:hidden, so
-    // sliding its span past the edge wipes the word behind a mask — the same
-    // reveal the hero plays on first load, reused for every slide change.
-    const spanOf = (w: HTMLElement) => w.querySelector('span') as HTMLElement;
-    const spansFor = (key: string) =>
-      (key === 'intro' ? words : words.filter((w) => w.dataset.word === key)).map(spanOf);
-
-    // Applying the target state changes the words row's height (three stacked
-    // words vs one big one) and display:none's the words that leave. It has to
-    // happen in the single frame when every word is hidden behind its mask,
-    // which is mid-timeline — so it's a callback, and `pendingSwap` lets an
-    // interrupted transition still be settled before the next one starts.
-    let pendingSwap: (() => void) | null = null;
-    const settlePending = () => {
-      if (!pendingSwap) return;
-      pendingSwap();
-      pendingSwap = null;
-    };
-
-    // --- slide change -----------------------------------------------------
-    function go(next: number, opts: { animate?: boolean } = {}) {
-      const count = KEYS.length;
-      next = ((next % count) + count) % count;
-      if (next === index) {
-        queue();
-        return;
-      }
-
-      tl?.kill();
-      tl = null;
-      settlePending();
-
-      const fromKey = KEYS[index];
-      const key = KEYS[next];
-      const animate = opts.animate ?? motion.matches;
-      index = next;
-
-      const nextSlide = slides.find((s) => s.dataset.slide === key) ?? null;
-      const nextEyebrow = eyebrows.find((e) => e.dataset.eyebrow === key) ?? null;
-
-      dots.forEach((d, i) => {
-        d.classList.toggle('is-active', i === next);
-        if (i === next) d.setAttribute('aria-current', 'true');
-        else d.removeAttribute('aria-current');
-      });
-
-      // The tint is a CSS transition on the consuming properties, so starting it
-      // now means the background is already crossfading while the old copy
-      // leaves — the colour change carries the whole transition.
-      document.documentElement.dataset.heroTheme = key;
-      if (now) now.textContent = `${next + 1} / ${count} · ${LABELS[next]}`;
-
-      // Eyebrow + body move as ONE unit. Staggering their parts is what made
-      // this read as several separate little slides instead of one change.
-      //
-      // The out-unit is everything that ISN'T arriving, not merely what was
-      // showing: an interrupted transition can leave any of these part-faded,
-      // and driving all of them to hidden every time is what makes the state
-      // self-healing. A tween on something already hidden costs nothing.
-      const inUnit: HTMLElement[] = [nextEyebrow, nextSlide].filter(Boolean) as HTMLElement[];
-      const outUnit: HTMLElement[] = [
-        ...eyebrows.filter((e) => e !== nextEyebrow),
-        ...slides.filter((s) => s !== nextSlide),
-      ];
-      if (introCopy) (key === 'intro' ? inUnit : outUnit).push(introCopy);
-
-      const outSpans = spansFor(fromKey);
-      const inSpans = spansFor(key);
-
-      const swap = () => {
-        if (key === 'intro') delete wordsEl.dataset.focus;
-        else wordsEl.dataset.focus = key;
-        words.forEach((w) =>
-          w.classList.toggle('is-hero', key !== 'intro' && w.dataset.word === key)
-        );
-        eyebrows.forEach((e) => e.classList.toggle('is-active', e === nextEyebrow));
-        slides.forEach((s) => {
-          const on = s === nextSlide;
-          s.classList.toggle('is-active', on);
-          // Out of the tab order and the a11y tree as soon as it stops being
-          // the active slide; inert doesn't affect painting.
-          s.toggleAttribute('inert', !on);
-        });
-      };
-
-      if (!animate) {
-        swap();
-        gsap.set(words.map(spanOf), { yPercent: 0 });
-        gsap.set(outUnit, { autoAlpha: 0, y: 0 });
-        gsap.set(inUnit, { autoAlpha: 1, y: 0 });
-        report(next);
-        queue();
-        return;
-      }
-
-      // Strictly sequential: everything leaving is gone before anything arrives.
-      // The slides share one grid cell, so overlapping the two halves paints the
-      // old copy on top of the new one.
-      const OUT = 0.26;
-      const IN = 0.28;
-
-      tl = gsap.timeline({
-        onComplete: () => {
-          tl = null;
-        },
-      });
-
-      tl.to(outSpans, { yPercent: -110, duration: OUT, ease: 'power2.in', stagger: 0.05 }, 0);
-      if (outUnit.length) {
-        tl.to(outUnit, { autoAlpha: 0, y: -10, duration: OUT, ease: 'power2.in' }, 0);
-      }
-
-      pendingSwap = swap;
-      tl.call(
-        () => {
-          swap();
-          pendingSwap = null;
-          // Start the arriving word below its mask and the arriving copy just
-          // under its resting place, in the same frame as the swap so neither
-          // is ever painted in the wrong position.
-          gsap.set(inSpans, { yPercent: 110 });
-          gsap.set(inUnit, { autoAlpha: 0, y: 14 });
-        },
-        undefined,
-        IN - 0.01
-      );
-
-      tl.to(inSpans, { yPercent: 0, duration: 0.55, ease: 'power3.out', stagger: 0.09 }, IN);
-      if (inUnit.length) {
-        tl.to(inUnit, { autoAlpha: 1, y: 0, duration: 0.42, ease: 'power2.out' }, IN + 0.08);
-      }
-
-      report(next);
-      queue();
-    }
-
-    // --- user interaction -------------------------------------------------
-    const jump = (next: number, where: string, track = true) => {
-      stopAuto();
-      const before = index;
-      go(next);
-      if (track && before !== index) {
-        // Arrow buttons carry no data-track word, and key presses produce no
-        // click at all, so these two need the explicit call.
-        (window as any).pantaTrack?.('mission_jump', {
-          word: KEYS[index],
-          location: where,
-        });
-      }
-      // replaceState, not location.hash: no scroll, no Back-button pollution.
-      history.replaceState(
-        null,
-        '',
-        index === 0 ? window.location.pathname : `#${KEYS[index]}`
-      );
-    };
-
-    // dots and the hero words already fire mission_jump declaratively
-    dots.forEach((d, i) => d.addEventListener('click', () => jump(i, 'dots', false)));
-
-    root.querySelectorAll<HTMLElement>('[data-slide-dir]').forEach((b) =>
-      b.addEventListener('click', () => jump(index + Number(b.dataset.slideDir), 'arrow'))
-    );
-
-    words.forEach((a) =>
-      a.addEventListener('click', (e) => {
-        const target = (a as HTMLAnchorElement).hash.slice(1);
-        const i = KEYS.indexOf(target);
-        if (i < 0) return; // unknown hash: let it behave natively
-        e.preventDefault();
-        jump(i, 'hero', false);
-      })
-    );
-
-    stopBtn?.addEventListener('click', () => stopAuto(true));
-
-    // Arrows are scoped to the carousel, so they never hijack the key elsewhere.
-    root.addEventListener('keydown', (e) => {
-      const map: Record<string, number> = {
-        ArrowLeft: index - 1,
-        ArrowRight: index + 1,
-        Home: 0,
-        End: KEYS.length - 1,
-      };
-      if (!(e.key in map)) return;
-      e.preventDefault();
-      jump(map[e.key], 'key');
-    });
-
-    // A #build link followed from elsewhere on the page is a same-document hash
-    // change, so the module never re-runs — without this the URL would name a
-    // slide the hero isn't showing.
-    window.addEventListener('hashchange', () => {
-      const i = KEYS.indexOf(window.location.hash.slice(1));
-      if (i < 0 || i === index) return;
-      stopAuto();
-      go(i);
-    });
-
-    root.addEventListener('focusin', () => stopAuto()); // tabbing in counts
-    root.addEventListener('mouseenter', () => {
-      hovered = true;
-      clear();
-    });
-    root.addEventListener('mouseleave', () => {
-      hovered = false;
-      queue();
-    });
-    document.addEventListener('visibilitychange', queue);
-    motion.addEventListener('change', () => {
-      clear();
-      if (motion.matches) queue();
-      else stopAuto();
-    });
-    window.addEventListener('pagehide', clear);
-
-    // Plain IntersectionObservers, not ScrollTrigger: both have to work with
-    // reduced motion on, where the matchMedia block below never runs.
-    new IntersectionObserver(
-      ([e]) => {
-        onScreen = e.isIntersecting;
-        queue();
-      },
-      { threshold: 0.25 }
-    ).observe(hero);
-
-    // Tells the sticky header whether it is floating on the hero tint or has
-    // scrolled onto ordinary page background.
+  /* The hero is a light surface running under the sticky header, so the header
+     needs to know whether it is floating on it. Same mechanism the previous
+     homepage used; global.css still keys off data-hero-theme + data-header. */
+  const hero = document.querySelector<HTMLElement>('.hero');
+  if (hero) {
+    document.documentElement.dataset.heroTheme = 'intro';
     const setHeaderState = (over: boolean) => {
       document.documentElement.dataset.header = over ? 'over-hero' : 'stuck';
     };
@@ -1224,111 +1357,84 @@ const INTRO_LABEL = 'Build. Connect. Create.';
       rootMargin: '-72px 0px 0px 0px',
       threshold: 0,
     }).observe(hero);
-
-    // --- init -------------------------------------------------------------
-    document.documentElement.dataset.heroTheme = 'intro';
-    gsap.set(slides, { autoAlpha: 0 });
-    gsap.set(eyebrows, { autoAlpha: 0 });
-
-    const start = Math.max(0, KEYS.indexOf(window.location.hash.slice(1)));
-    if (start !== 0) {
-      // A deep link is a stated preference: land on it instantly, no autoplay.
-      go(start, { animate: false });
-      stopAuto();
-      // The slide lives inside the hero, so the browser's native jump to the
-      // anchor would push the hero — and the CTA with it — half off-screen.
-      // That jump lands after this module runs, hence the extra frame; the
-      // guard means a visitor who scrolls immediately isn't yanked back.
-      let userScrolled = false;
-      const noteScroll = () => {
-        userScrolled = true;
-      };
-      ['wheel', 'touchstart', 'keydown'].forEach((ev) =>
-        window.addEventListener(ev, noteScroll, { once: true, passive: true })
-      );
-      const settleTop = () => {
-        if (!userScrolled) window.scrollTo({ top: 0, behavior: 'auto' });
-      };
-      settleTop();
-      requestAnimationFrame(settleTop);
-    } else if (motion.matches) {
-      // The hero entrance, moved in here so it can't race the slide timeline
-      // on the same nodes.
-      gsap.from('.mword span', {
-        yPercent: 110,
-        duration: 0.9,
-        ease: 'power3.out',
-        stagger: 0.12,
-      });
-      gsap.from('.mhero__frame', { autoAlpha: 0, y: 18, duration: 0.8, delay: 0.4 });
-      gsap.from('.mhero__cue', { autoAlpha: 0, duration: 0.8, delay: 1.0 });
-    }
-
-    if (!motion.matches) stopAuto();
-    else if (!stopped) {
-      stopBtn?.removeAttribute('hidden');
-      queue();
-    }
-
-    if (location.hostname === 'localhost') {
-      (window as any).__hero = {
-        go,
-        jump,
-        stopAuto,
-        get index() {
-          return index;
-        },
-      };
-    }
   }
+</script>
 
-  /* ===================== scroll reveals below the hero ==================== */
+<script>
+  /* Scroll reveals for everything below the fold. Deliberately a SEPARATE
+     script from the header observer above: that observer is functional and has
+     to run for everyone, and burying it inside a matchMedia('no-preference')
+     block would switch the header's colour handling off for reduced-motion
+     users.
+
+     Same contract as about.astro:248-285 — `from` + autoAlpha means the no-JS
+     and reduced-motion states are the fully-visible ones, so nothing can get
+     stranded at opacity 0. The hero is absent on purpose; it animates in CSS
+     so it paints on the first frame (see the hero motion block above). */
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
   const mm = gsap.matchMedia();
 
   mm.add('(prefers-reduced-motion: no-preference)', () => {
-    // --- origin: ripple grows as the story scrolls in ---------------------
-    gsap
-      .timeline({
-        scrollTrigger: {
-          trigger: '#origin',
-          start: 'top 75%',
-          end: 'center center',
-          scrub: 0.5,
-        },
-      })
-      .from('.origin-ripple circle', {
-        scale: 0.15,
+    /* One call per visual GROUP, never per section: a single stagger spanning
+       a whole section puts a ~1.2s ramp on one screen, which reads as the page
+       withholding rather than arriving. */
+    const reveal = (target: string, trigger: string, vars: gsap.TweenVars = {}) => {
+      const { start = 'top 80%', ...tween } = vars as any;
+      return gsap.from(target, {
         autoAlpha: 0,
-        transformOrigin: '50% 50%',
-        stagger: { each: 0.22, from: 'end' },
-        ease: 'power1.out',
+        y: 24,
+        duration: 0.6,
+        ease: 'power2.out',
+        ...tween,
+        scrollTrigger: { trigger, start },
       });
+    };
 
-    gsap.from('.origin__copy > *', {
-      scrollTrigger: { trigger: '#origin', start: 'top 70%' },
-      autoAlpha: 0,
-      y: 24,
-      duration: 0.7,
-      stagger: 0.12,
-      ease: 'power2.out',
+    // 2. case — now the section directly under the hero, so it needs an early
+    //    start: at `top 80%` the cards are already on screen at first paint on
+    //    a tall viewport and the reveal never visibly runs.
+    reveal('.case__item', '.case__grid', { y: 22, stagger: 0.12, start: 'top 88%' });
+    reveal('.case__trust > *', '.case__trust', { y: 12, duration: 0.45, stagger: 0.08 });
+
+    // 4. pillars — three reading beats, three calls
+    reveal('.pillar', '.pillars', { y: 26, stagger: 0.12 });
+    reveal('.pillars__cta, .pillars__actions, .pillars__escape', '.pillars__close', {
+      y: 18, stagger: 0.1,
+    });
+    reveal('.pillars__proof', '.pillars__close', { x: 18, y: 0, duration: 0.7 });
+
+    // 5. process
+    reveal('.step', '.steps', { stagger: 0.12 });
+    gsap.from('.step__n', {
+      scrollTrigger: { trigger: '.steps', start: 'top 80%' },
+      autoAlpha: 0, scale: 0.7, transformOrigin: '0% 100%',
+      duration: 0.5, stagger: 0.12, ease: 'back.out(1.6)',
     });
 
-    // --- convergence -------------------------------------------------------
-    gsap.from('.mconverge__words span', {
-      scrollTrigger: { trigger: '.mconverge', start: 'top 70%' },
-      autoAlpha: 0,
-      y: 20,
-      duration: 0.55,
-      stagger: 0.18,
-      ease: 'power2.out',
+    // 7. Pulse strip
+    reveal('.pulse-card', '.pulse-cards', { stagger: 0.1 });
+
+    // 8. founder
+    reveal('.founder__photo', '.founder__grid', { x: -18, y: 0, duration: 0.7 });
+    reveal('.founder__copy > *', '.founder__grid', { y: 18, stagger: 0.1 });
+
+    // 8.5 FAQ — faster and tighter; a list of questions should not feel staged
+    reveal('.faq__head, .faq__lede', '.faq', { y: 16, stagger: 0.08 });
+    reveal('.faq__item', '.faq__list', { y: 14, duration: 0.45, stagger: 0.07 });
+
+    // 9. final — the rings settle inward, then the ask, then the form
+    gsap.from('.final .ripple-mark circle', {
+      scrollTrigger: { trigger: '.final', start: 'top 78%' },
+      autoAlpha: 0, scale: 0.15, transformOrigin: '50% 50%',
+      duration: 0.7, stagger: { each: 0.14, from: 'end' }, ease: 'power1.out',
     });
-    gsap.from('.mconverge__reveal > *', {
-      scrollTrigger: { trigger: '.mconverge', start: 'top 55%' },
-      autoAlpha: 0,
-      y: 24,
-      duration: 0.7,
-      stagger: 0.14,
-      ease: 'power2.out',
+    reveal('.final__head, .final__body, .final__micro', '.final__inner', {
+      y: 20, stagger: 0.1,
     });
+    reveal('.final__act', '.final__grid', { y: 24, duration: 0.7, start: 'top 72%' });
   });
 </script>

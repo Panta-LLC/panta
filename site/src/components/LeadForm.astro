@@ -1,0 +1,271 @@
+---
+/**
+ * On-page Pulse Check request.
+ *
+ * Posts to /api/contact — the same handler and the same inbox as /contact/, so
+ * there is one submission format to read, not two. The `xhr=1` field asks that
+ * route for JSON instead of its 303 to /contact/?sent=1; without JS the field
+ * still posts and the redirect flow takes over, which is why the hidden input
+ * is in the markup rather than added by the script.
+ *
+ * This is NOT a second conversion behavior (PULSE-HOME-BUILD.md §7.2, "one
+ * conversion behavior per surface: homepage → book review"). It is the same
+ * request — a Pulse Check — for the visitor who won't pick a calendar slot.
+ * The booking link sits beside it for the visitor who will.
+ *
+ * The submit spends one of the page's two .btn--filled slots (§7.3). It is not
+ * demoted to .btn--primary to duck the cap: on .section--bamboo the two resolve
+ * to the same cream-on-bamboo button (global.css:253 vs 289), so that would be
+ * gaming the counter rather than honoring the rule. The pillars CTA gives up
+ * its filled slot instead — see index.astro.
+ *
+ * Button copy: never "Pulse Check". check-launch.mjs rule 4 fails any element
+ * whose class contains `btn` and whose text matches /pulse check/i — buttons
+ * describe, copy brands (§7.1).
+ */
+interface Props {
+  /** Reported to analytics so leads can be attributed per surface. */
+  source: string;
+  class?: string;
+}
+const { source, class: className } = Astro.props;
+const id = (field: string) => `lead-${field}-${source}`;
+---
+<form
+  class:list={['lead', className]}
+  method="POST"
+  action="/api/contact"
+  novalidate
+  data-lead
+  data-source={source}
+>
+  <input type="hidden" name="xhr" value="1" />
+  <input type="hidden" name="source" value={source} />
+
+  {/* Honeypot — real visitors never fill this. Named `website` to match the
+      field /api/contact already checks. */}
+  <div class="lead__pot" aria-hidden="true">
+    <label for={id('website')}>Leave this field empty</label>
+    <input type="text" id={id('website')} name="website" tabindex="-1" autocomplete="off" />
+  </div>
+
+  <div class="lead__row">
+    <div class="lead__field">
+      <label for={id('name')}>Your name</label>
+      <input type="text" id={id('name')} name="name" autocomplete="name" required />
+    </div>
+    <div class="lead__field">
+      <label for={id('email')}>Email</label>
+      <input type="email" id={id('email')} name="email" autocomplete="email" required />
+    </div>
+  </div>
+
+  <div class="lead__field">
+    <label for={id('org')}>Organization <span class="lead__opt">(optional)</span></label>
+    <input type="text" id={id('org')} name="org" autocomplete="organization" />
+  </div>
+
+  <div class="lead__field">
+    <label for={id('message')}>What&rsquo;s getting in the way?</label>
+    <textarea
+      id={id('message')}
+      name="message"
+      rows="3"
+      placeholder="A site nobody finds, a process that eats your week, a story that isn&rsquo;t landing…"
+    ></textarea>
+  </div>
+
+  <div class="lead__actions">
+    <button
+      class="btn btn--filled"
+      type="submit"
+      data-track="cta_click"
+      data-track-cta="lead_form"
+      data-track-location={source}
+    >Request my free review</button>
+    <slot name="aside" />
+  </div>
+
+  {/* aria-live so a validation error is announced without moving focus. */}
+  <p class="lead__msg" data-lead-msg role="status" aria-live="polite"></p>
+</form>
+
+{/* Success replaces the form rather than appending a line under it — leaving
+    eight filled fields on screen reads as "did that send?". The booking link
+    is the recovery path for someone who would have picked a time anyway. */}
+<div class="lead__done" data-lead-done hidden tabindex="-1" role="status">
+  <p class="lead__done-head">Got it — we&rsquo;ll reply within one business day.</p>
+  <p class="lead__done-body">
+    Rather just pick a time?
+    <a href="/consultation/#book" data-track="cta_click" data-track-cta="pulse_check" data-track-location={`${source}_after_send`}>
+      Book a free 30-minute review <span aria-hidden="true">&rarr;</span>
+    </a>
+  </p>
+</div>
+
+<style>
+  .lead {
+    display: grid;
+    gap: 1rem;
+    max-width: 34rem;
+  }
+
+  .lead__row {
+    display: grid;
+    gap: 1rem;
+  }
+
+  @media (min-width: 560px) {
+    .lead__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .lead__field label {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    margin-bottom: 0.4rem;
+  }
+
+  .lead__opt {
+    text-transform: none;
+    letter-spacing: 0;
+    opacity: 0.7;
+  }
+
+  .lead__actions {
+    display: flex;
+    align-items: center;
+    gap: clamp(1rem, 3vw, 1.75rem);
+    flex-wrap: wrap;
+    margin-top: 0.25rem;
+  }
+
+  /* honeypot: hidden from people, present for bots */
+  .lead__pot {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .lead__msg {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    margin: 0;
+    min-height: 1.2em;
+  }
+
+  .lead__msg[data-state='ok'] { color: var(--bamboo-deep); }
+  .lead__msg[data-state='error'] { color: #8a4a2f; }
+
+  .lead__done { max-width: 34rem; }
+  .lead__done:focus { outline: none; }
+
+  .lead__done-head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.15rem, 2vw, 1.4rem);
+    line-height: 1.35;
+    margin: 0 0 0.6rem;
+  }
+
+  .lead__done-body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    margin: 0;
+  }
+
+  /* --- on the dark and bamboo surfaces ---------------------------------- */
+  /* The global input rule paints a near-white field; on a coloured section
+     that reads as a pasted-in widget. Hairlines and a transparent field keep
+     it in the same material as the rest of the page (§3). */
+  :global(.section--dark) .lead input,
+  :global(.section--dark) .lead textarea,
+  :global(.section--bamboo) .lead input,
+  :global(.section--bamboo) .lead textarea {
+    background: rgba(245, 241, 231, 0.08);
+    border-color: rgba(245, 241, 231, 0.35);
+    color: var(--cream);
+  }
+
+  :global(.section--dark) .lead input::placeholder,
+  :global(.section--dark) .lead textarea::placeholder,
+  :global(.section--bamboo) .lead input::placeholder,
+  :global(.section--bamboo) .lead textarea::placeholder {
+    color: rgba(245, 241, 231, 0.55);
+  }
+
+  :global(.section--dark) .lead input:focus,
+  :global(.section--dark) .lead textarea:focus,
+  :global(.section--bamboo) .lead input:focus,
+  :global(.section--bamboo) .lead textarea:focus {
+    outline-color: var(--cream);
+    border-color: var(--cream);
+  }
+
+  :global(.section--bamboo) .lead__msg[data-state='ok'],
+  :global(.section--dark) .lead__msg[data-state='ok'] { color: var(--sage); }
+
+  :global(.section--bamboo) .lead__msg[data-state='error'],
+  :global(.section--dark) .lead__msg[data-state='error'] { color: #f0c4b2; }
+</style>
+
+<script>
+  // Progressive enhancement: without JS the form posts and /api/contact
+  // redirects to /contact/?sent=1. With JS it resolves in place.
+  document.querySelectorAll<HTMLFormElement>('[data-lead]').forEach((form) => {
+    const msg = form.querySelector<HTMLElement>('[data-lead-msg]');
+    const btn = form.querySelector<HTMLButtonElement>('button[type=submit]');
+
+    form.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!msg || !btn) return;
+
+      const data = new FormData(form);
+      const name = String(data.get('name') ?? '').trim();
+      const email = String(data.get('email') ?? '').trim();
+
+      if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+        msg.dataset.state = 'error';
+        msg.textContent = 'Add your name and a valid email address.';
+        return;
+      }
+
+      btn.disabled = true;
+      msg.dataset.state = '';
+      msg.textContent = 'Sending…';
+
+      try {
+        const res = await fetch('/api/contact', { method: 'POST', body: data });
+        const body = await res.json();
+        if (body.ok) {
+          form.reset();
+          const done = form.parentElement?.querySelector<HTMLElement>('[data-lead-done]');
+          if (done) {
+            form.hidden = true;
+            done.hidden = false;
+            done.focus();
+          } else {
+            msg.dataset.state = 'ok';
+            msg.textContent = 'Got it — we’ll reply within one business day.';
+          }
+          // Same event as contact.astro:102 so both surfaces land in one funnel;
+          // `intent` is the breakdown dimension rather than a second event name.
+          (window as any).pantaTrack?.('contact_submitted', {
+            intent: 'home_inline',
+            location: form.dataset.source ?? 'unknown',
+          });
+        } else {
+          msg.dataset.state = 'error';
+          msg.textContent = body.error ?? 'Something went wrong.';
+        }
+      } catch {
+        msg.dataset.state = 'error';
+        msg.textContent = 'Something went wrong. Email us at hello@panta.llc instead.';
+      } finally {
+        btn.disabled = false;
+      }
+    });
+  });
+</script>

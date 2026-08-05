@@ -1,0 +1,227 @@
+---
+import '@fontsource/ibm-plex-mono/400.css';
+import Base from '../../layouts/Base.astro';
+import { getPillars, getServices } from '../../lib/sanity.js';
+import { groupByPillar, serviceHref } from '../../lib/pillars.js';
+
+// The services overview. Services come from Sanity (`service` documents), so
+// the number of them is data — adding a sixth means adding a document, not
+// editing this file. Pillar chrome comes from Sanity too (`pillar` documents),
+// which is the one place it lives now that the homepage reads it as well.
+//
+// Each block's id is the service SLUG, and the homepage hero links to it. A
+// service that has absorbed another (the merged operations service) carries
+// the old ids in `legacyAnchors`, rendered as invisible stubs below — a stale
+// fragment scrolls silently to the top rather than 404ing, so those stubs are
+// the only thing keeping old links honest.
+const pillars = groupByPillar(await getPillars(), await getServices());
+const total = pillars.reduce((n, p) => n + p.services.length, 0);
+---
+<Base
+  title="Services — Panta"
+  description="Digital, strategic, and creative support for organizations that serve people: web presence, media, process and tools, storytelling, and brand design."
+>
+  <section class="section hero-lite">
+    <div class="container">
+      <p class="kicker">What we do</p>
+      <h1 class="svc-hero__title">Digital, strategic, and creative support.</h1>
+      <p class="svc-hero__lede">
+        What we do, grouped three ways. Most engagements start with one and grow into
+        another — you never have to buy the whole list.
+      </p>
+    </div>
+  </section>
+
+  {pillars.map((p) => (
+    <section class="section svc-pillar">
+      <div class="container svc-pillar__grid">
+        <div class="svc-pillar__intro">
+          <p class="kicker svc-pillar__kicker">{p.kicker}</p>
+          <h2 class="svc-pillar__head">{p.head}</h2>
+          <p class="svc-pillar__lede">{p.lede}</p>
+        </div>
+        <div class="svc-pillar__items">
+          {p.services.map((svc) => (
+            <article class="svc-item" id={svc.slug}>
+              {/* Anchor stubs for ids this service absorbed, so links minted
+                  before a merge still land on the right block. */}
+              {(svc.legacyAnchors ?? []).map((a) => (
+                <span class="anchor-stub" id={a} aria-hidden="true"></span>
+              ))}
+              <h3 class="svc-item__name">
+                {svc.pageReady ? (
+                  <a
+                    href={serviceHref(svc)}
+                    data-track="cta_click"
+                    data-track-cta={`service_${svc.slug}`}
+                    data-track-location="services_overview"
+                  >{svc.title}</a>
+                ) : svc.title}
+              </h3>
+              <p class="svc-item__body">{svc.summary}</p>
+              {svc.pageReady && (
+                <a
+                  class="svc-item__more"
+                  href={serviceHref(svc)}
+                  data-track="cta_click"
+                  data-track-cta={`service_${svc.slug}`}
+                  data-track-location="services_overview"
+                >More on {svc.title.toLowerCase()} <span aria-hidden="true">→</span></a>
+              )}
+            </article>
+          ))}
+        </div>
+      </div>
+    </section>
+  ))}
+
+  <!-- Every service page ends in its own review CTA (§4.1) — this overview
+       stands in for all six until Phase 3 splits them out. -->
+  <section class="section section--bamboo svc-cta">
+    <div class="container svc-cta__inner">
+      <h2 class="svc-cta__head">Not sure which of these you need?</h2>
+      <p class="svc-cta__body">
+        That is what the Pulse Check is for. A free 30-minute review, and a one-page written
+        readout within 48 hours — three observations and one recommendation, yours to keep
+        whether we work together or not.
+      </p>
+      <a
+        class="btn btn--filled svc-cta__btn"
+        href="/consultation/"
+        data-track="cta_click"
+        data-track-cta="pulse_check"
+        data-track-location="services_cta"
+      >Book a free 30-minute review</a>
+      <p class="svc-cta__micro">Usually scheduled within a week.</p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .hero-lite { padding-bottom: 0; }
+
+  .svc-hero__title {
+    font-family: var(--font-serif);
+    font-size: clamp(1.9rem, 4vw, 2.9rem);
+    line-height: 1.2;
+    margin: 0.75rem 0 1rem;
+    max-width: 22ch;
+  }
+
+  .svc-hero__lede {
+    font-size: clamp(1rem, 1.4vw, 1.1rem);
+    line-height: 1.65;
+    color: var(--stone-deep);
+    max-width: 52ch;
+    margin: 0;
+  }
+
+  .svc-pillar { padding-bottom: 0; }
+  .svc-pillar:last-of-type { padding-bottom: clamp(3rem, 6vw, 5rem); }
+
+  .svc-pillar__grid {
+    display: grid;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    align-items: start;
+    padding-top: clamp(1.75rem, 3vw, 2.5rem);
+    border-top: 1px solid var(--line);
+  }
+
+  @media (min-width: 900px) {
+    .svc-pillar__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); }
+    .svc-pillar__intro { position: sticky; top: calc(var(--header-h) + 1.5rem); }
+  }
+
+  /* Green kicker — one of the permitted uses. */
+  .svc-pillar__kicker { color: var(--bamboo-deep); }
+
+  .svc-pillar__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 2.4vw, 1.9rem);
+    margin: 0.5rem 0 0.5rem;
+  }
+
+  .svc-pillar__lede {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+    margin: 0;
+    max-width: 30ch;
+  }
+
+  .svc-pillar__items {
+    display: grid;
+    gap: clamp(1.5rem, 2.5vw, 2rem);
+  }
+
+  /* Anchor targets: offset so the sticky header doesn't cover the heading when
+     a hero link jumps here. */
+  .svc-item { scroll-margin-top: calc(var(--header-h) + 1.5rem); }
+
+  /* Zero-height marker whose only job is to be a scroll target. */
+  .anchor-stub {
+    display: block;
+    height: 0;
+    scroll-margin-top: calc(var(--header-h) + 1.5rem);
+  }
+
+  .svc-item__name a { color: inherit; text-decoration: none; }
+  .svc-item__name a:hover { color: var(--bamboo-deep); }
+
+  .svc-item__more {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.9rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
+  }
+
+  .svc-item__more:hover { text-decoration: underline; }
+
+  .svc-item__name {
+    font-size: 1.15rem;
+    line-height: 1.35;
+    margin: 0 0 0.5rem;
+  }
+
+  .svc-item__body {
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: var(--stone-deep);
+    margin: 0;
+    max-width: 60ch;
+  }
+
+  .svc-cta__inner {
+    display: grid;
+    gap: 1rem;
+    justify-items: start;
+    max-width: 44rem;
+  }
+
+  .svc-cta__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    margin: 0;
+    color: var(--cream);
+  }
+
+  .svc-cta__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--cream);
+    margin: 0;
+    max-width: 54ch;
+  }
+
+  .svc-cta__micro {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--cream);
+    opacity: 0.85;
+    margin: 0;
+  }
+
+</style>

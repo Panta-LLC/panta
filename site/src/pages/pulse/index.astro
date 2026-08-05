@@ -1,0 +1,348 @@
+---
+import '@fontsource/ibm-plex-mono/400.css';
+import Base from '../../layouts/Base.astro';
+import NewsletterForm from '../../components/NewsletterForm.astro';
+import Placeholder from '../../components/Placeholder.astro';
+import { getDoc, getPosts, getFeaturedPost, getCategories } from '../../lib/sanity.js';
+import { postMeta } from '../../lib/format.js';
+
+// Pulse index per PULSE-HOME-BUILD.md §5a.
+//
+// One conversion behaviour on this page: subscribe. There is deliberately NO
+// Pulse Check CTA anywhere here (§7.2) — the Pulse Check bridge belongs at the
+// end of an article, once someone has read something.
+const settings = await getDoc('siteSettings');
+const categories = await getCategories();
+const featured = await getFeaturedPost();
+const all = await getPosts(60);
+
+const essays = all.filter((p) => p.contentType !== 'guide');
+const guides = all.filter((p) => p.contentType === 'guide');
+
+// §5a launch-state degradation. Rails need 2+ essays in EVERY category;
+// below that the page shows one mixed reverse-chron list instead, and switches
+// itself over as the archive fills in. Guides row hidden until 2 exist.
+const railFor = (slug) => essays.filter((p) => p.category?.slug === slug);
+const railsReady =
+  categories.length > 0 && categories.every((c) => railFor(c.slug).length >= 2);
+const showGuides = guides.length >= 2;
+
+// The featured post shouldn't repeat immediately below itself.
+const rest = all.filter((p) => p.slug !== featured?.slug);
+
+const metaFor = (p) => postMeta(p);
+---
+<Base
+  title="Pulse — Panta"
+  description="Notes on being found, running smoother, and telling the story — for people doing meaningful work."
+>
+  <!-- ===================== masthead ===================== -->
+  <section class="section masthead">
+    <div class="container">
+      <h1 class="masthead__title">Pulse</h1>
+      <p class="masthead__tagline">
+        Notes on being found, running smoother, and telling the story — for people doing
+        meaningful work.
+      </p>
+
+      <nav class="cat-nav" aria-label="Pulse categories">
+        <a class="cat-nav__item is-current" href="/pulse/" aria-current="page">All</a>
+        {categories.map((c) => (
+          <a class="cat-nav__item" href={`/pulse/${c.slug}/`}>
+            {c.name} <span class="gloss">· {c.gloss}</span>
+          </a>
+        ))}
+        {showGuides && <a class="cat-nav__item" href="/pulse/guides/">Guides</a>}
+      </nav>
+    </div>
+  </section>
+
+  {all.length === 0 && (
+    <section class="section">
+      <div class="container">
+        <Placeholder note="three published Pulse pieces (one per category preferred)">
+          [Pulse has no published posts yet — index cannot ship in this state]
+        </Placeholder>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== featured slot ===================== -->
+  {featured && (
+    <section class="section feat">
+      <div class="container feat__grid">
+        <div class="feat__copy">
+          <p class="kicker">Featured · {featured.category?.name}</p>
+          <h2 class="feat__title">
+            <a href={`/pulse/${featured.slug}/`}>{featured.title}</a>
+          </h2>
+          <p class="feat__standfirst">{featured.standfirst}</p>
+          <p class="feat__meta">
+            {featured.author?.name ? `${featured.author.name} · ` : ''}{metaFor(featured)}
+          </p>
+        </div>
+        {featured.heroImage && (
+          <div class="feat__media">
+            <img src={featured.heroImage.asset?.url} alt="" loading="lazy" />
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== rails or mixed list ===================== -->
+  {all.length > 0 && (railsReady ? (
+    <section class="section rails">
+      <div class="container rails__grid">
+        {categories.map((c) => (
+          <div class="rail">
+            <p class="kicker rail__head">
+              {c.name} <span class="gloss">· {c.gloss}</span>
+            </p>
+            <ul class="rail__list">
+              {railFor(c.slug).slice(0, 2).map((p) => (
+                <li>
+                  <a href={`/pulse/${p.slug}/`}>
+                    <span class="rail__title">{p.title}</span>
+                    <span class="rail__meta">{metaFor(p)}</span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    </section>
+  ) : (
+    /* Launch state: one mixed list. Switches to rails automatically once every
+       category has two published essays. */
+    <section class="section rails">
+      <div class="container">
+        <p class="kicker rail__head">Latest</p>
+        <ul class="rail__list rail__list--mixed">
+          {rest.map((p) => (
+            <li>
+              <a href={`/pulse/${p.slug}/`}>
+                <span class="rail__title">{p.title}</span>
+                <span class="rail__meta">
+                  {p.category?.name} <span class="gloss">· {p.category?.gloss}</span>
+                  {metaFor(p) ? ` · ${metaFor(p)}` : ''}
+                </span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  ))}
+
+  <!-- ===================== guides ===================== -->
+  {showGuides && (
+    <section class="section guides">
+      <div class="container">
+        <p class="kicker">Evergreen how-tos · no dates, kept current</p>
+        <ul class="guides__grid">
+          {guides.slice(0, 6).map((g) => (
+            <li class="guide-card">
+              <a href={`/pulse/${g.slug}/`}>
+                <h3 class="guide-card__title">{g.title}</h3>
+                <p class="guide-card__standfirst">{g.standfirst}</p>
+                <p class="kicker">{g.category?.name}{g.readTime ? ` · ${g.readTime} min read` : ''}</p>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== newsletter ===================== -->
+  <!-- The only filled CTA on this page (§5a). -->
+  <section class="section">
+    <div class="container">
+      <NewsletterForm
+        source="pulse_index"
+        variant="primary"
+        body={settings?.newsletterBlurb ?? 'One useful idea every other week. No fluff, no funnels.'}
+      />
+    </div>
+  </section>
+</Base>
+
+<style>
+  .masthead { padding-bottom: 0; }
+
+  .masthead__title {
+    font-family: var(--font-serif);
+    font-size: clamp(2.8rem, 7vw, 5rem);
+    line-height: 1;
+    margin: 0 0 0.75rem;
+  }
+
+  .masthead__tagline {
+    font-size: clamp(1rem, 1.4vw, 1.1rem);
+    line-height: 1.6;
+    color: var(--stone-deep);
+    max-width: 52ch;
+    margin: 0 0 2rem;
+  }
+
+  /* Category nav between hairlines (§5a). */
+  .cat-nav {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem 1.75rem;
+    padding-block: 0.9rem;
+    border-block: 1px solid var(--line);
+  }
+
+  .cat-nav__item {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--charcoal);
+    text-decoration: none;
+    white-space: nowrap;
+  }
+
+  .cat-nav__item:hover { color: var(--bamboo-deep); }
+  .cat-nav__item.is-current { color: var(--bamboo-deep); }
+
+  /* ---------------------------------------------------------- featured -- */
+
+  .feat__grid {
+    display: grid;
+    gap: clamp(1.75rem, 4vw, 3rem);
+    align-items: center;
+  }
+
+  @media (min-width: 900px) {
+    .feat__grid { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+  }
+
+  .feat__title {
+    font-family: var(--font-serif);
+    font-size: clamp(1.7rem, 3.4vw, 2.5rem);
+    line-height: 1.2;
+    margin: 0.75rem 0 0.85rem;
+  }
+
+  .feat__title a { color: var(--charcoal); text-decoration: none; }
+  .feat__title a:hover { color: var(--bamboo-deep); }
+
+  .feat__standfirst {
+    font-family: var(--font-serif);
+    font-size: clamp(1rem, 1.5vw, 1.15rem);
+    line-height: 1.6;
+    color: var(--stone-deep);
+    margin: 0 0 1rem;
+    max-width: 48ch;
+  }
+
+  .feat__meta {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--stone-deep);
+    margin: 0;
+  }
+
+  .feat__media img {
+    width: 100%;
+    height: auto;
+    display: block;
+    border-radius: var(--radius);
+  }
+
+  /* ------------------------------------------------------------- rails -- */
+
+  .rails__grid {
+    display: grid;
+    gap: clamp(1.75rem, 3vw, 2.5rem);
+  }
+
+  @media (min-width: 820px) {
+    .rails__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .rail__head { margin-bottom: 0.75rem; }
+
+  .rail__list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .rail__list li { border-bottom: 1px solid var(--line); }
+
+  .rail__list a {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.9rem 0;
+    text-decoration: none;
+  }
+
+  .rail__title {
+    font-family: var(--font-serif);
+    font-size: 1.08rem;
+    line-height: 1.35;
+    color: var(--charcoal);
+  }
+
+  .rail__list a:hover .rail__title { color: var(--bamboo-deep); }
+
+  .rail__meta {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+
+  .rail__list--mixed { max-width: 46rem; }
+
+  /* ------------------------------------------------------------ guides -- */
+
+  .guides { background: var(--cream-soft); }
+
+  .guides__grid {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+    display: grid;
+    gap: 1.25rem;
+  }
+
+  @media (min-width: 820px) {
+    .guides__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .guide-card {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream);
+  }
+
+  .guide-card a {
+    display: block;
+    padding: clamp(1.1rem, 2vw, 1.5rem);
+    text-decoration: none;
+  }
+
+  .guide-card__title {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    line-height: 1.35;
+    margin: 0 0 0.5rem;
+    color: var(--charcoal);
+  }
+
+  .guide-card__standfirst {
+    font-size: 0.9rem;
+    line-height: 1.55;
+    color: var(--stone-deep);
+    margin: 0 0 0.75rem;
+  }
+</style>

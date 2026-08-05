@@ -1,0 +1,411 @@
+---
+import '@fontsource/ibm-plex-mono/400.css';
+import Base from '../../layouts/Base.astro';
+import Placeholder from '../../components/Placeholder.astro';
+import PulseTerm from '../../components/PulseTerm.astro';
+import SectionViews from '../../components/SectionViews.astro';
+import { getService, getServiceSlugs, getProjects, getPillars } from '../../lib/sanity.js';
+import { serviceHref } from '../../lib/pillars.js';
+import { serviceSchema, faqSchema } from '../../lib/schema.js';
+
+// One template for every service (PULSE-HOME-BUILD.md §8 Phase 3). Sections
+// render only when their fields are populated, following work/[slug].astro —
+// so a service with three sections and one with eight both look deliberate.
+//
+// The closing review CTA is NOT conditional. Every service page ends in one;
+// that is what makes the hero's service links scenic routes rather than leaks.
+export async function getStaticPaths() {
+  const slugs = await getServiceSlugs();
+  return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const p = await getService(slug);
+
+// featuredProjects is per-service. Falling back to the global `featured` flag
+// keeps the migrated web design page rendering exactly as it did before
+// anyone sets explicit references.
+let projects = (p.featuredProjects ?? []).filter(Boolean);
+if (!projects.length && (p.workLabel || p.workTitle)) {
+  projects = (await getProjects()).filter((x) => x.featured).slice(0, 2);
+}
+
+const pillar = (await getPillars()).find((x) => x.id === p.pillar);
+const faqs = (p.faqs ?? []).filter((f) => f?.q && f?.a);
+
+// Defaults live here, not in Sanity, so every page ends in a review CTA even
+// if an editor empties the fields. "Pulse Check" never appears on the button —
+// buttons describe, copy brands (§7.1).
+const CTA = {
+  title: p.ctaTitle ?? 'Not sure this is what you need?',
+  body:
+    p.ctaBody ??
+    'Book a free 30-minute review and we will tell you honestly — including if the answer is something else, or nothing at all. You will get a one-page written readout within 48 hours either way.',
+  label: p.ctaLabel ?? 'Book a free 30-minute review',
+  note: p.ctaNote ?? 'We call it the Pulse Check · readout within 48 hours',
+};
+
+const schema = [
+  serviceSchema({
+    name: p.title,
+    serviceType: p.serviceType ?? p.title,
+    description: p.seoDescription ?? p.summary,
+    url: new URL(`/services/${p.slug}/`, Astro.site).toString(),
+  }),
+  faqSchema(faqs),
+].filter(Boolean);
+
+/** A section promised by the page but not yet written blocks the build. */
+const gap = (cond, note) => (p.pageReady && cond ? note : null);
+const gaps = [
+  gap(!(p.includes ?? []).length, `what "${p.title}" includes — 3 or more cards`),
+  gap(!p.heroLede, `hero lede for "${p.title}"`),
+  ...(p.contentGaps ?? []),
+].filter(Boolean);
+---
+<Base
+  title={p.seoTitle ?? `${p.title} — Panta`}
+  description={p.seoDescription ?? p.summary}
+  schema={schema}
+  noindex={!p.pageReady}
+>
+  <!-- ===================== hero ===================== -->
+  <section class="section section--dark hero svc-hero" data-section="hero">
+    <div class="container">
+      <p class="kicker svc-hero__crumb">
+        <a class="crumb" href="/services/">Services</a>
+        {pillar && <> / <span class="svc-hero__pillar">{pillar.kicker}</span> <span class="gloss">· {pillar.head.replace('.', '').toLowerCase()}</span></>}
+      </p>
+      <h1 class="svc-hero__title">{p.heroTitle ?? p.title}</h1>
+      <p class="lede">{p.heroLede ?? p.summary}</p>
+      <div class="btn-row">
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="pulse_check"
+          data-track-location={`service_${p.slug}_hero`}
+        >Book a free 30-minute review</a>
+        {p.heroSecondaryLabel && (
+          <a
+            href={p.heroSecondaryHref ?? '/work/'}
+            class="btn btn--ghost"
+            data-track="cta_click"
+            data-track-cta="secondary"
+            data-track-location={`service_${p.slug}_hero`}
+          >{p.heroSecondaryLabel}</a>
+        )}
+      </div>
+    </div>
+  </section>
+
+  {gaps.length > 0 && (
+    <section class="section">
+      <div class="container">
+        {gaps.map((g) => <Placeholder note={g}>[{g} — not written yet]</Placeholder>)}
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== proof strip ===================== -->
+  {p.proofLabel && projects.length > 0 && (
+    <section class="proof">
+      <div class="container proof-inner">
+        <p class="proof-q">{p.proofLabel}</p>
+        {projects.map((x) => <span class="client">{x.name}</span>)}
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== selected work ===================== -->
+  {projects.length > 0 && (p.workLabel || p.workTitle) && (
+    <section class="section" data-section="work">
+      <div class="container">
+        {p.workLabel && <p class="label">{p.workLabel}</p>}
+        {p.workTitle && <h2>{p.workTitle}</h2>}
+        <div class="grid grid--3" style="margin-top: 2.5rem;">
+          {projects.map((x) => (
+            <a class="card work-card" href={`/work/${x.slug}/`}>
+              <h3>{x.name}</h3>
+              <p>{x.summary}</p>
+              <span class="work-more">Read the story <span aria-hidden="true">→</span></span>
+            </a>
+          ))}
+          {p.moreCardTitle && (
+            <a class="card card--more" href="/work/">
+              <h3>{p.moreCardTitle}</h3>
+              <p>{p.moreCardBody}</p>
+              <span class="work-more">{p.moreCardLinkLabel} <span aria-hidden="true">→</span></span>
+            </a>
+          )}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== what this includes ===================== -->
+  {(p.includes ?? []).length > 0 && (
+    <section class="section section--dark" data-section="includes">
+      <div class="container">
+        {p.includesLabel && <p class="label">{p.includesLabel}</p>}
+        {p.includesTitle && <h2>{p.includesTitle}</h2>}
+        <div class="grid grid--3" style="margin-top: 2.5rem;">
+          {p.includes.map((c) => (
+            <div class="card card--onDark">
+              <span class="label" style="margin-bottom: 0.5rem;">{c.kicker}</span>
+              <h3 style="margin-bottom: 1rem;">{c.title}</h3>
+              <p style="color: var(--sage);">{c.body}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== pivot band ===================== -->
+  {p.pivotTitle && (
+    <section class="section section--bamboo" data-section="pivot">
+      <div class="container">
+        {p.pivotLabel && <p class="label" style="color: var(--cream);">{p.pivotLabel}</p>}
+        <h2 style="color: var(--cream);">{p.pivotTitle}</h2>
+        {p.pivotLede && <p class="lede" style="color: var(--cream); max-width: 54ch;">{p.pivotLede}</p>}
+        {(p.pivotChecklist ?? []).length > 0 && (
+          <div class="card" style="background: var(--cream); border-color: transparent; color: var(--charcoal); margin-top: 2rem; max-width: 44rem;">
+            {p.pivotIntro && <p>{p.pivotIntro}</p>}
+            <ul class="checklist" style="margin-block: 1.25rem;">
+              {p.pivotChecklist.map((c) => (
+                <li><strong>{c.title}</strong>{c.body ? ` — ${c.body}` : ''}</li>
+              ))}
+            </ul>
+            {p.pivotCtaLabel && (
+              <a
+                class="btn btn--primary"
+                href={p.pivotCtaHref ?? '/services/'}
+                data-track="cta_click"
+                data-track-cta="pivot"
+                data-track-location={`service_${p.slug}_pivot`}
+              >{p.pivotCtaLabel}</a>
+            )}
+          </div>
+        )}
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== process pointer ===================== -->
+  {p.processTitle && (
+    <section class="section" data-section="process">
+      <div class="container">
+        {p.processLabel && <p class="label">{p.processLabel}</p>}
+        <h2>{p.processTitle}</h2>
+        {p.processBody && (
+          <p class="lede" style="max-width: 56ch;">
+            {p.processBody}
+            {p.processLinkLabel && (
+              <> <a href={p.processLinkHref ?? '/services/'}>{p.processLinkLabel} →</a></>
+            )}
+          </p>
+        )}
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== related services ===================== -->
+  {(p.relatedServices ?? []).filter(Boolean).length > 0 && (
+    <section class="section" style="padding-top: 0;" data-section="related">
+      <div class="container">
+        <p class="kicker">Often paired with</p>
+        <ul class="related">
+          {p.relatedServices.filter(Boolean).map((r) => (
+            <li>
+              <a href={serviceHref(r)}>
+                <span class="related__name">{r.title}</span>
+                <span class="related__body">{r.summary}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== FAQ ===================== -->
+  {faqs.length > 0 && (
+    <section class="section" style="padding-top: 0;" data-section="faq">
+      <div class="container" style="max-width: 46rem;">
+        {p.faqLabel && <p class="label">{p.faqLabel}</p>}
+        {p.faqTitle && <h2>{p.faqTitle}</h2>}
+        <div style="margin-top: 1.5rem;">
+          {faqs.map((f) => (
+            <details class="faq">
+              <summary>{f.q}</summary>
+              <p>{f.a}</p>
+            </details>
+          ))}
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== closing review CTA (always) ===================== -->
+  <section class="section section--bamboo" data-section="cta">
+    <div class="container svc-cta__inner">
+      <h2 class="svc-cta__head">{CTA.title}</h2>
+      <p class="svc-cta__body">{CTA.body}</p>
+      <a
+        class="btn btn--filled"
+        href="/consultation/"
+        data-track="cta_click"
+        data-track-cta="pulse_check"
+        data-track-location={`service_${p.slug}_cta`}
+      >{CTA.label}</a>
+      <p class="svc-cta__micro">
+        <PulseTerm text={CTA.note} location={`service_${p.slug}_cta`} />
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .svc-hero { padding-block: clamp(3.5rem, 8vw, 6rem); }
+
+  .svc-hero__crumb { margin-bottom: 1rem; }
+  .crumb { color: inherit; text-decoration: none; }
+  .crumb:hover { text-decoration: underline; }
+  /* Pillar in green — one of the permitted uses. */
+  .svc-hero__pillar { color: var(--sage); }
+
+  .svc-hero__title {
+    font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+    line-height: 1.15;
+    margin-bottom: 1rem;
+  }
+
+  /* --- proof strip (same pattern as /consultation/) --- */
+  .proof {
+    background: var(--cream-soft);
+    border-block: 1px solid var(--line);
+    padding-block: 1.1rem;
+  }
+
+  .proof-inner {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 0.5rem 1.5rem;
+  }
+
+  .proof-q { font-size: 0.85rem; color: var(--stone-deep); margin: 0; }
+  .client { font-size: 0.85rem; font-weight: 500; }
+
+  /* --- work cards --- */
+  .work-card, .card--more {
+    display: flex;
+    flex-direction: column;
+    text-decoration: none;
+    color: inherit;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  .work-card:hover, .card--more:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 20px 40px -28px rgba(0, 0, 0, 0.45);
+  }
+
+  .work-more {
+    margin-top: auto;
+    padding-top: 0.75rem;
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+  }
+
+  .card--onDark {
+    background: transparent;
+    border-color: rgba(245, 241, 231, 0.28);
+    color: var(--cream);
+  }
+
+  .card--onDark h3 { color: var(--cream); }
+  .card--onDark p { color: var(--sage); }
+
+  /* --- related services --- */
+  .related {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    border-top: 1px solid var(--line);
+    max-width: 46rem;
+  }
+
+  .related li { border-bottom: 1px solid var(--line); }
+
+  .related a {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.9rem 0;
+    text-decoration: none;
+  }
+
+  .related__name { font-weight: 500; color: var(--charcoal); }
+  .related a:hover .related__name { color: var(--bamboo-deep); }
+  .related__body { font-size: 0.9rem; color: var(--stone-deep); }
+
+  /* --- FAQ --- */
+  .faq {
+    border-bottom: 1px solid var(--line);
+    padding-block: 0.9rem;
+  }
+
+  .faq summary {
+    cursor: pointer;
+    font-weight: 500;
+    list-style: none;
+  }
+
+  .faq summary::-webkit-details-marker { display: none; }
+  .faq summary::after { content: ' +'; color: var(--bamboo-deep); }
+  .faq[open] summary::after { content: ' –'; }
+  .faq p { margin: 0.6rem 0 0; color: var(--stone-deep); }
+
+  /* --- closing CTA --- */
+  .svc-cta__inner {
+    display: grid;
+    gap: 1rem;
+    justify-items: start;
+    max-width: 44rem;
+  }
+
+  .svc-cta__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    margin: 0;
+    color: var(--cream);
+  }
+
+  .svc-cta__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--cream);
+    margin: 0;
+    max-width: 54ch;
+  }
+
+  .svc-cta__micro {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--cream);
+    opacity: 0.85;
+    margin: 0;
+    /* This block runs cream on bamboo; the Pulse Check term's default accent
+       (bamboo-deep) would all but vanish against it. */
+    --pulse-term-accent: var(--cream);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .work-card, .card--more { transition: none; }
+  }
+</style>
+
+<SectionViews />

@@ -1,0 +1,23 @@
+{
+  "name": "panta-studio",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "sanity dev",
+    "start": "sanity start",
+    "build": "sanity build",
+    "deploy": "sanity deploy",
+    "extract": "sanity schema extract --path schema.json"
+  },
+  "dependencies": {
+    "@sanity/vision": "^4",
+    "react": "^19",
+    "react-dom": "^19",
+    "sanity": "^4",
+    "styled-components": "^6"
+  },
+  "devDependencies": {
+    "typescript": "^5"
+  }
+}

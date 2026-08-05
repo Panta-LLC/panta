@@ -1,13 +1,22 @@
 ---
+import '@fontsource/baloo-2/800.css';
 import Base from '../layouts/Base.astro';
 import RippleMark from '../components/RippleMark.astro';
+import SectionViews from '../components/SectionViews.astro';
 import { getDoc } from '../lib/sanity.js';
 
 const c = await getDoc('aboutPage');
+
+// The mission material — the three verbs and the origin story — moved here
+// from the homepage when it became the agency storefront (business-strategy.md
+// §7: the homepage sells; About tells). Verb and origin copy lives on the
+// missionPage doc, so this page reads both documents.
+const m = await getDoc('missionPage');
+const verbs = m.verbPanels;
 ---
 <Base
-  title="About Panta — a friendly partner in the growth of your mission"
-  description="Panta LLC supports community-based businesses and organizations with web and software development, business process improvement, and creative design — strategy and engineering from the same hands."
+  title="About Panta — the problems are the same, the resources aren't"
+  description="Fifteen years split between venture-funded startups and organizations running on almost nothing taught us the problems are identical. Only the resources differ. Panta exists to close that gap."
 >
   <section class="section section--dark hero" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
     <div class="container">
@@ -42,10 +51,54 @@ const c = await getDoc('aboutPage');
           </ul>
           <p class="small" style="margin-top: 1rem;">
             {c.doNote}
-            {' '}<a href="/community-programs/">Community Program Development</a>
-            {' · '}<a href="/product-development/">Product Development</a>
+            {' '}<a href="/community-programs/">Community programs</a>
+            {' · '}<a href="/product-development/">Products we release</a>
           </p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= the three verbs ======================= -->
+  <!-- Moved from the homepage. Each card keeps its id (deep links like /about/#build
+       still land) and its data-section, so the GA4 home_section_view series for
+       build/connect/create continues — firing from this page now. Annotate in GA4. -->
+  <section class="mverbs section" id="verbs">
+    <div class="container">
+      <p class="label">Why we do it</p>
+      <h2 class="mverbs__quote">{m.quote}</h2>
+      <div class="mverbs__grid">
+        {verbs.map((v) => (
+          <article class="mverb" id={v._key} data-section={v._key}>
+            <p class="mverb__word">{v.word}</p>
+            <h3 class="mverb__head">{v.head}</h3>
+            <p class="mverb__story">{v.story}</p>
+            <ul class="mverb__chips">
+              {v.chips.map((chip) => <li>{chip}</li>)}
+            </ul>
+          </article>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= origin ======================= -->
+  <section class="origin section--dark" id="origin" data-section="origin">
+    <div class="container origin__grid">
+      <div class="origin__copy">
+        <p class="label">{m.originLabel}</p>
+        <h2>{m.originTitle}</h2>
+        <p class="lede">{m.originLede}</p>
+        <p>{m.originBody}</p>
+        <p class="origin__turn"><em>{m.originTurn}</em></p>
+      </div>
+      <div class="origin__mark" aria-hidden="true">
+        <svg viewBox="0 0 200 200" class="origin-ripple">
+          <circle cx="100" cy="100" r="88" stroke="currentColor" stroke-width="1" fill="none" />
+          <circle cx="100" cy="100" r="62" stroke="currentColor" stroke-width="1.6" fill="none" />
+          <circle cx="100" cy="100" r="38" stroke="currentColor" stroke-width="2.6" fill="none" />
+          <circle cx="100" cy="100" r="16" stroke="#6F8B3C" stroke-width="5" fill="none" />
+        </svg>
       </div>
     </div>
   </section>
@@ -77,3 +130,157 @@ const c = await getDoc('aboutPage');
     </div>
   </section>
 </Base>
+
+<style>
+  /* --- the three verbs (moved from the homepage) --------------------------- */
+
+  .mverbs__quote {
+    font-family: var(--font-serif);
+    font-weight: 300;
+    font-size: clamp(1.5rem, 3vw, 2.1rem);
+    line-height: 1.35;
+    max-width: 24ch;
+    margin: 0 0 clamp(2rem, 4vw, 3rem);
+  }
+
+  .mverbs__grid {
+    display: grid;
+    gap: clamp(1.5rem, 3vw, 2.25rem);
+  }
+
+  @media (min-width: 820px) {
+    .mverbs__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .mverb {
+    display: grid;
+    align-content: start;
+    gap: 0.7rem;
+    padding-top: 1.1rem;
+    border-top: 2px solid var(--bamboo);
+  }
+
+  .mverb__word {
+    font-family: 'Baloo 2', var(--font-sans);
+    font-weight: 800;
+    font-size: clamp(1.6rem, 3vw, 2.1rem);
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+    line-height: 1;
+    margin: 0;
+  }
+
+  .mverb__head {
+    font-size: 1.05rem;
+    line-height: 1.35;
+    margin: 0;
+  }
+
+  .mverb__story {
+    font-size: 0.94rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+    margin: 0;
+  }
+
+  .mverb__chips {
+    list-style: none;
+    padding: 0;
+    margin: 0.25rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.4rem;
+  }
+
+  .mverb__chips li {
+    font-size: 0.75rem;
+    line-height: 1.3;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    background: var(--cream-soft);
+    color: var(--stone-deep);
+  }
+
+  /* --- origin (moved from the homepage) ------------------------------------ */
+
+  .origin {
+    background: var(--charcoal);
+    color: var(--cream);
+    padding-block: clamp(4rem, 10vw, 7rem);
+  }
+
+  .origin__grid {
+    display: grid;
+    gap: 3rem;
+    align-items: center;
+  }
+
+  @media (min-width: 860px) {
+    .origin__grid { grid-template-columns: 1.3fr 1fr; }
+  }
+
+  .origin__turn {
+    font-family: var(--font-serif);
+    font-size: 1.3rem;
+    color: var(--sage);
+    margin-top: 2.25rem;
+  }
+
+  .origin__mark { display: grid; justify-items: center; }
+
+  .origin-ripple {
+    width: min(320px, 70vw);
+    color: var(--cream);
+  }
+</style>
+
+<SectionViews />
+
+<script>
+  import { gsap } from 'gsap';
+  import { ScrollTrigger } from 'gsap/ScrollTrigger';
+
+  gsap.registerPlugin(ScrollTrigger);
+
+  /* Scroll reveals for the moved mission sections — same tweens they had on the
+     homepage. `from` with autoAlpha means no-JS and reduced-motion both leave
+     everything fully visible. */
+  const mm = gsap.matchMedia();
+
+  mm.add('(prefers-reduced-motion: no-preference)', () => {
+    gsap.from('.mverb', {
+      scrollTrigger: { trigger: '.mverbs', start: 'top 75%' },
+      autoAlpha: 0,
+      y: 26,
+      duration: 0.6,
+      stagger: 0.12,
+      ease: 'power2.out',
+    });
+
+    gsap
+      .timeline({
+        scrollTrigger: {
+          trigger: '#origin',
+          start: 'top 75%',
+          end: 'center center',
+          scrub: 0.5,
+        },
+      })
+      .from('.origin-ripple circle', {
+        scale: 0.15,
+        autoAlpha: 0,
+        transformOrigin: '50% 50%',
+        stagger: { each: 0.22, from: 'end' },
+        ease: 'power1.out',
+      });
+
+    gsap.from('.origin__copy > *', {
+      scrollTrigger: { trigger: '#origin', start: 'top 70%' },
+      autoAlpha: 0,
+      y: 24,
+      duration: 0.7,
+      stagger: 0.12,
+      ease: 'power2.out',
+    });
+  });
+</script>

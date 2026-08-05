@@ -1,0 +1,336 @@
+---
+import '@fontsource/ibm-plex-mono/400.css';
+import Base from '../../layouts/Base.astro';
+import PortableText from '../../components/PortableText.astro';
+import NewsletterForm from '../../components/NewsletterForm.astro';
+import { getDoc, getPost, getPostSlugs, getRelatedPosts, getCategories, getPosts } from '../../lib/sanity.js';
+import { postMeta } from '../../lib/format.js';
+
+// One dynamic route serves both shapes because the brief puts them at the same
+// depth (§8: "/pulse/signal etc."), and Astro cannot have two [param] routes
+// in one directory. Category slugs are emitted first; a post whose slug
+// collided with a category name would be a content error, not a routing one.
+export async function getStaticPaths() {
+  const [slugs, categories, all] = await Promise.all([
+    getPostSlugs(),
+    getCategories(),
+    getPosts(60),
+  ]);
+
+  const guides = all.filter((p) => p.contentType === 'guide');
+
+  const categoryPaths = categories.map((c) => ({
+    params: { slug: c.slug },
+    props: { kind: 'category', category: c, posts: all.filter((p) => p.category?.slug === c.slug) },
+  }));
+
+  // The Guides route only exists once the index is willing to link to it.
+  const guidePath =
+    guides.length >= 2
+      ? [{
+          params: { slug: 'guides' },
+          props: {
+            kind: 'category',
+            category: { name: 'Guides', gloss: 'evergreen how-tos, kept current', slug: 'guides' },
+            posts: guides,
+          },
+        }]
+      : [];
+
+  const taken = new Set([...categories.map((c) => c.slug), 'guides']);
+  const postPaths = slugs
+    .filter((s) => !taken.has(s))
+    .map((slug) => ({ params: { slug }, props: { kind: 'post' } }));
+
+  return [...categoryPaths, ...guidePath, ...postPaths];
+}
+
+const { kind, category, posts: categoryPosts } = Astro.props;
+const { slug } = Astro.params;
+
+const settings = await getDoc('siteSettings');
+
+// Only fetch the heavy document when this route is actually an article.
+const post = kind === 'post' ? await getPost(slug) : null;
+
+// Long form in the byline, short in the lists below it.
+const metaFor = (p) => postMeta(p, { long: true });
+const metaShort = (p) => postMeta(p);
+
+// "Keep reading": manual `related` wins; otherwise same-category recent, paired
+// one essay + one guide where both exist (§5b).
+let related = [];
+if (post) {
+  related = (post.related ?? []).filter(Boolean).slice(0, 2);
+  if (related.length < 2 && post.category?.slug) {
+    const pool = await getRelatedPosts(slug, post.category.slug);
+    const have = new Set(related.map((r) => r.slug));
+    const essay = pool.find((p) => p.contentType !== 'guide' && !have.has(p.slug));
+    const guide = pool.find((p) => p.contentType === 'guide' && !have.has(p.slug));
+    for (const candidate of [essay, guide, ...pool]) {
+      if (related.length >= 2) break;
+      if (candidate && !have.has(candidate.slug)) {
+        related.push(candidate);
+        have.add(candidate.slug);
+      }
+    }
+  }
+}
+
+const title = kind === 'post' ? `${post?.title} — Pulse` : `${category.name} — Pulse`;
+const description =
+  kind === 'post'
+    ? post?.seoDescription ?? post?.standfirst
+    : `Pulse — ${category.name}: ${category.gloss}.`;
+---
+<Base title={title} description={description}>
+  {kind === 'category' ? (
+    <!-- ============ category view: a filtered index ============ -->
+    <section class="section">
+      <div class="container">
+        <p class="kicker">
+          <a class="crumb" href="/pulse/">Pulse</a> / {category.name} <span class="gloss">· {category.gloss}</span>
+        </p>
+        <h1 class="cat__title">{category.name}</h1>
+        <p class="cat__gloss">{category.gloss}</p>
+
+        {categoryPosts.length === 0 ? (
+          <p class="cat__empty">Nothing published here yet.</p>
+        ) : (
+          <ul class="rail__list">
+            {categoryPosts.map((p) => (
+              <li>
+                <a href={`/pulse/${p.slug}/`}>
+                  <span class="rail__title">{p.title}</span>
+                  <span class="rail__meta">{metaShort(p)}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    </section>
+
+    <section class="section">
+      <div class="container">
+        <NewsletterForm
+          source={`pulse_${category.slug}`}
+          variant="primary"
+          body={settings?.newsletterBlurb ?? 'One useful idea every other week. No fluff, no funnels.'}
+        />
+      </div>
+    </section>
+  ) : (
+    <!-- ================= article ================= -->
+    <article class="section">
+      <div class="container art">
+        <!-- Header. Gloss always shown; category in green (§5b). -->
+        <p class="kicker art__crumb">
+          <a class="crumb" href="/pulse/">Pulse</a> /
+          <a class="crumb crumb--cat" href={`/pulse/${post.category?.slug}/`}>{post.category?.name}</a>
+          <span class="gloss">· {post.category?.gloss}</span>
+        </p>
+
+        <h1 class="art__title">{post.title}</h1>
+        <p class="art__standfirst">{post.standfirst}</p>
+
+        <div class="art__byline">
+          {post.author?.photo?.asset?.url && (
+            <img class="art__avatar" src={post.author.photo.asset.url} alt="" />
+          )}
+          <span>
+            {post.author?.name ?? 'Panta'}
+            <span class="art__byline-meta">{metaFor(post) ? ` · ${metaFor(post)}` : ''}</span>
+          </span>
+        </div>
+
+        {post.heroImage?.asset?.url && (
+          <img class="art__hero" src={post.heroImage.asset.url} alt="" />
+        )}
+
+        <!-- Body. No sidebar, no popups, no mid-article CTAs of any kind (§5b). -->
+        <PortableText value={post.body} />
+
+        <!-- ===== end sequence — strict order (§5b) ===== -->
+
+        <!-- 1. category bridge. Text link, never a button: the funnel lives in
+                category.bridgeCopy, and a button here would compete with the
+                newsletter card directly below it. -->
+        <div class="bridge">
+          <p class="bridge__copy">{post.category?.bridgeCopy}</p>
+          <a
+            class="bridge__link"
+            href="/consultation/"
+            data-track="cta_click"
+            data-track-cta="pulse_check"
+            data-track-location="pulse_article_bridge"
+          >Book a free 30-minute review <span aria-hidden="true">→</span></a>
+        </div>
+
+        <!-- 2. newsletter -->
+        <NewsletterForm
+          source="pulse_article"
+          variant="primary"
+          class="art__nl"
+          body={settings?.newsletterBlurb ?? 'One useful idea every other week. No fluff, no funnels.'}
+        />
+
+        <!-- 3. keep reading -->
+        {related.length > 0 && (
+          <div class="keep">
+            <p class="kicker">Keep reading</p>
+            <ul class="rail__list">
+              {related.map((r) => (
+                <li>
+                  <a href={`/pulse/${r.slug}/`}>
+                    <span class="rail__title">{r.title}</span>
+                    <span class="rail__meta">
+                      {r.category?.name}{metaShort(r) ? ` · ${metaShort(r)}` : ''}
+                    </span>
+                  </a>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+    </article>
+  )}
+</Base>
+
+<style>
+  .crumb { color: inherit; text-decoration: none; }
+  .crumb:hover { text-decoration: underline; }
+  /* Category in green — one of the four permitted uses (§3). */
+  .crumb--cat { color: var(--bamboo-deep); }
+
+  /* ---------------------------------------------------------- category -- */
+
+  .cat__title {
+    font-family: var(--font-serif);
+    font-size: clamp(2.2rem, 5vw, 3.4rem);
+    line-height: 1.1;
+    margin: 0.75rem 0 0.4rem;
+  }
+
+  .cat__gloss {
+    font-size: 1rem;
+    color: var(--stone-deep);
+    margin: 0 0 2rem;
+  }
+
+  .cat__empty { color: var(--stone-deep); }
+
+  /* ----------------------------------------------------------- article -- */
+
+  .art { max-width: 46rem; }
+
+  .art__crumb { margin-bottom: 1.25rem; }
+
+  /* Claim-style headline (§5b). */
+  .art__title {
+    font-family: var(--font-serif);
+    font-size: clamp(2rem, 4.4vw, 3rem);
+    line-height: 1.15;
+    margin: 0 0 1rem;
+    max-width: 20ch;
+  }
+
+  .art__standfirst {
+    font-family: var(--font-serif);
+    font-size: clamp(1.1rem, 1.8vw, 1.3rem);
+    line-height: 1.6;
+    color: var(--stone-deep);
+    margin: 0 0 1.75rem;
+    max-width: 52ch;
+  }
+
+  .art__byline {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding-bottom: 1.75rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 2rem;
+    font-size: 0.9rem;
+  }
+
+  .art__avatar {
+    width: 34px;
+    height: 34px;
+    border-radius: 50%;
+    object-fit: cover;
+  }
+
+  .art__byline-meta { color: var(--stone-deep); }
+
+  .art__hero {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius);
+    margin-bottom: 2.25rem;
+  }
+
+  /* ------------------------------------------------------------ bridge -- */
+
+  .bridge {
+    margin-top: 3rem;
+    padding-top: 1.75rem;
+    border-top: 1px solid var(--line);
+    max-width: 60ch;
+  }
+
+  .bridge__copy {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    line-height: 1.7;
+    margin: 0 0 0.85rem;
+  }
+
+  .bridge__link {
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
+  }
+
+  .bridge__link:hover { text-decoration: underline; }
+
+  .art__nl { margin-top: 2.5rem; }
+
+  .keep { margin-top: 3rem; }
+
+  /* ------------------------------------------------- shared list style -- */
+
+  .rail__list {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .rail__list li { border-bottom: 1px solid var(--line); }
+
+  .rail__list a {
+    display: grid;
+    gap: 0.3rem;
+    padding: 0.9rem 0;
+    text-decoration: none;
+  }
+
+  .rail__title {
+    font-family: var(--font-serif);
+    font-size: 1.08rem;
+    line-height: 1.35;
+    color: var(--charcoal);
+  }
+
+  .rail__list a:hover .rail__title { color: var(--bamboo-deep); }
+
+  .rail__meta {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+</style>

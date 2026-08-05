@@ -26,6 +26,10 @@
 
   --font-serif: 'Spectral', 'Iowan Old Style', Georgia, serif;
   --font-sans: 'Work Sans', 'Helvetica Neue', Arial, sans-serif;
+  /* Kickers and metadata only — "What we do", category tags, breadcrumbs,
+     "Featured · Flow". A third role, not a replacement for either family
+     above (PULSE-HOME-BUILD.md §3). */
+  --font-mono: 'IBM Plex Mono', ui-monospace, SFMono-Regular, Menlo, monospace;
 
   --measure: 62ch;
   --container: 68rem;
@@ -165,6 +169,30 @@ em { font-family: var(--font-serif); }
 }
 
 .section--dark .label { color: var(--sage); }
+
+/* Mono kicker — metadata and category tags only (PULSE-HOME-BUILD.md §3).
+   Distinct from .label, which stays sans: .label names a section, .kicker
+   tags a thing ("Featured · Flow", "Pulse / Signal", read times). */
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  font-weight: 400;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  margin: 0;
+}
+
+.section--dark .kicker { color: var(--sage); }
+
+/* The gloss that always trails a Pulse category ("Signal · being found").
+   §5a and §5b both require it at every appearance, in muted text. */
+.gloss {
+  color: var(--stone-deep);
+  font-weight: 400;
+  text-transform: none;
+  letter-spacing: 0.02em;
+}
 /* sage on bamboo-deep is 3.1:1, so labels there stay cream */
 .section--bamboo .label { color: rgba(245, 241, 231, 0.9); }
 
@@ -237,6 +265,43 @@ em { font-family: var(--font-serif); }
 .section--bamboo .btn--ghost:hover { border-color: var(--cream); color: var(--cream); }
 
 .section--bamboo a:not(.btn) { color: var(--cream); }
+
+/* The conversion button — the loudest element on a page, capped at two per
+   page besides nav (PULSE-HOME-BUILD.md §3/§7.3, enforced by check-launch.mjs).
+   Was declared identically in index.astro and services.astro before this.
+   NOTE the explicit padding: it deliberately overrides .btn above, and the
+   local copies relied on that — dropping it visibly grows every filled
+   button. */
+.btn--filled {
+  padding: 0.8rem 1.4rem;
+  background: var(--charcoal);
+  color: var(--cream);
+  border-color: var(--charcoal);
+}
+
+.btn--filled:hover {
+  background: var(--bamboo-deep);
+  border-color: var(--bamboo-deep);
+  color: var(--cream);
+}
+
+/* Inverted on dark and bamboo surfaces, where a charcoal fill reads as a hole. */
+.section--dark .btn--filled,
+.section--bamboo .btn--filled {
+  background: var(--cream);
+  color: var(--charcoal);
+  border-color: var(--cream);
+}
+
+.section--dark .btn--filled:hover,
+.section--bamboo .btn--filled:hover {
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--cream);
+}
+.section--dark .btn--filled:hover {
+  border-color: var(--cream);
+}
 
 .btn-row {
   display: flex;
@@ -705,6 +770,24 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
   color: var(--cream);
 }
 
+/* The brand verb as an eyebrow on each practice. Block above the card title,
+   inline before the subordinate practice links — the verb frames the practice
+   without ever being the thing a prospect has to search for. */
+.nav-mega__verb {
+  display: block;
+  font-size: 0.62rem;
+  font-weight: 600;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--bamboo-deep);
+}
+
+.nav-mega__verb--inline {
+  display: inline-block;
+  margin-right: 0.5rem;
+  color: var(--stone-deep);
+}
+
 .nav-mega__card-title {
   font-weight: 600;
   font-size: 1rem;
@@ -896,12 +979,33 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
   margin-top: 0.75rem;
 }
 
+/* Mobile-only header CTA. Above 859px the ask lives inside .site-nav; below it
+   .site-nav is hidden and the only CTA was behind the hamburger. */
+.header-cta-sm {
+  display: none;
+  margin-left: auto;
+  margin-right: 0.75rem;
+  padding: 0.55rem 0.85rem;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
 @media (max-width: 859px) {
   /* hover mega menu and inline links give way to the tap panel */
   .nav-mega { display: none; }
   .site-nav { display: none; }
   .nav-toggle { display: flex; }
   .mobile-nav { display: block; }
+
+  /* Always on below this breakpoint. Suppressing it while the header floats
+     over the homepage hero was tried and is wrong: the hero observer reports
+     `over-hero` until the WHOLE hero clears (~908px on a 375px screen), but
+     the hero's own CTA scrolls off around 578px — leaving a ~330px window with
+     no ask on screen at all, which is the gap this button exists to close.
+     It is small, mono-scale chrome and excluded from the §7.3 filled cap, so
+     it does not compete with the hero's filled button the way a second filled
+     CTA would. */
+  .header-cta-sm { display: inline-block; }
 }
 
 @media (prefers-reduced-motion: reduce) {

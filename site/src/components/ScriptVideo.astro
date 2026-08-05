@@ -1,0 +1,74 @@
+---
+// A slot for one of the scripts in UPDATED_VIDEO_SCRIPTS.md. Renders nothing
+// until the files exist in public/video/, so pages can host a slot before the
+// video is shot without showing a broken player.
+//
+// Callers that need to change their own layout when a video is present should
+// import videoAssets() directly rather than guessing — see index.astro, which
+// adds a modifier class to the proof card.
+import { videoAssets } from '../lib/video.js';
+
+interface Props {
+  /** Basename in public/video/ — 'panta-intro' finds panta-intro.mp4 */
+  name: string;
+  /** GA4 `location` param for the video_play event */
+  location: string;
+  /** Accessible name. Screen readers announce the player; say which video. */
+  label: string;
+  /** CSS aspect-ratio. Square suits the hero column; 16/9 suits full-width. */
+  aspect?: string;
+  class?: string;
+}
+
+const { name, location, label, aspect = '1 / 1', class: className } = Astro.props;
+const v = videoAssets(name);
+---
+{v.has && (
+  /* Native controls with preload="none": the poster is the only weight until
+     someone presses play, click-to-play works with no JS, and keyboard and
+     screen-reader support come free. Deliberately NOT autoplaying or looping —
+     motion beside a call-to-action competes with it. UPDATED_VIDEO_SCRIPTS.md
+     lists Script 7's placement as a "site hero loop"; the slot is click-to-play
+     on purpose, and looping belongs to paid placements instead. */
+  <video
+    class:list={['script-video', className]}
+    controls
+    preload="none"
+    playsinline
+    poster={v.poster}
+    aria-label={label}
+    data-video-location={location}
+    style={`aspect-ratio: ${aspect};`}
+  >
+    <source src={v.src} type="video/mp4" />
+    {v.hasCaptions && (
+      <track kind="captions" src={v.captions} srclang="en" label="English" default />
+    )}
+  </video>
+)}
+
+<style>
+  .script-video {
+    display: block;
+    width: 100%;
+    object-fit: cover;
+    background: var(--charcoal);
+    border-radius: 6px;
+  }
+</style>
+
+<script>
+  // First play only, per video. NOT the click-based data-track helper: native
+  // controls live inside the element, so pause, scrub and fullscreen would all
+  // report as plays. pantaTrack self-gates on consent.
+  document.querySelectorAll<HTMLVideoElement>('.script-video').forEach((el) => {
+    el.addEventListener(
+      'play',
+      () =>
+        (window as any).pantaTrack?.('video_play', {
+          location: el.dataset.videoLocation ?? 'unknown',
+        }),
+      { once: true }
+    );
+  });
+</script>

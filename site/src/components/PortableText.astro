@@ -1,0 +1,126 @@
+---
+/**
+ * Minimal portable-text renderer for Pulse bodies.
+ *
+ * Hand-rolled rather than pulling in @portabletext/to-html: the schema allows
+ * exactly four block styles, two list types, two marks and images (see
+ * studio/schemaTypes/post.ts). Rendering that surface is ~40 lines, and a
+ * dependency here would have to be kept in step with the schema anyway.
+ *
+ * Anything unrecognised is skipped rather than rendered raw — an unknown block
+ * type should be invisible, not broken markup.
+ */
+interface Props {
+  value: any[];
+}
+const { value = [] } = Astro.props;
+
+type Span = { text: string; marks: string[] };
+type Node =
+  | { kind: 'block'; style: string; spans: Span[] }
+  | { kind: 'list'; ordered: boolean; items: Span[][] }
+  | { kind: 'image'; url?: string; alt?: string };
+
+// Consecutive listItem blocks of the same type collapse into one <ul>/<ol>;
+// portable text stores them as siblings, not as a nested structure.
+const nodes: Node[] = [];
+for (const block of value) {
+  if (block?._type === 'image') {
+    nodes.push({ kind: 'image', url: block.asset?.url, alt: block.alt });
+    continue;
+  }
+  if (block?._type !== 'block') continue;
+
+  const spans: Span[] = (block.children ?? [])
+    .filter((c: any) => c?._type === 'span')
+    .map((c: any) => ({ text: c.text ?? '', marks: c.marks ?? [] }));
+  if (!spans.some((s) => s.text.trim())) continue;
+
+  if (block.listItem) {
+    const ordered = block.listItem === 'number';
+    const last = nodes[nodes.length - 1];
+    if (last?.kind === 'list' && last.ordered === ordered) last.items.push(spans);
+    else nodes.push({ kind: 'list', ordered, items: [spans] });
+    continue;
+  }
+
+  nodes.push({ kind: 'block', style: block.style ?? 'normal', spans });
+}
+
+/**
+ * Spans are the only place body text becomes HTML, so escaping lives here and
+ * only the two known decorators are ever emitted as tags. Anything else in
+ * `marks` (link annotations, future decorators) falls through as plain text
+ * rather than being trusted.
+ */
+const esc = (s: string) =>
+  s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+
+const mark = (s: Span) => {
+  let html = esc(s.text);
+  if (s.marks.includes('strong')) html = `<strong>${html}</strong>`;
+  if (s.marks.includes('em')) html = `<em>${html}</em>`;
+  return html;
+};
+---
+<div class="pt">
+  {nodes.map((n) => {
+    if (n.kind === 'image') {
+      return n.url ? <figure class="pt__figure"><img src={n.url} alt={n.alt ?? ''} loading="lazy" /></figure> : null;
+    }
+    if (n.kind === 'list') {
+      const items = n.items.map((spans) => (
+        <li>{spans.map((s) => <Fragment set:html={mark(s)} />)}</li>
+      ));
+      return n.ordered ? <ol class="pt__list">{items}</ol> : <ul class="pt__list">{items}</ul>;
+    }
+    const inner = n.spans.map((s) => <Fragment set:html={mark(s)} />);
+    if (n.style === 'h2') return <h2>{inner}</h2>;
+    if (n.style === 'h3') return <h3>{inner}</h3>;
+    if (n.style === 'blockquote') return <blockquote class="pt__quote">{inner}</blockquote>;
+    return <p>{inner}</p>;
+  })}
+</div>
+
+<style>
+  .pt {
+    /* ~65ch measure, Spectral, generous leading (§5b). */
+    font-family: var(--font-serif);
+    font-size: 1.08rem;
+    line-height: 1.8;
+    max-width: 65ch;
+  }
+
+  .pt :global(p) { margin: 0 0 1.4rem; }
+
+  /* Headers stay in Spectral — no family switch mid-article (§5b). */
+  .pt :global(h2) {
+    font-family: var(--font-serif);
+    font-size: 1.5rem;
+    line-height: 1.3;
+    margin: 2.5rem 0 1rem;
+  }
+
+  .pt :global(h3) {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+    line-height: 1.35;
+    margin: 2rem 0 0.75rem;
+  }
+
+  /* Left rule, no rounded corners (§5b). */
+  .pt__quote {
+    margin: 2rem 0;
+    padding: 0.25rem 0 0.25rem 1.5rem;
+    border-left: 2px solid var(--bamboo);
+    font-size: 1.25rem;
+    line-height: 1.5;
+    color: var(--charcoal);
+  }
+
+  .pt__list { margin: 0 0 1.4rem; padding-left: 1.25rem; }
+  .pt__list :global(li) { margin-bottom: 0.5rem; }
+
+  .pt__figure { margin: 2rem 0; }
+  .pt__figure :global(img) { width: 100%; height: auto; border-radius: var(--radius); }
+</style>

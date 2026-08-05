@@ -3,7 +3,8 @@ import '../styles/global.css';
 import RippleMark from '../components/RippleMark.astro';
 import Analytics from '../components/Analytics.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
-import { getDoc } from '../lib/sanity.js';
+import { getDoc, getServices, getPillars } from '../lib/sanity.js';
+import { orderServices } from '../lib/pillars.js';
 
 interface Props {
   title: string;
@@ -19,6 +20,9 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 const year = new Date().getFullYear();
 
 const settings = await getDoc('siteSettings');
+// Both memoised in lib/sanity.js — Base renders on every page, so unmemoised
+// fetches here would multiply across the whole build.
+const services = orderServices(await getPillars(), await getServices());
 
 const orgSchema = {
   '@context': 'https://schema.org',
@@ -29,15 +33,10 @@ const orgSchema = {
   logo: new URL('/favicon.svg', Astro.site).toString(),
   email: 'hello@panta.llc',
   description:
-    'Panta builds, connects, and creates for community growth and development — through three practices: Web Strategy & Development, Community Program Development, and Product Development.',
+    `Digital, strategic, and creative support for organizations that serve people — ${services.map((s) => s.title.toLowerCase()).join(', ')}.`,
   slogan: 'One good move, felt everywhere.',
   areaServed: 'United States',
-  knowsAbout: [
-    'digital presence audits',
-    'local SEO',
-    'web development',
-    'nonprofit digital strategy',
-  ],
+  knowsAbout: [...services.map((s) => s.title.toLowerCase()), 'nonprofit digital strategy'],
 };
 
 // `desktop: false` keeps an item out of the header but still in the mobile
@@ -45,50 +44,58 @@ const orgSchema = {
 // it and "Get started" are the same intent, and two adjacent header entries
 // meaning "talk to Panta" split the click away from the bookable one.
 const flatNavItems = [
+  { href: '/work/', label: 'Work', cta: 'work', desktop: true },
+  { href: '/pulse/', label: 'Pulse', cta: 'pulse', desktop: true },
   { href: '/about/', label: 'About', cta: 'about', desktop: true },
   { href: '/contact/', label: 'Contact', cta: 'contact', desktop: false },
 ];
 
-// The practice you can hire today gets its own top-level nav item — prospects
-// search for the thing, not for the practice name.
-const websitesNav = { href: '/web-strategy/websites/', label: 'Websites', cta: 'websites' };
+// Kept for the mega quick links and footer; no longer its own header item.
+const websitesNav = { href: '/services/web-design-development/', label: 'Websites', cta: 'websites' };
 
-// The one practice with an offer. Full-size card in the mega menu.
+// Practices are framed by the brand verbs (see practice-taxonomy.md): the verb
+// is the eyebrow, the plain-English name is the link, because prospects search
+// for the thing and not for the verb. The verbs also encode the split that made
+// the old three-practice structure incoherent — BUILD is client services,
+// CONNECT is community work with no buyer, CREATE is our own products.
+
+// BUILD: the one practice with an offer. Full-size card in the mega menu.
+// Points at the services overview, which carries all six services under the
+// three pillars and ends in its own review CTA.
 const megaPrimary = {
-  href: '/web-strategy/',
-  label: 'Web Strategy & Development',
-  desc: 'Strategy and engineering from the same hands — a presence that finds, earns, and keeps your community.',
+  href: '/services/',
+  label: 'Digital, Strategic & Creative',
+  desc: 'Digital, strategic and creative support — grouped three ways, bought one at a time.',
   cta: 'web_strategy',
 };
 
 // Roadmap practices: still linked, still indexed, visually subordinate.
 const megaNext = [
-  { href: '/community-programs/', label: 'Community Program Development', cta: 'community_programs' },
-  { href: '/product-development/', label: 'Product Development', cta: 'product_development' },
+  { href: '/community-programs/', label: 'Community programs', cta: 'community_programs' },
+  { href: '/product-development/', label: 'Products we release', cta: 'product_development' },
 ];
 
 const megaQuickLinks = [
-  { href: '/consultation/', label: 'Free 30-minute consultation', cta: 'consultation' },
-  { href: '/web-strategy/websites/', label: 'Websites & web channels', cta: 'websites' },
-  { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
+  { href: '/consultation/', label: 'Book a free 30-minute review', cta: 'consultation' },
+  { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
+  { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
   { href: '/contact/', label: 'Contact', cta: 'contact' },
 ];
 
 const footerLinks = [
-  { href: '/consultation/', label: 'Free 30-minute consultation', cta: 'consultation' },
-  { href: '/web-strategy/websites/', label: 'Websites & web channels', cta: 'websites' },
-  { href: '/web-strategy/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
-  { href: '/web-strategy/', label: 'Web Strategy & Development', cta: 'web_strategy' },
+  { href: '/consultation/', label: 'Book a free 30-minute review', cta: 'consultation' },
+  { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
+  { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
-  { href: '/what-we-do/', label: 'What we do', cta: 'what_we_do' },
+  { href: '/services/', label: 'Services', cta: 'services' },
   { href: '/about/', label: 'About Panta', cta: 'about' },
   { href: '/contact/', label: 'Contact', cta: 'contact' },
 ];
 
 const footerNextLinks = [
-  { href: '/community-programs/', label: 'Community Program Development', cta: 'community_programs' },
-  { href: '/product-development/', label: 'Product Development', cta: 'product_development' },
+  { href: '/community-programs/', label: 'Community programs', cta: 'community_programs' },
+  { href: '/product-development/', label: 'Products we release', cta: 'product_development' },
 ];
 
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
@@ -97,8 +104,9 @@ const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
 // "What we do" branch.
 const workActive =
   currentPath !== websitesNav.href &&
-  (['/what-we-do/', '/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
-    currentPath.startsWith('/web-strategy/'));
+  (['/services/', '/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
+    currentPath.startsWith('/services/') ||
+    currentPath === '/digital-presence-plan/');
 ---
 <!doctype html>
 <html lang="en">
@@ -139,20 +147,13 @@ const workActive =
           <span class="brand__word">panta</span>
         </a>
         <nav class="site-nav" aria-label="Main">
-          <a
-            href={websitesNav.href}
-            aria-current={currentPath === websitesNav.href ? 'page' : undefined}
-            data-track="cta_click"
-            data-track-cta={websitesNav.cta}
-            data-track-location="header"
-          >{websitesNav.label}</a>
           <div class:list={['nav-drop', { 'nav-drop--active': workActive }]}>
             <a
               class="nav-drop__trigger"
-              href="/what-we-do/"
-              aria-current={currentPath === '/what-we-do/' ? 'page' : undefined}
+              href="/services/"
+              aria-current={currentPath === '/services/' ? 'page' : undefined}
             >
-              What we do
+              Services
               <svg class="nav-drop__caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
                 <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
               </svg>
@@ -163,10 +164,10 @@ const workActive =
                   <p class="nav-mega__label">What we do</p>
                   <p class="nav-mega__head">One good move, felt everywhere.</p>
                   <p class="nav-mega__sub">
-                    One practice you can hire today — and two taking root.
+                    What we do for clients — plus the work we build and run ourselves.
                   </p>
                   <a class="nav-mega__worklink" href="/work/">See client work <span aria-hidden="true">→</span></a>
-                  <a class="nav-mega__overview" href="/what-we-do/">Company overview</a>
+                  <a class="nav-mega__overview" href="/services/">All services</a>
                 </div>
                 <div class="nav-mega__cards">
                   <a
@@ -188,7 +189,7 @@ const workActive =
                     <span class="nav-mega__card-arrow" aria-hidden="true">→</span>
                   </a>
                   <div class="nav-mega__next">
-                    <p class="nav-mega__next-label">Growing next</p>
+                    <p class="nav-mega__next-label">What we’re building</p>
                     {megaNext.map((p) => (
                       <a
                         class="nav-mega__nextlink"
@@ -199,7 +200,7 @@ const workActive =
                         data-track-location="mega_menu"
                       >{p.label}<span aria-hidden="true"> →</span></a>
                     ))}
-                    <p class="nav-mega__next-note">In development — talk to us if you want to shape them.</p>
+                    <p class="nav-mega__next-note">Our own work, not services — talk to us if you want to shape them.</p>
                   </div>
                 </div>
               </div>
@@ -238,6 +239,18 @@ const workActive =
             data-track-location="header"
           >{settings.headerCtaLabel}</a>
         </nav>
+        {/* Below 859px .site-nav is hidden and the CTA above goes with it, so
+            the mobile header had no ask at all — only a hamburger concealing
+            one. This compact twin fills that gap. It is .btn--primary and sits
+            inside <header>, which check-launch.mjs strips before counting
+            filled buttons, so it costs nothing against the §7.3 cap. */}
+        <a
+          href="/consultation/"
+          class="btn btn--primary header-cta-sm"
+          data-track="cta_click"
+          data-track-cta="consultation"
+          data-track-location="header_mobile"
+        >Book a review</a>
         <button class="nav-toggle" type="button" aria-expanded="false" aria-controls="mobile-nav" aria-label="Menu">
           <span class="nav-toggle__bar"></span>
           <span class="nav-toggle__bar"></span>
@@ -260,7 +273,7 @@ const workActive =
           <p class="mobile-nav__label">What we do</p>
           <ul class="mobile-nav__list">
             <li>
-              <a href="/what-we-do/" aria-current={currentPath === '/what-we-do/' ? 'page' : undefined}>Company overview</a>
+              <a href="/services/" aria-current={currentPath === '/services/' ? 'page' : undefined}>All services</a>
             </li>
             <li>
               <a
@@ -284,7 +297,7 @@ const workActive =
               ))}
             </li>
           </ul>
-          <p class="mobile-nav__label">Growing next</p>
+          <p class="mobile-nav__label">What we’re building</p>
           <ul class="mobile-nav__list">
             {megaNext.map((p) => (
               <li>
@@ -387,7 +400,7 @@ const workActive =
                 </li>
               ))}
             </ul>
-            <p class="label" style="color: var(--sage); margin-top: 1.5rem;">Growing next</p>
+            <p class="label" style="color: var(--sage); margin-top: 1.5rem;">What we’re building</p>
             <ul class="footer-list">
               {footerNextLinks.map((l) => (
                 <li>

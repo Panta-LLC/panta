@@ -5,8 +5,8 @@ import { getDoc } from '../lib/sanity.js';
 const c = await getDoc('productDevelopmentPage');
 ---
 <Base
-  title="Product Development — Panta"
-  description="Panta's product practice, taking root now: new ideas for old problems, built into products that serve community needs."
+  title="Products we release — Panta"
+  description="Products Panta builds and releases, not a service you hire: new ideas for old problems, built into products that serve community needs."
 >
   <section class="section section--dark hero" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
     <div class="container">
@@ -45,11 +45,10 @@ const c = await getDoc('productDevelopmentPage');
           data-track-cta="contact"
           data-track-location="product_cta"
         >{c.ctaPrimaryLabel}</a>
-        {/* Was "/" — which dropped the visitor back at the top of the mission
-            scroll. Points at the practice that's live instead. Paired Sanity
-            edit: ctaSecondaryLabel must no longer say "read the mission". */}
+        {/* The services overview — these pages are our own work, not services,
+            so the escape hatch points at what clients can actually hire. */}
         <a
-          href="/web-strategy/"
+          href="/services/"
           class="btn btn--ghost"
           data-track="cta_click"
           data-track-cta="web_strategy"
