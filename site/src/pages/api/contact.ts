@@ -20,6 +20,13 @@ function json(body: { ok: true } | { ok: false; error: string }, status = 200) {
   });
 }
 
+/** Coerce Vite/Node env values to a trimmed string (empty → undefined). */
+function str(value: unknown): string | undefined {
+  if (value == null) return undefined;
+  const s = String(value).trim();
+  return s || undefined;
+}
+
 export const POST: APIRoute = async ({ request, redirect }) => {
   // Same-origin check. Astro's built-in checkOrigin compares against the
   // request URL, which Vercel's proxy rewrites — so compare Origin to the
@@ -39,8 +46,16 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   const fail = (error: string, status: number) =>
     wantsJson ? json({ ok: false, error }, status) : redirect('/contact/?error=1', 303);
 
-  // Honeypot: real visitors never fill this field; bots do. Pretend success.
-  if (String(form.get('website') ?? '').trim()) return ok();
+  // Honeypot: real visitors never fill this; bots (and some password managers
+  // that autofill name="website") do. Pretend success so we don't tip them off.
+  // Accept both field names while the form markup migrates off `website`.
+  if (
+    String(form.get('company_url') ?? '').trim() ||
+    String(form.get('website') ?? '').trim()
+  ) {
+    console.info('contact: honeypot tripped — skipping send');
+    return ok();
+  }
 
   const name = String(form.get('name') ?? '').trim();
   const email = String(form.get('email') ?? '').trim();
@@ -54,20 +69,35 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     return fail('Add your name and a valid email address.', 400);
   }
 
-  const { SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS, CONTACT_TO } = process.env;
+  // Astro/Vite loads `.env*` into `import.meta.env` for local `astro dev`.
+  // Vercel injects the same keys into `process.env` at runtime. Read both so
+  // local and production use one path — previously `process.env` alone meant
+  // local always hit the "no SMTP in dev" fake-success branch below.
+  const SMTP_HOST = str(import.meta.env.SMTP_HOST ?? process.env.SMTP_HOST);
+  const SMTP_PORT = str(import.meta.env.SMTP_PORT ?? process.env.SMTP_PORT);
+  const SMTP_USER = str(import.meta.env.SMTP_USER ?? process.env.SMTP_USER);
+  const SMTP_PASS = str(import.meta.env.SMTP_PASS ?? process.env.SMTP_PASS);
+  const CONTACT_TO = str(import.meta.env.CONTACT_TO ?? process.env.CONTACT_TO);
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     // A dev machine normally has no SMTP credentials, and hard-failing there
     // makes the success path untestable without a deploy. Log and succeed in
     // dev only — production still fails loudly. Same posture as subscribe.ts.
     if (import.meta.env.DEV) {
       console.info(`contact (no SMTP in dev): ${name} <${email}> via ${source}\n${message}`);
+      // Print the receipt too, so its copy can be proofread without a deploy —
+      // the real send happens below and is unreachable on a machine with no
+      // credentials.
+      console.info(
+        `\n--- confirmation that would go to ${email} ---\n${confirmationText({ name, message })}\n--- end ---\n`,
+      );
       return ok();
     }
     console.error('contact: SMTP env vars are not configured');
     return fail('Something went wrong sending that. Email us directly instead.', 502);
   }
 
-  const port = Number(SMTP_PORT ?? 587);
+  const to = CONTACT_TO || 'hello@panta.llc';
+  const port = Number(SMTP_PORT || 587);
   const transporter = nodemailer.createTransport({
     host: SMTP_HOST,
     port,
@@ -78,7 +108,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   try {
     await transporter.sendMail({
       from: `"panta.llc contact form" <${SMTP_USER}>`,
-      to: CONTACT_TO || 'hello@panta.llc',
+      to,
       replyTo: `"${name.replace(/"/g, '')}" <${email}>`,
       subject: `New ${source === 'contact_page' ? 'contact' : 'lead'} from ${name}${org ? ` (${org})` : ''}`,
       text: [
@@ -95,5 +125,63 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     return fail('Something went wrong sending that. Email us directly instead.', 502);
   }
 
+  // Receipt to the person who just wrote in. Deliberately AFTER the notification
+  // above and in its own try/catch: the lead reaching the inbox is the thing
+  // that must not fail, and a bounced confirmation must never cost us the lead
+  // or show the visitor an error for something that already worked.
+  //
+  // Transactional, not marketing — they initiated it — so no unsubscribe. The
+  // honeypot path returned long before here, so bots never trigger a send to a
+  // spoofed address.
+  try {
+    await transporter.sendMail({
+      from: `"Panta" <${SMTP_USER}>`,
+      to: email,
+      // Replies land with the humans, not in the form's own mailbox.
+      replyTo: to,
+      subject: 'We got your note — Panta',
+      text: confirmationText({ name, message }),
+    });
+  } catch (err) {
+    console.error('contact: confirmation to sender failed (lead was delivered)', err);
+  }
+
   return ok();
 };
+
+/**
+ * The receipt. Its job is to close the loop in the window before a human
+ * replies — that gap is where someone decides the form was broken and goes to
+ * fill in somebody else's.
+ *
+ * Echoes their own words back when there are any (the compact mid-page form
+ * collects name and email only, so `message` is often empty) and repeats both
+ * promises the site makes: a reply within one business day, and the written
+ * readout within 48 hours of the call.
+ */
+function confirmationText({ name, message }: { name: string; message: string }) {
+  const firstName = name.split(/\s+/)[0];
+  return [
+    `Hi ${firstName},`,
+    '',
+    'Thanks for getting in touch — this is just to confirm it arrived.',
+    '',
+    'A real person (usually Damon) will reply within one business day. If a call',
+    'makes sense we will find a time; if your question does not need one, you will',
+    'get a straight answer instead.',
+    '',
+    ...(message
+      ? ['Here is what you sent, for your records:', '', ...message.split('\n').map((l) => `> ${l}`), '']
+      : []),
+    'If you would rather just put something in the calendar now, you can pick a',
+    'time here:',
+    'https://panta.llc/consultation/#book',
+    '',
+    'It is a free 30-minute review, and you get a one-page written readout within',
+    '48 hours afterward — three observations and one recommendation, yours to keep',
+    'either way.',
+    '',
+    '— Panta',
+    'hello@panta.llc',
+  ].join('\n');
+}

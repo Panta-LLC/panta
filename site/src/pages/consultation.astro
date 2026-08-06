@@ -1,5 +1,6 @@
 ---
 import Base from '../layouts/Base.astro';
+import LeadForm from '../components/LeadForm.astro';
 import { getDoc, getProjects } from '../lib/sanity.js';
 
 const c = await getDoc('consultationPage');
@@ -160,6 +161,35 @@ const consultSchema = [
           {c.escapeLabel} <a href={c.escapeHref}>{c.escapeLinkLabel} →</a>
         </p>
       )}
+    </div>
+  </section>
+
+  <!-- ASK WITHOUT THE CALENDAR -->
+  <!-- Every CTA on the site converges on this page, where until now the only
+       way to act was to pick a slot in the embed above. Someone who wants to
+       talk but won't commit to a time had no way to say so — the one escape
+       was a link to more reading. This catches them on the page they already
+       reached, instead of asking them to go find /contact/. -->
+  <section class="section section--dark" id="ask" data-section="consultation_ask">
+    <div class="container ask__grid">
+      <div class="ask__copy">
+        <p class="label">No calendar required</p>
+        <h2 class="ask__head">Rather just tell us what&rsquo;s going on?</h2>
+        <p class="ask__body">
+          Send a short note and we&rsquo;ll reply within one business day — with a time to talk
+          if that makes sense, or an answer if it doesn&rsquo;t need a call at all.
+        </p>
+      </div>
+      <LeadForm source="consultation_ask">
+        <a
+          slot="aside"
+          class="ask__book"
+          href="#book"
+          data-track="cta_click"
+          data-track-cta="pulse_check"
+          data-track-location="consultation_ask"
+        >or pick a time above <span aria-hidden="true">&uarr;</span></a>
+      </LeadForm>
     </div>
   </section>
 </Base>
@@ -439,5 +469,39 @@ const consultSchema = [
     padding-top: 1.25rem;
     border-top: 1px solid var(--line);
     color: var(--stone-deep);
+  }
+
+  /* ------------------------------------------- ask without the calendar -- */
+
+  .ask__grid {
+    display: grid;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .ask__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+
+  .ask__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    line-height: 1.25;
+    margin: 0.4rem 0 0.9rem;
+    color: var(--cream);
+  }
+
+  .ask__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--cream);
+    margin: 0;
+    max-width: 46ch;
+  }
+
+  .ask__book {
+    font-size: 0.92rem;
+    color: var(--cream);
+    white-space: nowrap;
   }
 </style>

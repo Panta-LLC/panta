@@ -42,11 +42,15 @@ const HERO = {
 const caseStudy = await getFeaturedCaseStudy();
 const posts = await getPosts(3);
 
-// Booking destination. /consultation/ is the Pulse Check page — the URL is
-// unchanged so existing inbound links keep working.
+// The Pulse Check page. Use this only where the label promises READING —
+// "Learn more", the Pulse Check definition tooltip. It lands at the top of the
+// page, ~3.3 screens above the scheduler.
 const BOOK = '/consultation/';
 // Deep link straight to the scheduler embed, for buttons whose label promises
-// booking rather than reading. #book is the booking section on /consultation/.
+// BOOKING. #book is the booking section on /consultation/, at 49% of that
+// page — so a "Book…" button pointed at BOOK instead of this one costs the
+// visitor an extra click and a three-screen scroll after they had already
+// decided. html has scroll-padding-top so the anchor clears the sticky header.
 const BOOK_FORM = '/consultation/#book';
 
 // §4.1 — the hero's "What we do" index, from Sanity. Each service links to
@@ -109,11 +113,17 @@ const CASES = [caseStudy, ...otherProjects].filter(Boolean).slice(0, 2);
 const FAQS = [
   {
     q: 'What does working together cost?',
-    a: 'Projects are quoted at a fixed price before anything starts. We start with a free review of your current priorites and goals, and then we can discuss the best path forward. Once a project is scoped, we provide a detailed estimate and proposal, and work to finalize a scope of work within your budget.',
+    // The band is the point: this FAQ sits immediately before the ask, and its
+    // job is to let a visitor decide whether to book WITHOUT having to book to
+    // find out. The process detail follows the number rather than replacing it.
+    a: 'Most projects land between $2,000 and $10,000, depending on scope. Everything is quoted at a fixed price in writing before anything starts — no hourly billing, no retainers you don’t understand. The review is free, and if your budget is smaller than that we’ll tell you honestly whether there’s a version worth doing.',
   },
   {
     q: 'How long does it take?',
-    a: 'We start with a free 30 minute review of your current situation, then we discuss a scope and timeline that fits your budget and time constraints.',
+    // Commits to the SHAPE (weeks, not quarters) plus the three milestones
+    // already promised elsewhere on the site — 30 minutes, 48 hours, a date
+    // agreed before work starts. No invented duration.
+    a: 'Most projects are scoped to finish in weeks, not quarters — we deliberately keep them small enough to land. The review itself is 30 minutes and your written readout follows within 48 hours. If we go ahead, you get a scope and a timeline in writing before any work begins.',
   },
   {
     q: 'What if we decide not to work together?',
@@ -121,7 +131,7 @@ const FAQS = [
   },
   {
     q: 'Are we locked in afterward?',
-    a: 'No. each project is delivered with your ownership and control. We are always available to answer questions and provide support, but you are not locked in to working with us. You can continue to use Panta as a partner and a resource, or you can choose to work with someone else.'
+    a: 'No. Each project is delivered with your ownership and control. We are always available to answer questions and provide support, but you are not locked in to working with us. You can continue to use Panta as a partner and a resource, or you can choose to work with someone else.'
   },
 ];
 ---
@@ -177,7 +187,7 @@ const FAQS = [
         <div class="hero__act">
           <a
             class="btn btn--filled hero__cta"
-            href={BOOK}
+            href={BOOK_FORM}
             data-track="cta_click"
             data-track-cta="pulse_check"
             data-track-location="home_hero"
@@ -203,7 +213,18 @@ const FAQS = [
         <div class="case__grid">
           {CASES.map((c, i) => (
             <article class="case__item">
-              <a class="case__media" href={`/work/${c.slug}/`} tabindex="-1" aria-hidden="true">
+              {/* Tracked like the text link below it: without this, clicks on
+                  the image read as zero engagement while the identical link
+                  underneath gets the credit. */}
+              <a
+                class="case__media"
+                href={`/work/${c.slug}/`}
+                tabindex="-1"
+                aria-hidden="true"
+                data-track="cta_click"
+                data-track-cta={i === 0 ? 'case_study_image' : 'case_study_secondary_image'}
+                data-track-location="home_case"
+              >
                 {c.thumbnail ? (
                   <img src={c.thumbnail.replace('-thumb', '')} alt="" loading="lazy" decoding="async" />
                 ) : (
@@ -356,12 +377,15 @@ const FAQS = [
               leave, not the ones already reaching for a time slot.
               Now points at the form in the close rather than off to /contact/:
               the same escape, without leaving the page. */}
-          <!-- <p class="pillars__escape">
+          {/* Points at the compact form one section below (#ask), not the full
+              one in the close (#start) — the nearest place to act, ~10% of the
+              page away instead of 40%. */}
+          <p class="pillars__escape">
             Not ready to put a time on the calendar?
-            <a href="#start" data-track="cta_click" data-track-cta="message_instead" data-track-location="home_pillars">
-              Tell us what&rsquo;s going on instead <span aria-hidden="true">→</span>
+            <a href="#ask" data-track="cta_click" data-track-cta="message_instead" data-track-location="home_pillars">
+              Have us reach out instead <span aria-hidden="true">→</span>
             </a>
-          </p> -->
+          </p>
         </div>
 
         {/* The featured quote is testimony about the Pulse Check itself — "found
@@ -398,6 +422,31 @@ const FAQS = [
           </li>
         ))}
       </ol>
+    </div>
+  </section>
+
+  <!-- ================ 6. mid-page catch ================ -->
+  <!-- The closing form sits at ~82% of the page. This is the same ask at the
+       point the visitor has just read how the work runs — the moment the
+       process makes sense is the moment to act on it, and waiting three more
+       sections to offer that costs the ones who don't scroll.
+       Two fields, ghost button: it is a catch, not the main event. The hero and
+       the closing form keep the page's two .btn--filled slots (§7.3). -->
+  <section class="mid-ask" id="ask" data-section="mid_ask">
+    <div class="container mid-ask__grid">
+      <div>
+        {/* Deliberately NOT "not ready to put a time on the calendar?" — the
+            escape link ten percent above says exactly that, and the two read as
+            a stutter. This one also promises only what the two fields can
+            deliver: compact has no message box, so it says we'll reach out,
+            not "tell us what's going on". */}
+        <h2 class="mid-ask__head">Rather we reached out to you?</h2>
+        <p class="mid-ask__body">
+          Leave your name and email. We&rsquo;ll reply within one business day — with a time
+          that works, or an answer if it turns out you don&rsquo;t need a call.
+        </p>
+      </div>
+      <LeadForm source="home_mid" variant="compact" />
     </div>
   </section>
 
@@ -459,10 +508,18 @@ const FAQS = [
   <!-- ===================== 8. founder note ===================== -->
   <section class="section founder" data-section="founder">
     <div class="container founder__grid">
+      {/* Width/height are the intrinsic 3:4 of the source, so the browser
+          reserves the box before the file arrives and the founder note doesn't
+          jump. Not lazy-loaded on purpose — GSAP reveals this section, and a
+          lazy image that decodes mid-tween flashes. */}
       <div class="founder__photo">
-        <Placeholder note="founder photo in a natural setting — not a headshot against a wall">
-          [Photo: Damon]
-        </Placeholder>
+        <img
+          src="/founder/damon.webp"
+          width="900"
+          height="1200"
+          alt="Damon Hastings, founder of Panta"
+          decoding="async"
+        />
       </div>
       <div class="founder__copy">
         <!-- <p>
@@ -532,7 +589,7 @@ const FAQS = [
           <a
             slot="aside"
             class="final__book"
-            href={BOOK}
+            href={BOOK_FORM}
             data-track="cta_click"
             data-track-cta="pulse_check"
             data-track-location="home_final"
@@ -963,6 +1020,40 @@ const FAQS = [
     margin: 0;
   }
 
+  /* ----------------------------------------------------- mid-page ask -- */
+  /* cream-soft with hairlines, the treatment the old trust bar used: it reads
+     as a strip between two full sections rather than a section of its own,
+     which is what keeps it from competing with the close. */
+  .mid-ask {
+    background: var(--cream-soft);
+    border-block: 1px solid var(--line);
+    padding-block: clamp(2rem, 4vw, 2.75rem);
+  }
+
+  .mid-ask__grid {
+    display: grid;
+    gap: clamp(1.25rem, 3vw, 2.5rem);
+    align-items: center;
+  }
+
+  @media (min-width: 960px) {
+    .mid-ask__grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
+  }
+
+  .mid-ask__head {
+    font-family: var(--font-sans);
+    font-size: clamp(1.15rem, 2vw, 1.45rem);
+    line-height: 1.3;
+    margin: 0 0 0.35rem;
+  }
+
+  .mid-ask__body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+    margin: 0;
+  }
+
   /* -------------------------------------------------------- case study -- */
 
   /* Two equal previews rather than one feature plus a text row: with exactly
@@ -1192,6 +1283,17 @@ const FAQS = [
     .founder__grid { grid-template-columns: minmax(0, 0.8fr) minmax(0, 1.2fr); }
   }
 
+  /* The placeholder sized itself, so this rule is new with the real photo.
+     Same radius as the case-study media so the page has one photo treatment. */
+  .founder__photo img {
+    display: block;
+    width: 100%;
+    height: auto;
+    aspect-ratio: 3 / 4;
+    object-fit: cover;
+    border-radius: var(--radius);
+  }
+
   .founder__copy p {
     font-family: var(--font-serif);
     font-size: clamp(1.02rem, 1.5vw, 1.15rem);
@@ -1414,6 +1516,9 @@ const FAQS = [
       autoAlpha: 0, scale: 0.7, transformOrigin: '0% 100%',
       duration: 0.5, stagger: 0.12, ease: 'back.out(1.6)',
     });
+
+    // 6. mid-page catch
+    reveal('.mid-ask__grid > *', '.mid-ask', { y: 16, duration: 0.5, stagger: 0.1, start: 'top 88%' });
 
     // 7. Pulse strip
     reveal('.pulse-card', '.pulse-cards', { stagger: 0.1 });

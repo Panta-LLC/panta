@@ -26,13 +26,32 @@
 interface Props {
   /** Reported to analytics so leads can be attributed per surface. */
   source: string;
+  /**
+   * "full" — name, email, organization and the open question. For a surface
+   * where asking IS the purpose of the section.
+   *
+   * "compact" — name and email only, on one row. For a mid-page catch, where
+   * the form is interrupting something else the visitor was reading and every
+   * extra field is a reason to keep scrolling. /api/contact needs exactly these
+   * two (contact.ts validates name + email; org and message are optional), so
+   * compact is the smallest submission the endpoint accepts rather than an
+   * arbitrary trim.
+   *
+   * Loudness follows: full gets .btn--filled, compact gets .btn--ghost. That is
+   * the §7.3 cap doing real work — a page may hold two filled buttons and the
+   * homepage spends them on the hero and the closing form. It is NOT a dodge
+   * via .btn--primary, which resolves to the same cream button as .btn--filled
+   * on both .section--dark (global.css:227) and .section--bamboo (:253).
+   */
+  variant?: 'full' | 'compact';
   class?: string;
 }
-const { source, class: className } = Astro.props;
+const { source, variant = 'full', class: className } = Astro.props;
+const compact = variant === 'compact';
 const id = (field: string) => `lead-${field}-${source}`;
 ---
 <form
-  class:list={['lead', className]}
+  class:list={['lead', { 'lead--compact': compact }, className]}
   method="POST"
   action="/api/contact"
   novalidate
@@ -42,11 +61,20 @@ const id = (field: string) => `lead-${field}-${source}`;
   <input type="hidden" name="xhr" value="1" />
   <input type="hidden" name="source" value={source} />
 
-  {/* Honeypot — real visitors never fill this. Named `website` to match the
-      field /api/contact already checks. */}
+  {/* Honeypot — real visitors never fill this. Named `company_url` (not
+      `website`) because browsers/password managers autofill `website` and
+      that was silently swallowing real submissions. /api/contact still
+      accepts the old name too. */}
   <div class="lead__pot" aria-hidden="true">
-    <label for={id('website')}>Leave this field empty</label>
-    <input type="text" id={id('website')} name="website" tabindex="-1" autocomplete="off" />
+    <label for={id('company_url')}>Leave this field empty</label>
+    <input
+      type="text"
+      id={id('company_url')}
+      name="company_url"
+      tabindex="-1"
+      autocomplete="off"
+      value=""
+    />
   </div>
 
   <div class="lead__row">
@@ -60,27 +88,31 @@ const id = (field: string) => `lead-${field}-${source}`;
     </div>
   </div>
 
-  <div class="lead__field">
-    <label for={id('org')}>Organization <span class="lead__opt">(optional)</span></label>
-    <input type="text" id={id('org')} name="org" autocomplete="organization" />
-  </div>
+  {!compact && (
+    <div class="lead__field">
+      <label for={id('org')}>Organization <span class="lead__opt">(optional)</span></label>
+      <input type="text" id={id('org')} name="org" autocomplete="organization" />
+    </div>
+  )}
 
-  <div class="lead__field">
-    <label for={id('message')}>What&rsquo;s getting in the way?</label>
-    <textarea
-      id={id('message')}
-      name="message"
-      rows="3"
-      placeholder="A site nobody finds, a process that eats your week, a story that isn&rsquo;t landing…"
-    ></textarea>
-  </div>
+  {!compact && (
+    <div class="lead__field">
+      <label for={id('message')}>What&rsquo;s getting in the way?</label>
+      <textarea
+        id={id('message')}
+        name="message"
+        rows="3"
+        placeholder="A site nobody finds, a process that eats your week, a story that isn&rsquo;t landing…"
+      ></textarea>
+    </div>
+  )}
 
   <div class="lead__actions">
     <button
-      class="btn btn--filled"
+      class:list={['btn', compact ? 'btn--ghost' : 'btn--filled']}
       type="submit"
       data-track="cta_click"
-      data-track-cta="lead_form"
+      data-track-cta={compact ? 'lead_form_compact' : 'lead_form'}
       data-track-location={source}
     >Request my free review</button>
     <slot name="aside" />
@@ -117,6 +149,20 @@ const id = (field: string) => `lead-${field}-${source}`;
 
   @media (min-width: 560px) {
     .lead__row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  /* Compact runs as one line where there is room — two fields and the button
+     side by side, so it reads as a single interruption rather than a form. */
+  .lead--compact { max-width: 46rem; gap: 0.75rem; }
+
+  @media (min-width: 720px) {
+    .lead--compact {
+      grid-template-columns: minmax(0, 1fr) auto;
+      align-items: end;
+    }
+    .lead--compact .lead__actions { margin-top: 0; }
+    /* The status line spans both columns and sits under the row. */
+    .lead--compact .lead__msg { grid-column: 1 / -1; }
   }
 
   .lead__field label {

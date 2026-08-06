@@ -76,7 +76,9 @@ const megaNext = [
 ];
 
 const megaQuickLinks = [
-  { href: '/consultation/', label: 'Book a free 30-minute review', cta: 'consultation' },
+  // #book, not the page top: the label promises booking, and the scheduler sits
+  // at 49% of /consultation/ — a plain link costs an extra click and a scroll.
+  { href: '/consultation/#book', label: 'Book a free 30-minute review', cta: 'consultation' },
   { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
   { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
@@ -84,7 +86,9 @@ const megaQuickLinks = [
 ];
 
 const footerLinks = [
-  { href: '/consultation/', label: 'Book a free 30-minute review', cta: 'consultation' },
+  // #book, not the page top: the label promises booking, and the scheduler sits
+  // at 49% of /consultation/ — a plain link costs an extra click and a scroll.
+  { href: '/consultation/#book', label: 'Book a free 30-minute review', cta: 'consultation' },
   { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
   { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
@@ -232,7 +236,7 @@ const workActive =
             </a>
           ))}
           <a
-            href="/consultation/"
+            href="/consultation/#book"
             class="btn btn--primary"
             data-track="cta_click"
             data-track-cta="consultation"
@@ -245,7 +249,7 @@ const workActive =
             inside <header>, which check-launch.mjs strips before counting
             filled buttons, so it costs nothing against the §7.3 cap. */}
         <a
-          href="/consultation/"
+          href="/consultation/#book"
           class="btn btn--primary header-cta-sm"
           data-track="cta_click"
           data-track-cta="consultation"
@@ -327,7 +331,7 @@ const workActive =
             ))}
           </ul>
           <a
-            href="/consultation/"
+            href="/consultation/#book"
             class="btn btn--primary mobile-nav__cta"
             data-track="cta_click"
             data-track-cta="consultation"
