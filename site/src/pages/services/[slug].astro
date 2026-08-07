@@ -21,6 +21,9 @@ export async function getStaticPaths() {
 
 const { slug } = Astro.params;
 const p = await getService(slug);
+if (!p) {
+  return Astro.redirect('/services/');
+}
 
 // featuredProjects is per-service. Falling back to the global `featured` flag
 // keeps the migrated web design page rendering exactly as it did before

@@ -9,7 +9,7 @@ import Placeholder from '../components/Placeholder.astro';
 import PulseTerm from '../components/PulseTerm.astro';
 import LeadForm from '../components/LeadForm.astro';
 import { getDoc, getFeaturedCaseStudy, getPillars, getPosts, getProjects, getServices } from '../lib/sanity.js';
-import { serviceHref, orderServices } from '../lib/pillars.js';
+import { serviceHref } from '../lib/pillars.js';
 import { faqSchema } from '../lib/schema.js';
 
 // Homepage per PULSE-HOME-BUILD.md §4 and panta-homepage-copy.md. Nine
@@ -59,7 +59,8 @@ const BOOK_FORM = '/consultation/#book';
 // either form. Every service page ends in its own review CTA, which is what
 // makes these scenic routes rather than leaks.
 const PILLARS = await getPillars();
-const SERVICES = orderServices(PILLARS, await getServices()).map((s) => ({
+// Hero index order is Sanity `service.order` — getServices() already sorts.
+const SERVICES = (await getServices()).map((s) => ({
   label: s.indexLabel ?? s.title,
   href: serviceHref(s),
 }));
@@ -416,7 +417,7 @@ const FAQS = [
           <li class="step">
             <span class="step__n" aria-hidden="true">{s.n}</span>
             <div>
-              <h3 class="step__title">{s.title}</h3>
+              <h4 class="step__title">{s.title}</h4>
               <p class="step__body">{s.body}</p>
             </div>
           </li>

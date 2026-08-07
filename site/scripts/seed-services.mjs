@@ -5,6 +5,8 @@
  *   node scripts/seed-services.mjs --apply    # writes
  *
  * Uses createIfNotExists, so re-running is safe and any Studio edits survive.
+ * `order` is site-wide reading order (not within-pillar). Live docs that already
+ * exist are not patched here — use migrate-service-order.mjs to uniquify orders.
  *
  * CRITICAL: the slugs below are the six anchor ids currently hardcoded in
  * services.astro and targeted by the homepage hero. Seeding them verbatim is
@@ -64,7 +66,7 @@ const SERVICES = [
   {
     slug: 'process',
     pillar: 'strategic',
-    order: 1,
+    order: 3,
     title: 'Process and workflow optimization',
     summary:
       'We map where the hours actually go — intake, scheduling, records, reporting — and fix the parts that are costing you the most. Usually the answer is smaller than people expect.',
@@ -72,7 +74,7 @@ const SERVICES = [
   {
     slug: 'tools-systems',
     pillar: 'strategic',
-    order: 2,
+    order: 4,
     title: 'Tools and systems',
     summary:
       'The right tools, set up the right way, with no bloat you will never use. Where nothing off the shelf fits, we build something small that does — and show your team how to run it.',
@@ -80,7 +82,7 @@ const SERVICES = [
   {
     slug: 'storytelling',
     pillar: 'creative',
-    order: 1,
+    order: 5,
     title: 'Storytelling and content',
     summary:
       'Writing and content that makes your mission felt, not just stated — and a publishing rhythm you can actually sustain after we leave.',
@@ -88,7 +90,7 @@ const SERVICES = [
   {
     slug: 'brand-design',
     pillar: 'creative',
-    order: 2,
+    order: 6,
     title: 'Brand design',
     summary:
       'A look that matches who you are, applied consistently everywhere people meet you. Recognisable, not fashionable.',
@@ -104,6 +106,7 @@ const docs = SERVICES.map((s) => ({
   order: s.order,
   summary: s.summary,
   pageReady: false,
+  listed: true,
 }))
 
 const existing = new Set(

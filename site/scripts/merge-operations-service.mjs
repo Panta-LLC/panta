@@ -49,7 +49,7 @@ const doc = {
   title: 'Operations and systems',
   slug: {_type: 'slug', current: 'operations'},
   pillar: 'strategic',
-  order: 1,
+  order: 3,
   indexLabel: 'Operations and systems',
   legacyAnchors: ['process', 'tools-systems'],
   summary:
@@ -132,6 +132,7 @@ const doc = {
   ],
 
   pageReady: true,
+  listed: true,
   serviceType: 'Business process and systems consulting',
 }
 

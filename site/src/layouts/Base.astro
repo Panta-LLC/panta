@@ -3,8 +3,7 @@ import '../styles/global.css';
 import RippleMark from '../components/RippleMark.astro';
 import Analytics from '../components/Analytics.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
-import { getDoc, getServices, getPillars } from '../lib/sanity.js';
-import { orderServices } from '../lib/pillars.js';
+import { getDoc, getServices } from '../lib/sanity.js';
 
 interface Props {
   title: string;
@@ -20,9 +19,10 @@ const canonical = new URL(Astro.url.pathname, Astro.site);
 const year = new Date().getFullYear();
 
 const settings = await getDoc('siteSettings');
-// Both memoised in lib/sanity.js — Base renders on every page, so unmemoised
-// fetches here would multiply across the whole build.
-const services = orderServices(await getPillars(), await getServices());
+// Memoised in lib/sanity.js — Base renders on every page, so an unmemoised
+// fetch here would multiply across the whole build. Order is Sanity
+// `service.order` (site-wide), already applied in the GROQ query.
+const services = await getServices();
 
 const orgSchema = {
   '@context': 'https://schema.org',
@@ -60,12 +60,11 @@ const websitesNav = { href: '/services/web-design-development/', label: 'Website
 // CONNECT is community work with no buyer, CREATE is our own products.
 
 // BUILD: the one practice with an offer. Full-size card in the mega menu.
-// Points at the services overview, which carries all six services under the
-// three pillars and ends in its own review CTA.
+// Points at the services overview (ordered list from Sanity) and its review CTA.
 const megaPrimary = {
   href: '/services/',
   label: 'Digital, Strategic & Creative',
-  desc: 'Digital, strategic and creative support — grouped three ways, bought one at a time.',
+  desc: 'Digital, strategic and creative support — bought one service at a time.',
   cta: 'web_strategy',
 };
 

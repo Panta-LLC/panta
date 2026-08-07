@@ -68,8 +68,8 @@ const memo = (fn) => {
 // -------------------------------------------------------------- pillars ----
 
 /**
- * The three pillars, in reading order. Memoised for the same reason services
- * are: Base.astro needs them on every page to order the nav.
+ * The three pillars, in reading order. Memoised — the homepage columns and
+ * services-overview labels read them on every relevant page.
  *
  * `pillarId` is aliased to `id` because that is what it is everywhere else —
  * the value `service.pillar` holds, and the key lib/pillars.js groups on.
@@ -84,30 +84,34 @@ export const getPillars = memo(() =>
 // ------------------------------------------------------------- services ----
 
 const SERVICE_CARD = `_id, title, indexLabel, summary, pillar, order, pageReady,
-  legacyAnchors, "slug": slug.current`;
+  listed, legacyAnchors, "slug": slug.current`;
 
-/** Every service, pillar order then within-pillar order. Memoised. */
+// `coalesce(listed, true)` so docs created before the field existed stay visible
+// until an editor explicitly turns Listed off.
+const SERVICE_LISTED = `coalesce(listed, true) == true`;
+
+/** Every listed service, in site-wide reading order (`service.order`). Memoised. */
 export const getServices = memo(() =>
   sanity.fetch(
-    `*[_type == "service" && !(_id in path("drafts.**")) && defined(slug.current)]
+    `*[_type == "service" && ${SERVICE_LISTED} && !(_id in path("drafts.**")) && defined(slug.current)]
       | order(order asc, title asc){${SERVICE_CARD}}`
   )
 );
 
-/** Slugs only — for getStaticPaths. */
+/** Slugs only — for getStaticPaths. Unlisted services get no page. */
 export const getServiceSlugs = () =>
   sanity.fetch(
-    `*[_type == "service" && !(_id in path("drafts.**")) && defined(slug.current)].slug.current`
+    `*[_type == "service" && ${SERVICE_LISTED} && !(_id in path("drafts.**")) && defined(slug.current)].slug.current`
   );
 
-/** One service, fully dereferenced, for its detail page. */
+/** One listed service, fully dereferenced, for its detail page. */
 export const getService = (slug) =>
   sanity.fetch(
-    `*[_type == "service" && slug.current == $slug][0]{
+    `*[_type == "service" && ${SERVICE_LISTED} && slug.current == $slug][0]{
       ...,
       "slug": slug.current,
       "featuredProjects": featuredProjects[]->{${PROJECT_CARD}},
-      "relatedServices": relatedServices[]->{title, summary, pageReady, "slug": slug.current}
+      "relatedServices": relatedServices[defined(@->slug.current) && coalesce(@->listed, true) == true]->{title, summary, pageReady, "slug": slug.current}
     }`,
     { slug }
   );

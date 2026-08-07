@@ -1,5 +1,44 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="Panta ripple mark">
-  <circle cx="24" cy="24" r="21" stroke="#26251F" stroke-width="1.4" />
-  <circle cx="24" cy="24" r="13.5" stroke="#26251F" stroke-width="2.2" />
-  <circle cx="24" cy="24" r="6" stroke="#6F8B3C" stroke-width="3.4" />
+<?xml version="1.0" encoding="UTF-8"?>
+<svg id="Layer_1" xmlns="http://www.w3.org/2000/svg" version="1.1" viewBox="0 0 189 121">
+  <!-- Generator: Adobe Illustrator 30.6.0, SVG Export Plug-In . SVG Version: 2.1.4 Build 109)  -->
+  <defs>
+    <style>
+      .st0 {
+        fill: #eaeaea;
+      }
+
+      .st1 {
+        stroke: #6f8b3c;
+        stroke-width: 3.4px;
+      }
+
+      .st1, .st2, .st3 {
+        fill: none;
+      }
+
+      .st2 {
+        stroke-width: 1.4px;
+      }
+
+      .st2, .st3 {
+        stroke: #9b9b9b;
+      }
+
+      .st3 {
+        stroke-width: 2.2px;
+      }
+
+      .st4 {
+        fill: #6f8b3c;
+      }
+    </style>
+  </defs>
+  <rect y="73" width="48" height="48"/>
+  <circle class="st2" cx="24" cy="97" r="21"/>
+  <circle class="st3" cx="24" cy="97" r="13.5"/>
+  <circle class="st1" cx="24" cy="97" r="6"/>
+  <rect x="68" width="121" height="121"/>
+  <path class="st0" d="M128.5,115.2c-30.16,0-54.7-24.54-54.7-54.7S98.34,5.8,128.5,5.8s54.7,24.54,54.7,54.7-24.54,54.7-54.7,54.7ZM128.5,9.33c-28.22,0-51.17,22.96-51.17,51.17s22.96,51.17,51.17,51.17,51.17-22.96,51.17-51.17-22.96-51.17-51.17-51.17Z"/>
+  <path class="st0" d="M128.5,97.3c-20.29,0-36.8-16.51-36.8-36.8s16.51-36.8,36.8-36.8,36.8,16.51,36.8,36.8-16.51,36.8-36.8,36.8ZM128.5,29.24c-17.23,0-31.26,14.02-31.26,31.26s14.02,31.26,31.26,31.26,31.26-14.02,31.26-31.26-14.02-31.26-31.26-31.26Z"/>
+  <path class="st4" d="M128.5,79.91c-10.7,0-19.41-8.71-19.41-19.41s8.71-19.41,19.41-19.41,19.41,8.71,19.41,19.41-8.71,19.41-19.41,19.41ZM128.5,49.66c-5.98,0-10.84,4.86-10.84,10.84s4.86,10.84,10.84,10.84,10.84-4.86,10.84-10.84-4.86-10.84-10.84-10.84Z"/>
 </svg>

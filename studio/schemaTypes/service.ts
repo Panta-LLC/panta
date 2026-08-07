@@ -63,7 +63,9 @@ export default defineType({
       name: 'order',
       type: 'number',
       group: 'index',
-      description: 'Order within the pillar. Lower first.',
+      description:
+        'Site-wide reading order — homepage hero, services overview, and schema. Lower first. Pillar is taxonomy only; it does not control this.',
+      validation: (rule) => rule.required().integer().min(1),
     }),
     defineField({
       name: 'summary',
@@ -80,12 +82,20 @@ export default defineType({
       description: 'Shorter label for the homepage hero row. Falls back to the title.',
     }),
     defineField({
+      name: 'listed',
+      type: 'boolean',
+      group: 'index',
+      initialValue: true,
+      description:
+        'Off: hidden from the hero, /services/ overview, related-service links, and static paths. The document stays in Studio so you can turn it back on without recreating it. Distinct from Page ready — that only controls whether the detail page is live vs an overview anchor.',
+    }),
+    defineField({
       name: 'pageReady',
       type: 'boolean',
       group: 'index',
       initialValue: false,
       description:
-        'Off: links point at the overview anchor and the page is noindex. On: links point at the full page. Flip this per service as its copy is finished — no deploy needed.',
+        'Off: links point at the overview anchor and the page is noindex. On: links point at the full page. Flip this per service as its copy is finished — no deploy needed. Ignored when Listed is off.',
     }),
     defineField({
       name: 'legacyAnchors',
@@ -213,19 +223,23 @@ export default defineType({
   ],
   orderings: [
     {
-      name: 'pillarOrder',
-      title: 'Pillar, then order',
-      by: [
-        {field: 'pillar', direction: 'asc'},
-        {field: 'order', direction: 'asc'},
-      ],
+      name: 'order',
+      title: 'Reading order',
+      by: [{field: 'order', direction: 'asc'}],
     },
   ],
   preview: {
-    select: {title: 'title', pillar: 'pillar', ready: 'pageReady'},
-    prepare: ({title, pillar, ready}) => ({
+    select: {title: 'title', pillar: 'pillar', order: 'order', ready: 'pageReady', listed: 'listed'},
+    prepare: ({title, pillar, order, ready, listed}) => ({
       title,
-      subtitle: [pillar, ready ? 'live' : 'anchor only'].filter(Boolean).join(' · '),
+      subtitle: [
+        listed === false ? 'hidden' : null,
+        typeof order === 'number' ? `#${order}` : null,
+        pillar,
+        ready ? 'live' : 'anchor only',
+      ]
+        .filter(Boolean)
+        .join(' · '),
     }),
   },
 })
