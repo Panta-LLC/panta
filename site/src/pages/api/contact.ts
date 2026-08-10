@@ -69,15 +69,34 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     return fail('Add your name and a valid email address.', 400);
   }
 
-  // Astro/Vite loads `.env*` into `import.meta.env` for local `astro dev`.
-  // Vercel injects the same keys into `process.env` at runtime. Read both so
-  // local and production use one path — previously `process.env` alone meant
-  // local always hit the "no SMTP in dev" fake-success branch below.
-  const SMTP_HOST = str(import.meta.env.SMTP_HOST ?? process.env.SMTP_HOST);
-  const SMTP_PORT = str(import.meta.env.SMTP_PORT ?? process.env.SMTP_PORT);
-  const SMTP_USER = str(import.meta.env.SMTP_USER ?? process.env.SMTP_USER);
-  const SMTP_PASS = str(import.meta.env.SMTP_PASS ?? process.env.SMTP_PASS);
-  const CONTACT_TO = str(import.meta.env.CONTACT_TO ?? process.env.CONTACT_TO);
+  // Runtime first, build-time only as a dev fallback. Both halves matter:
+  //
+  // Vite replaces `import.meta.env.X` with a string literal at BUILD time, so
+  // reading it first (as this file used to) had two consequences — the value
+  // was frozen into the deployed bundle, and the `?? process.env.X` after it
+  // was constant-folded away and never ran. The SMTP password was therefore a
+  // plaintext literal in .vercel/output, and rotating it needed a rebuild
+  // rather than a Vercel env change. Vercel injects the real values into
+  // `process.env` at request time, so that is the source of truth.
+  //
+  // The `import.meta.env.DEV` guard is load-bearing, not decoration: with it, a
+  // production build folds each ternary down to `undefined` and no literal
+  // reaches the artifact. `astro dev` loads `.env*` into `import.meta.env` but
+  // not `process.env`, so local still resolves and does not fall through to the
+  // fake-success branch below.
+  //
+  // This is deliberately repetitive rather than a helper. A generic
+  // `env('SMTP_HOST')` cannot work — Vite's replacement is textual on
+  // `import.meta.env.LITERAL`, and a computed key falls through to a runtime
+  // object that carries no non-PUBLIC values in production. Passing the value
+  // into a helper does not work either: the literal would be evaluated at the
+  // call site as an argument and ship anyway. The ternary has to be inline for
+  // the dead-code elimination to fire. Mirrors api/subscribe.ts.
+  const SMTP_HOST = str(process.env.SMTP_HOST ?? (import.meta.env.DEV ? import.meta.env.SMTP_HOST : undefined));
+  const SMTP_PORT = str(process.env.SMTP_PORT ?? (import.meta.env.DEV ? import.meta.env.SMTP_PORT : undefined));
+  const SMTP_USER = str(process.env.SMTP_USER ?? (import.meta.env.DEV ? import.meta.env.SMTP_USER : undefined));
+  const SMTP_PASS = str(process.env.SMTP_PASS ?? (import.meta.env.DEV ? import.meta.env.SMTP_PASS : undefined));
+  const CONTACT_TO = str(process.env.CONTACT_TO ?? (import.meta.env.DEV ? import.meta.env.CONTACT_TO : undefined));
   if (!SMTP_HOST || !SMTP_USER || !SMTP_PASS) {
     // A dev machine normally has no SMTP credentials, and hard-failing there
     // makes the success path untestable without a deploy. Log and succeed in
