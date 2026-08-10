@@ -20,7 +20,7 @@ Panta (panta.llc) is a consultancy providing digital, strategic, and creative su
 - Sanity CMS (structured content; schema in §6)
 - Deployed on Vercel
 - Booking: link CTA buttons to scheduling flow (Cal.com/Calendly embed or page — confirm before build); include a 3–4 question intake form ahead of booking
-- Newsletter: provider TBD (Buttondown/ConvertKit class) — build the form against a single `subscribe` server action so the provider is swappable
+- Newsletter: **Buttondown** (decided) — the form posts to a single `subscribe` server action so the provider stays swappable. Verification is Buttondown's own double opt-in, which is triggered by omitting the `type` field on subscriber creation; see `site/src/pages/api/subscribe.ts`
 
 ## 3. Design system
 
@@ -140,7 +140,7 @@ Bridge copy drafts (seed content for `category.bridgeCopy`):
 - [ ] Founder photo (natural setting)
 - [ ] Three published Pulse pieces (one per category preferred) — homepage Pulse strip cannot ship empty
 - [ ] Booking tool decision + intake form questions (3–4)
-- [ ] Newsletter provider decision
+- [x] Newsletter provider decision — Buttondown, wired with double opt-in. Remaining deploy step: set `BUTTONDOWN_API_KEY` in Vercel (Production scope) and redeploy
 
 ## 10. Out of scope this build
 

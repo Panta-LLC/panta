@@ -223,10 +223,22 @@ const {
         const data = await res.json();
         if (data.ok) {
           msg.dataset.state = 'ok';
-          msg.textContent = 'You’re on the list. Watch for the next one.';
+          // Copy comes from the server: only it knows whether this was a new
+          // signup awaiting confirmation or someone already on the list. The
+          // fallback covers an older deployment answering a freshly cached
+          // script — and never says "you're on the list", because with double
+          // opt-in that is not true until they click the confirmation link.
+          msg.textContent =
+            data.message ?? 'Almost done — check your inbox and click the confirmation link.';
           form.reset();
+          // Same event name so the existing funnel keeps working, with the
+          // outcome as a dimension. Note the event's MEANING changed: with
+          // double opt-in this fires when someone asks to subscribe, not when
+          // they are subscribed. The confirmed count lives in Buttondown and is
+          // not knowable from the browser.
           (window as any).pantaTrack?.('newsletter_subscribe', {
             location: form.querySelector<HTMLInputElement>('[name=source]')?.value ?? 'unknown',
+            status: data.status ?? 'pending',
           });
         } else {
           msg.dataset.state = 'error';
