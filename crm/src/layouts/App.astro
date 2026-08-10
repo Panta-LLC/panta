@@ -1,0 +1,88 @@
+---
+/**
+ * The signed-in shell. Every page except /login uses this.
+ *
+ * `wide` drops the content container for the wizard, which wants the full
+ * viewport — during a live call the client's site is in the other window and
+ * every pixel of the capture rail earns its place.
+ */
+import '../styles/global.css';
+import { requireUser } from '../lib/auth/guard.ts';
+
+interface Props {
+  title: string;
+  wide?: boolean;
+}
+
+const { title, wide = false } = Astro.props;
+const user = requireUser(Astro.locals);
+const path = Astro.url.pathname;
+
+const links = [
+  { href: '/', label: 'Dashboard' },
+  { href: '/clients', label: 'Clients' },
+  { href: '/pulse', label: 'Pulse Checks' },
+];
+
+/** Mark the deepest matching link, so /clients/abc still lights up Clients. */
+const isCurrent = (href: string) =>
+  href === '/' ? path === '/' : path === href || path.startsWith(`${href}/`);
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{title} · Panta CRM</title>
+  </head>
+  <body>
+    <nav class="nav">
+      <div class="nav__inner">
+        <a class="nav__brand" href="/">Panta CRM</a>
+        <div class="nav__links">
+          {
+            links.map((l) => (
+              <a href={l.href} aria-current={isCurrent(l.href) ? 'page' : undefined}>
+                {l.label}
+              </a>
+            ))
+          }
+          <form method="POST" action="/api/auth/signout" style="display:inline">
+            <button
+              type="submit"
+              class="nav__signout"
+              title={`Signed in as ${user.email}`}>Sign out</button
+            >
+          </form>
+        </div>
+      </div>
+    </nav>
+
+    {
+      wide ? (
+        <slot />
+      ) : (
+        <main class="app" style="padding-block: 2rem 4rem">
+          <slot />
+        </main>
+      )
+    }
+
+    <style>
+      .nav__signout {
+        background: none;
+        border: none;
+        padding: 0;
+        font: inherit;
+        font-size: 0.9rem;
+        color: var(--stone-deep);
+        cursor: pointer;
+      }
+      .nav__signout:hover {
+        color: var(--charcoal);
+      }
+    </style>
+  </body>
+</html>

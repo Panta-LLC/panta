@@ -1,0 +1,588 @@
+/* ---------------------------------------------------------------------------
+   The interview wizard.
+
+   Green appears in exactly three places here, per the accent-restraint rule in
+   docs/PULSE-HOME-BUILD.md §3: the running-clock dot, the current segment on
+   the pacing bar, and the mono section kickers. Amber appears in exactly one:
+   a segment that has run over its minute budget. Everything else is charcoal
+   on cream with hairline rules.
+--------------------------------------------------------------------------- */
+
+.wz {
+  min-height: 100dvh;
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- sticky header ------------------------------------------------------- */
+
+.wz__bar {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  background: var(--cream);
+  border-bottom: 1px solid var(--line);
+  padding: 0.6rem clamp(1rem, 3vw, 1.75rem) 0.5rem;
+}
+
+.wz__barTop {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+}
+
+.wz__clock {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-width: 7.5rem;
+}
+
+.wz__dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--bamboo);
+  animation: wz-pulse 2s ease-in-out infinite;
+}
+
+@keyframes wz-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.35;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wz__dot {
+    animation: none;
+  }
+}
+
+.wz__time {
+  font-family: var(--font-mono);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+}
+
+.btn--sm {
+  padding: 0.45rem 0.85rem;
+  font-size: 0.85rem;
+}
+
+/* --- pacing bar ---------------------------------------------------------- */
+
+.pace {
+  flex: 1;
+  min-width: 0;
+}
+
+.pace__track {
+  position: relative;
+  display: flex;
+  gap: 2px;
+  height: 1.5rem;
+}
+
+.pace__seg {
+  border: 1px solid var(--line);
+  background: transparent;
+  border-radius: 2px;
+  padding: 0;
+  cursor: pointer;
+  overflow: hidden;
+  font-family: var(--font-mono);
+  font-size: 0.6rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.pace__seg:hover {
+  border-color: var(--stone);
+}
+
+.pace__seg.is-current {
+  background: var(--bamboo);
+  border-color: var(--bamboo);
+  color: var(--charcoal);
+}
+
+.pace__segLabel {
+  padding-inline: 0.25rem;
+  white-space: nowrap;
+}
+
+.pace__marker {
+  position: absolute;
+  top: -2px;
+  bottom: -2px;
+  width: 2px;
+  background: var(--charcoal);
+  pointer-events: none;
+}
+
+.pace__status {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  margin: 0.3rem 0 0;
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* The one warm tone in the system, and it means exactly one thing. */
+.pace__status.is-over {
+  color: var(--amber);
+}
+
+.pace__past22 {
+  color: var(--stone-deep);
+}
+
+/* --- save indicator ------------------------------------------------------ */
+
+.save {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  white-space: nowrap;
+  min-width: 12rem;
+  text-align: right;
+}
+
+.save--offline {
+  color: var(--amber);
+}
+
+/* --- module chips -------------------------------------------------------- */
+
+.wz__modules {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.wz__modules .kicker {
+  margin-right: 0.25rem;
+}
+
+.wz__chip {
+  position: relative;
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  background: transparent;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 0.2rem 0.7rem;
+  cursor: pointer;
+  color: var(--stone-deep);
+}
+
+.wz__chip:hover {
+  border-color: var(--stone);
+  color: var(--charcoal);
+}
+
+.wz__chip.is-on {
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--cream);
+}
+
+/* A suggestion, never an auto-enable — the facilitator is the one who can hear
+   that a "small business" is really a nonprofit. */
+.wz__suggest {
+  display: inline-block;
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: var(--bamboo);
+  margin-left: 0.4rem;
+  vertical-align: middle;
+}
+
+/* --- restore bar --------------------------------------------------------- */
+
+.wz__restore {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem clamp(1rem, 3vw, 1.75rem);
+  background: var(--amber-soft);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+/* --- body ---------------------------------------------------------------- */
+
+.wz__body {
+  flex: 1;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 21rem;
+  gap: 0;
+  align-items: start;
+}
+
+.wz__main {
+  padding: 1.75rem clamp(1rem, 3vw, 1.75rem) 4rem;
+  min-width: 0;
+}
+
+.wz__nav {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 2.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--line);
+}
+
+/* --- segment pane -------------------------------------------------------- */
+
+.sp {
+  max-width: 44rem;
+}
+
+.sp h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1.25rem;
+}
+
+.sp__moduleTag {
+  margin-left: 0.75rem;
+  color: var(--bamboo-deep);
+}
+
+.sp__note {
+  font-size: 0.9rem;
+  color: var(--stone-deep);
+  border-left: 2px solid var(--line);
+  padding-left: 0.75rem;
+}
+
+.sp__opener {
+  margin: 0 0 2rem;
+  padding: 1rem 1.25rem;
+  background: var(--cream-soft);
+  border-left: 2px solid var(--bamboo);
+  font-family: var(--font-serif);
+  font-size: 1.02rem;
+  line-height: 1.6;
+}
+
+.sp__opener .kicker {
+  margin-bottom: 0.5rem;
+}
+
+/* --- question ------------------------------------------------------------ */
+
+.q {
+  margin-bottom: 1.75rem;
+}
+
+.q label {
+  display: flex;
+  gap: 0.5rem;
+  align-items: baseline;
+  font-size: 1rem;
+  font-weight: 500;
+  line-height: 1.45;
+  margin-bottom: 0.4rem;
+}
+
+.q__n {
+  font-family: var(--font-mono);
+  font-size: 0.8rem;
+  color: var(--stone-deep);
+  flex-shrink: 0;
+}
+
+.q__module {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--bamboo-deep);
+  border: 1px solid var(--line);
+  border-radius: 3px;
+  padding: 0.05rem 0.3rem;
+  white-space: nowrap;
+}
+
+.q__hint {
+  font-size: 0.85rem;
+  color: var(--stone-deep);
+  margin: 0 0 0.5rem;
+  font-style: italic;
+  max-width: none;
+}
+
+/* CSS auto-grow. The wrapper is a 1×1 grid; the ::after holds an invisible
+   copy of the text and sets the row height, and the textarea stretches to it.
+   Both must share identical font, padding and border or the two will disagree
+   and the field will jitter by a line as you type. */
+.grow {
+  display: grid;
+}
+
+.grow > textarea,
+.grow::after {
+  grid-area: 1 / 1;
+  font: inherit;
+  font-size: 1rem;
+  line-height: 1.55;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid transparent;
+  border-radius: var(--radius);
+  white-space: pre-wrap;
+  overflow-wrap: break-word;
+  min-height: 0;
+}
+
+.grow::after {
+  content: attr(data-replicated) ' ';
+  visibility: hidden;
+  /* The trailing space above keeps a newline at the end of the value from
+     being collapsed, so pressing Enter grows the box immediately. */
+}
+
+.grow > textarea {
+  overflow: hidden;
+  resize: none;
+  border-color: var(--line);
+  /* Two lines of breathing room before any text is typed. */
+  min-height: calc(2 * 1.55rem + 1.2rem + 2px);
+}
+
+.q__number {
+  max-width: 8rem;
+}
+
+.q__choices {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.q__choice {
+  font-family: var(--font-sans);
+  font-size: 0.9rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.5rem 0.9rem;
+  cursor: pointer;
+}
+
+.q__choice:hover {
+  border-color: var(--stone);
+}
+
+.q__choice.is-on {
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--cream);
+}
+
+/* --- five-second read callout -------------------------------------------- */
+
+.sp__fiveSec {
+  border: 1px solid var(--bamboo);
+  border-radius: var(--radius);
+  padding: 0.9rem 1.1rem;
+  margin: -0.75rem 0 1.75rem;
+  background: var(--cream-soft);
+}
+
+.sp__fiveSecText {
+  font-family: var(--font-serif);
+  font-size: 1.05rem;
+  margin: 0.35rem 0 0.6rem;
+}
+
+.sp__toldThem,
+.sp__action,
+.rail__check {
+  display: flex;
+  gap: 0.5rem;
+  align-items: flex-start;
+  font-size: 0.9rem;
+  font-weight: 400;
+  cursor: pointer;
+  margin-bottom: 0.4rem;
+}
+
+.sp__toldThem input,
+.sp__action input,
+.rail__check input {
+  margin-top: 0.2rem;
+  flex-shrink: 0;
+  accent-color: var(--bamboo-deep);
+}
+
+.sp__suppressed {
+  font-size: 0.88rem;
+  color: var(--stone-deep);
+  border-top: 1px solid var(--line);
+  padding-top: 0.85rem;
+}
+
+.linkish {
+  background: none;
+  border: none;
+  padding: 0;
+  font: inherit;
+  color: var(--bamboo-deep);
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+.sp__actions {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.75rem;
+}
+
+.sp__actions .kicker {
+  margin-bottom: 0.6rem;
+}
+
+.sp__optional {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  margin-left: 0.4rem;
+}
+
+.sp__noticed {
+  border-top: 1px solid var(--line);
+  padding-top: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.sp__noticed label {
+  font-family: var(--font-mono);
+  font-size: 0.72rem;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--bamboo-deep);
+}
+
+.sp__listen {
+  margin-top: 1.75rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+}
+
+.sp__listen p:last-child {
+  font-size: 0.9rem;
+  color: var(--stone-deep);
+  margin: 0;
+  font-family: var(--font-serif);
+  font-size: 0.98rem;
+  line-height: 1.55;
+}
+
+/* --- track two rail ------------------------------------------------------ */
+
+.rail {
+  position: sticky;
+  top: 5.5rem;
+  border-left: 1px solid var(--line);
+  padding: 1.75rem 1.25rem 2rem;
+  align-self: start;
+  max-height: calc(100dvh - 5.5rem);
+  overflow-y: auto;
+}
+
+.rail__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  margin-bottom: 1rem;
+}
+
+.rail__site {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.rail__empty {
+  font-size: 0.88rem;
+  color: var(--stone-deep);
+}
+
+.rail__item {
+  margin-bottom: 1.1rem;
+}
+
+.rail__item textarea {
+  font-size: 0.88rem;
+  padding: 0.4rem 0.5rem;
+  min-height: 3rem;
+}
+
+.rail__locked {
+  border-top: 1px solid var(--line);
+  padding-top: 1rem;
+  margin-top: 1.25rem;
+}
+
+.rail__locked label {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+}
+
+.rail__lockedHint {
+  font-size: 0.8rem;
+  color: var(--stone-deep);
+  margin: 0 0 0.4rem;
+  line-height: 1.4;
+}
+
+.rail__locked textarea {
+  font-size: 0.88rem;
+  padding: 0.4rem 0.5rem;
+  min-height: 3rem;
+}
+
+/* --- narrow ------------------------------------------------------------- */
+
+/* The rail drops below the questions rather than disappearing. But do not run
+   a Pulse Check from a phone: track two needs the client's site open in a
+   second window, and that is the whole methodology. */
+@media (max-width: 60rem) {
+  .wz__body {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rail {
+    position: static;
+    max-height: none;
+    border-left: none;
+    border-top: 1px solid var(--line);
+  }
+  .save {
+    min-width: 0;
+  }
+  .pace__segLabel {
+    display: none;
+  }
+}

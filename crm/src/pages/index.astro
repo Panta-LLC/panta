@@ -1,0 +1,145 @@
+---
+export const prerender = false;
+
+import App from '../layouts/App.astro';
+import { requireUser } from '../lib/auth/guard.ts';
+import { listReadoutsDue, listUpcoming } from '../lib/db/queries/pulse.ts';
+import { fmtCountdown, fmtDateTime } from '../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const [due, upcoming] = await Promise.all([listReadoutsDue(), listUpcoming()]);
+---
+
+<App title="Dashboard">
+  <p class="kicker">Dashboard</p>
+
+  {/*
+    Readouts owed come first, before anything else on the page.
+
+    /consultation/ promises "a one-page written readout within 48 hours"
+    publicly and unconditionally. It is the only such promise the offer makes,
+    which makes it the one thing this tool exists to stop you dropping.
+  */}
+  <h1>{due.length === 0 ? 'Nothing owed' : `${due.length} readout${due.length === 1 ? '' : 's'} owed`}</h1>
+
+  {
+    due.length === 0 ? (
+      <p class="muted">
+        No readouts outstanding. Every Pulse Check held has had its page sent.
+      </p>
+    ) : (
+      <ul class="due">
+        {due.map((d) => {
+          const c = fmtCountdown(d.readoutDueAt);
+          return (
+            <li class={c.overdue ? 'is-overdue' : c.urgent ? 'is-urgent' : ''}>
+              <a href={`/readouts/${d.id}`}>
+                <span class="due__client">{d.clientName}</span>
+                <span class="due__when">{c.text}</span>
+                <span class="due__at kicker">{fmtDateTime(d.readoutDueAt)}</span>
+                <span class="due__state kicker">
+                  {d.readoutStatus === 'ready' ? 'ready to send' : d.readoutStatus === 'draft' ? 'drafting' : 'not started'}
+                </span>
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    )
+  }
+
+  <section>
+    <h2>Coming up</h2>
+    {
+      upcoming.length === 0 ? (
+        <p class="muted">
+          Nothing scheduled. <a href="/clients">Open a client</a> to start a Pulse Check.
+        </p>
+      ) : (
+        <ul class="up">
+          {upcoming.map((u) => (
+            <li>
+              <a href={u.status === 'scheduled' ? `/pulse/${u.id}/prep` : `/pulse/${u.id}/run`}>
+                <span class="up__client">{u.clientName}</span>
+                <span class="muted">
+                  {u.scheduledAt ? fmtDateTime(u.scheduledAt) : 'unscheduled'}
+                </span>
+                {!u.prepCompletedAt && <span class="up__prep kicker">prep not done</span>}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+</App>
+
+<style>
+  h1 {
+    margin-bottom: 1.25rem;
+  }
+  .due,
+  .up {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 3rem;
+    border-top: 1px solid var(--line);
+  }
+  .due li,
+  .up li {
+    border-bottom: 1px solid var(--line);
+  }
+  .due a,
+  .up a {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.85rem 0;
+    text-decoration: none;
+    color: var(--charcoal);
+    flex-wrap: wrap;
+  }
+  .due__client,
+  .up__client {
+    font-weight: 500;
+    min-width: 12rem;
+  }
+  .due a:hover .due__client,
+  .up a:hover .up__client {
+    color: var(--bamboo-deep);
+  }
+  .due__when {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+  }
+  .due__at,
+  .due__state {
+    color: var(--stone-deep);
+  }
+  .due__state {
+    margin-left: auto;
+  }
+  /* Amber means one thing across this app: running out of time. */
+  .due li.is-urgent .due__when,
+  .due li.is-overdue .due__when {
+    color: var(--amber);
+  }
+  .due li.is-overdue {
+    background: var(--amber-soft);
+  }
+  .due li.is-overdue .due__client::before {
+    content: 'overdue · ';
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+  .up__prep {
+    color: var(--stone-deep);
+  }
+  section h2 {
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+</style>

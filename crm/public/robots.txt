@@ -1,0 +1,5 @@
+# Nothing here is public. Every route sits behind a session check in
+# src/middleware.ts; this file and the X-Robots-Tag header in vercel.json are
+# belt-and-braces on top of that, not the control itself.
+User-agent: *
+Disallow: /

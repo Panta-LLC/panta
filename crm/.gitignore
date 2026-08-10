@@ -1,0 +1,19 @@
+# build output
+dist/
+.astro/
+.vercel/
+
+# dependencies
+node_modules/
+
+# secrets — the CRM's .env.local holds a database URL and an OAuth client
+# secret. Nothing in this directory may ever be committed.
+.env
+.env.*
+!.env.example
+
+# macOS
+.DS_Store
+
+# logs
+*.log

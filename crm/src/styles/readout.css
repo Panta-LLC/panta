@@ -1,0 +1,351 @@
+/* The readout composer: evidence · compose · rules. */
+
+.rc__nav {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.6rem clamp(1rem, 3vw, 1.75rem);
+  border-bottom: 1px solid var(--line);
+  font-size: 0.9rem;
+  position: sticky;
+  top: 0;
+  background: var(--cream);
+  z-index: 10;
+}
+
+.rc__navClient {
+  font-weight: 500;
+}
+
+.rc__due {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--stone-deep);
+}
+
+.rc__due.is-urgent,
+.rc__due.is-overdue {
+  color: var(--amber);
+}
+
+.rc__due.is-overdue {
+  background: var(--amber-soft);
+  padding: 0.15rem 0.45rem;
+  border-radius: 3px;
+}
+
+.rc {
+  display: grid;
+  grid-template-columns: 17rem minmax(0, 1fr) 17rem;
+  align-items: start;
+  min-height: calc(100dvh - 3rem);
+}
+
+/* --- evidence ------------------------------------------------------------ */
+
+.rc__evidence {
+  border-right: 1px solid var(--line);
+  padding: 1.5rem 1rem 3rem;
+  position: sticky;
+  top: 3rem;
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
+}
+
+.rc__evidenceHint {
+  font-size: 0.8rem;
+  color: var(--stone-deep);
+  line-height: 1.4;
+}
+
+.rc__quote {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-top: 1px solid var(--line);
+  padding: 0.6rem 0;
+  cursor: pointer;
+  font: inherit;
+}
+
+.rc__quote:hover {
+  background: var(--cream-soft);
+}
+
+.rc__quoteText {
+  display: block;
+  font-family: var(--font-serif);
+  font-size: 0.92rem;
+  line-height: 1.45;
+  margin-top: 0.2rem;
+}
+
+/* --- compose ------------------------------------------------------------- */
+
+.rc__compose {
+  padding: 1.75rem clamp(1rem, 3vw, 2.25rem) 4rem;
+  max-width: 46rem;
+}
+
+.rc__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.rc__head h1 {
+  font-size: 1.35rem;
+  margin: 0.25rem 0 0;
+}
+
+.rc__save {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--stone-deep);
+  white-space: nowrap;
+}
+
+.rc__compose section {
+  margin-bottom: 2.5rem;
+}
+
+.rc__compose h2 {
+  font-size: 1.15rem;
+  padding-bottom: 0.4rem;
+  border-bottom: 1px solid var(--line);
+  margin-bottom: 1.25rem;
+}
+
+.rc__compose label {
+  display: block;
+  margin-bottom: 1.1rem;
+}
+
+.rc__compose label .kicker {
+  margin-bottom: 0.3rem;
+}
+
+.rc__obs {
+  border-left: 2px solid var(--line);
+  padding-left: 1rem;
+  margin-bottom: 1.75rem;
+}
+
+.rc__obs textarea {
+  font-family: var(--font-serif);
+  font-size: 1rem;
+  line-height: 1.55;
+}
+
+.rc__quoted {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  color: var(--bamboo-deep);
+  margin: 0.3rem 0 0;
+}
+
+.rc__hint {
+  font-size: 0.85rem;
+  color: var(--stone-deep);
+  font-style: italic;
+}
+
+/* --- ladder -------------------------------------------------------------- */
+
+.rc__ladder {
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 1rem 1.1rem;
+  margin-bottom: 1.75rem;
+  background: var(--cream-soft);
+}
+
+.rc__candidates {
+  list-style: none;
+  padding: 0;
+  margin: 0.75rem 0 1rem;
+}
+
+.rc__candidates li {
+  display: grid;
+  grid-template-columns: 4rem 1fr;
+  gap: 0.5rem 0.75rem;
+  padding: 0.5rem 0;
+  border-top: 1px solid var(--line);
+  font-size: 0.9rem;
+}
+
+.rc__rule {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--stone-deep);
+  padding-top: 0.15rem;
+}
+
+/* Rule 1 is a blocker — the questionnaire says it outranks everything. */
+.rc__rule--1 {
+  color: var(--amber);
+}
+
+.rc__candidateEvidence {
+  grid-column: 2;
+  font-size: 0.78rem;
+  color: var(--stone-deep);
+}
+
+.rc__rulePick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  margin-bottom: 0.6rem;
+}
+
+.rc__ruleBtn {
+  font-family: var(--font-sans);
+  font-size: 0.78rem;
+  background: #fff;
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 0.35rem 0.6rem;
+  cursor: pointer;
+  text-align: left;
+}
+
+.rc__ruleBtn.is-on {
+  background: var(--charcoal);
+  border-color: var(--charcoal);
+  color: var(--cream);
+}
+
+.rc__ruleNote {
+  font-size: 0.83rem;
+  color: var(--stone-deep);
+  line-height: 1.45;
+}
+
+.rc__empty {
+  font-size: 0.88rem;
+  color: var(--stone-deep);
+}
+
+.rc__mode {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rc__capacity {
+  font-family: var(--font-mono);
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+}
+
+.rc__actions {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  border-top: 1px solid var(--line);
+  padding-top: 1.5rem;
+}
+
+.rc__actions [aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.rc__count {
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  color: var(--stone-deep);
+}
+
+/* --- lint ---------------------------------------------------------------- */
+
+.rc__lint {
+  border-left: 1px solid var(--line);
+  padding: 1.5rem 1rem 3rem;
+  position: sticky;
+  top: 3rem;
+  max-height: calc(100dvh - 3rem);
+  overflow-y: auto;
+}
+
+.rc__issue {
+  border-left: 2px solid var(--line);
+  padding: 0.5rem 0 0.5rem 0.7rem;
+  margin-bottom: 0.9rem;
+  font-size: 0.85rem;
+}
+
+.rc__issue p {
+  margin: 0.15rem 0;
+  max-width: none;
+  line-height: 1.4;
+}
+
+/* Blocking issues are the questionnaire's hard rules — no score, no invented
+   numbers, no rebuild, three observations, one page. */
+.rc__issue--block {
+  border-left-color: var(--amber);
+}
+
+.rc__issue--warn {
+  border-left-color: var(--stone);
+}
+
+.rc__issue code {
+  font-family: var(--font-mono);
+  font-size: 0.75rem;
+  background: var(--cream-soft);
+  padding: 0.05rem 0.3rem;
+}
+
+.rc__clean {
+  font-size: 0.88rem;
+  color: var(--bamboo-deep);
+}
+
+.rc__budget {
+  height: 3px;
+  background: var(--line);
+  margin-top: 1.5rem;
+}
+
+.rc__budgetFill {
+  height: 100%;
+  background: var(--bamboo);
+}
+
+.rc__budgetNote {
+  font-family: var(--font-mono);
+  font-size: 0.65rem;
+  color: var(--stone-deep);
+  margin: 0.35rem 0 0;
+}
+
+@media (max-width: 78rem) {
+  .rc {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .rc__evidence,
+  .rc__lint {
+    position: static;
+    max-height: none;
+    border: none;
+    border-top: 1px solid var(--line);
+  }
+}

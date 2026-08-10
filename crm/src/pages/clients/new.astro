@@ -1,0 +1,108 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+
+requireUser(Astro.locals);
+
+const error = Astro.url.searchParams.get('error');
+
+/**
+ * Mirrors studio/schemaTypes/client.ts so the CRM and the marketing record
+ * describe an organization the same way — plus e-commerce, which the service
+ * definition treats as a segment but the marketing schema never needed.
+ */
+const SECTORS = [
+  ['nonprofit', 'Nonprofit'],
+  ['independent_practice', 'Independent practice'],
+  ['small_business', 'Small business'],
+  ['community_org', 'Community organization'],
+  ['public_agency', 'Public agency'],
+  ['ecommerce', 'E-commerce'],
+  ['other', 'Other'],
+];
+---
+
+<App title="Add a client">
+  <p class="kicker"><a href="/clients">Clients</a> · New</p>
+  <h1>Add a client</h1>
+
+  {error === 'name' && <p class="err">An organization name is required.</p>}
+
+  <form method="POST" action="/api/clients" class="form">
+    <div>
+      <label for="name">Organization name</label>
+      <input id="name" name="name" type="text" required autofocus />
+    </div>
+
+    <div>
+      <label for="websiteUrl">Website</label>
+      <input id="websiteUrl" name="websiteUrl" type="text" placeholder="example.org" />
+      <p class="hint">
+        Leave blank if they don't have one — that's meaningful, and it suggests the
+        "no website yet" module on the interview.
+      </p>
+    </div>
+
+    <div>
+      <label for="sector">Sector</label>
+      <select id="sector" name="sector">
+        <option value="">—</option>
+        {SECTORS.map(([v, label]) => <option value={v}>{label}</option>)}
+      </select>
+      <p class="hint">Suggests conditional modules. Never enables one on its own.</p>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="city">City</label>
+        <input id="city" name="city" type="text" />
+      </div>
+      <div>
+        <label for="state">State</label>
+        <input id="state" name="state" type="text" />
+      </div>
+    </div>
+
+    <div>
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" rows="3"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn--primary" type="submit">Add client</button>
+      <a class="btn btn--ghost" href="/clients">Cancel</a>
+    </div>
+  </form>
+</App>
+
+<style>
+  .form {
+    max-width: 34rem;
+  }
+  .form > * + * {
+    margin-top: 1.25rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 1rem;
+  }
+  .hint {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin: 0.35rem 0 0;
+  }
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .err {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+</style>

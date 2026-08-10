@@ -1,0 +1,58 @@
+---
+export const prerender = false;
+
+import '../../../styles/global.css';
+import '../../../styles/wizard.css';
+
+import { requireUser } from '../../../lib/auth/guard.ts';
+import { getPulseCheck } from '../../../lib/db/queries/pulse.ts';
+import PulseWizard from '../../../components/wizard/PulseWizard.tsx';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const check = id ? await getPulseCheck(id) : null;
+if (!check) return Astro.redirect('/pulse', 302);
+
+// A captured interview is done; sending someone back into the wizard would
+// let them edit answers after the readout was drafted from them.
+if (check.pulse.status === 'captured' || check.pulse.status === 'readout_sent') {
+  return Astro.redirect(`/pulse/${id}/capture`, 302);
+}
+
+const prep = (check.pulse.prep ?? {}) as Record<string, { v?: unknown }>;
+const prepFiveSecond = (prep['five_second_read']?.v as string) ?? null;
+
+// `serverNow` anchors the wizard's clock — see useElapsed.ts. Rendered into
+// the island rather than fetched, so the offset is known before first paint.
+const serverNow = new Date().toISOString();
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{check.client.name} · Pulse Check</title>
+  </head>
+  <body>
+    <PulseWizard
+      client:load
+      pulseId={check.pulse.id}
+      definition={check.instrumentDefinition}
+      initialAnswers={check.pulse.answers as any}
+      initialTrackTwo={check.pulse.trackTwo as any}
+      initialModules={check.pulse.modulesEnabled ?? []}
+      startedAt={check.pulse.startedAt ? check.pulse.startedAt.toISOString() : null}
+      serverNow={serverNow}
+      serverUpdatedAt={check.pulse.updatedAt ? check.pulse.updatedAt.toISOString() : null}
+      fiveSecondRead={check.pulse.fiveSecondRead ?? prepFiveSecond}
+      client={{
+        name: check.client.name,
+        websiteUrl: check.client.websiteUrl,
+        sector: check.client.sector,
+      }}
+    />
+  </body>
+</html>

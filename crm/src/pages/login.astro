@@ -1,0 +1,118 @@
+---
+export const prerender = false;
+
+import Bare from '../layouts/Bare.astro';
+import { googleConfig } from '../lib/auth/google.ts';
+
+const { configured, allowedEmail } = googleConfig();
+const next = Astro.url.searchParams.get('next') ?? '/';
+const error = Astro.url.searchParams.get('error');
+
+/**
+ * Dev-only sign-in. `import.meta.env.DEV` is statically replaced by Vite, so
+ * this branch and the endpoint behind it are dead-code-eliminated from any
+ * production build — they cannot exist on Vercel even if the env var were set.
+ * It exists so the app can be exercised end to end before the Google Cloud
+ * Console setup is done, and for no other reason.
+ */
+const devLogin = import.meta.env.DEV && import.meta.env.CRM_DEV_LOGIN === '1';
+
+const errors: Record<string, string> = {
+  not_allowed: 'That Google account is not permitted to sign in.',
+  unverified: 'That Google account has no verified email address.',
+  state: 'The sign-in attempt expired or was tampered with. Try again.',
+  exchange: 'Google rejected the sign-in. Try again.',
+};
+---
+
+<Bare title="Sign in">
+  <main class="login">
+    <div class="login__box">
+      <p class="kicker">Panta</p>
+      <h1>CRM</h1>
+
+      {error && <p class="login__error">{errors[error] ?? 'Sign-in failed. Try again.'}</p>}
+
+      {
+        configured ? (
+          <form method="GET" action="/api/auth/google/start">
+            <input type="hidden" name="next" value={next} />
+            <button class="btn btn--primary" type="submit">
+              Sign in with Google
+            </button>
+          </form>
+        ) : (
+          <div class="login__setup">
+            <p><strong>Google sign-in is not configured yet.</strong></p>
+            <p class="muted">
+              Set <code>GOOGLE_CLIENT_ID</code>, <code>GOOGLE_CLIENT_SECRET</code> and
+              <code>ALLOWED_EMAIL</code> in <code>crm/.env.local</code>. See
+              <code>crm/.env.example</code> for the Cloud Console steps.
+            </p>
+          </div>
+        )
+      }
+
+      {
+        devLogin && (
+          <form method="POST" action="/api/auth/dev-login" class="login__dev">
+            <input type="hidden" name="next" value={next} />
+            <button class="btn btn--ghost" type="submit">
+              Dev sign-in (local only)
+            </button>
+            <p class="kicker">Not present in production builds</p>
+          </form>
+        )
+      }
+
+      {
+        allowedEmail && (
+          <p class="login__hint kicker">Only {allowedEmail} may sign in</p>
+        )
+      }
+    </div>
+  </main>
+</Bare>
+
+<style>
+  .login {
+    min-height: 100dvh;
+    display: grid;
+    place-items: center;
+    padding: 2rem;
+  }
+  .login__box {
+    width: min(26rem, 100%);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream-soft);
+    padding: 2rem;
+  }
+  .login__box h1 {
+    margin-top: 0.25rem;
+    margin-bottom: 1.5rem;
+  }
+  .login__error {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    color: var(--charcoal);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+  .login__setup code {
+    font-family: var(--font-mono);
+    font-size: 0.85em;
+  }
+  .login__dev {
+    margin-top: 1.5rem;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+  }
+  .login__dev .kicker {
+    margin-top: 0.5rem;
+  }
+  .login__hint {
+    margin-top: 1.5rem;
+  }
+</style>

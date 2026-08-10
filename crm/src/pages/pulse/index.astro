@@ -1,0 +1,129 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listPulseChecks } from '../../lib/db/queries/pulse.ts';
+import { fmtDate, fmtCountdown } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const rows = await listPulseChecks();
+
+const STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Scheduled',
+  prepped: 'Prep done',
+  in_call: 'In call',
+  captured: 'Captured',
+  readout_drafted: 'Readout drafted',
+  readout_sent: 'Readout sent',
+  abandoned: 'Abandoned',
+};
+
+function hrefFor(r: (typeof rows)[number]) {
+  if (r.status === 'scheduled') return `/pulse/${r.id}/prep`;
+  if (r.status === 'prepped' || r.status === 'in_call') return `/pulse/${r.id}/run`;
+  return `/pulse/${r.id}/capture`;
+}
+---
+
+<App title="Pulse Checks">
+  <p class="kicker">Pulse Checks</p>
+  <h1>{rows.length} {rows.length === 1 ? 'interview' : 'interviews'}</h1>
+
+  {
+    rows.length === 0 ? (
+      <div class="card">
+        <p style="margin:0">
+          None yet. Open a client and start one — it drops you into the five-minute
+          prep first.
+        </p>
+      </div>
+    ) : (
+      <ul class="list">
+        {rows.map((r) => {
+          const due = r.readoutDueAt ? fmtCountdown(r.readoutDueAt) : null;
+          return (
+            <li>
+              <a href={hrefFor(r)}>
+                <span class="list__name">{r.clientName}</span>
+                <span class="list__status">{STATUS_LABELS[r.status] ?? r.status}</span>
+                <span class="muted list__when">
+                  {r.endedAt ? fmtDate(r.endedAt) : fmtDate(r.createdAt)}
+                </span>
+                {due && r.status !== 'readout_sent' && (
+                  <span class={`list__due${due.overdue ? ' is-overdue' : due.urgent ? ' is-urgent' : ''}`}>
+                    readout {due.text}
+                  </span>
+                )}
+                {r.isRehearsal && <span class="list__rehearsal">rehearsal</span>}
+              </a>
+            </li>
+          );
+        })}
+      </ul>
+    )
+  }
+</App>
+
+<style>
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: 1.5rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+  .list li {
+    border-bottom: 1px solid var(--line);
+  }
+  .list a {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.8rem 0;
+    text-decoration: none;
+    color: var(--charcoal);
+    flex-wrap: wrap;
+  }
+  .list__name {
+    font-weight: 500;
+    min-width: 12rem;
+  }
+  .list a:hover .list__name {
+    color: var(--bamboo-deep);
+  }
+  .list__status,
+  .list__when {
+    font-size: 0.9rem;
+    color: var(--stone-deep);
+  }
+  .list__status {
+    min-width: 8rem;
+  }
+  .list__due {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--stone-deep);
+    margin-left: auto;
+  }
+  .list__due.is-urgent,
+  .list__due.is-overdue {
+    color: var(--amber);
+  }
+  .list__due.is-overdue {
+    background: var(--amber-soft);
+    padding: 0.1rem 0.4rem;
+    border-radius: 3px;
+  }
+  .list__rehearsal {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.1rem 0.35rem;
+  }
+</style>

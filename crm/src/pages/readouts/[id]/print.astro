@@ -1,0 +1,225 @@
+---
+export const prerender = false;
+
+import '../../../styles/global.css';
+
+import { requireUser } from '../../../lib/auth/guard.ts';
+import { getReadout } from '../../../lib/db/queries/readouts.ts';
+import { fmtDate } from '../../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const row = id ? await getReadout(id) : null;
+if (!row) return Astro.redirect('/pulse', 302);
+
+const { readout, pulse, client } = row;
+const observations = (readout.observations ?? []) as { artifact?: string; body?: string }[];
+const filled = observations.filter((o) => o.body?.trim());
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>{client.name} — Pulse Check readout</title>
+  </head>
+  <body>
+    <div class="screen-only bar">
+      <a href={`/readouts/${pulse.id}`}>← Back to the composer</a>
+      <span>
+        Print to PDF: <kbd>⌘P</kbd> → Save as PDF. Turn off “Headers and footers”.
+        If it runs to a second page, it is too long.
+      </span>
+    </div>
+
+    <article class="page">
+      <header class="page__head">
+        <p class="page__kicker">Pulse Check · a free 30-minute review</p>
+        <h1>{client.name}</h1>
+        <p class="page__meta">
+          {fmtDate(pulse.endedAt ?? pulse.createdAt)} · prepared by Panta
+        </p>
+      </header>
+
+      <section>
+        <h2>What I noticed</h2>
+        {
+          filled.map((o) => (
+            <div class="obs">
+              {o.artifact && <p class="obs__artifact">{o.artifact}</p>}
+              <p>{o.body}</p>
+            </div>
+          ))
+        }
+      </section>
+
+      <section>
+        <h2>What I'd do first</h2>
+        {readout.recWhat && <p class="rec__what">{readout.recWhat}</p>}
+        {readout.recWhyFirst && <p>{readout.recWhyFirst}</p>}
+        {readout.recEffort && <p>{readout.recEffort}</p>}
+        {
+          readout.recMode && (
+            <p class="rec__mode">
+              {readout.recMode === 'diy'
+                ? 'This is something you can do yourselves.'
+                : 'This is worth bringing someone in for.'}
+            </p>
+          )
+        }
+      </section>
+
+      <section>
+        <h2>What I didn't cover</h2>
+        {readout.didntCover && <p>{readout.didntCover}</p>}
+      </section>
+    </article>
+
+    <style>
+      /* ------------------------------------------------------------------
+         The one-page readout.
+
+         Sized for Letter at 0.9in margins with Spectral at 11pt/1.55 — the
+         same figures the composer's character budget is derived from. The
+         browser's own print preview is the honest arbiter of "one page":
+         if it spills onto page two you see it before you save the PDF,
+         which is a stronger check than any character count.
+
+         No headless Chromium involved. Bundling a browser into a Vercel
+         function to render a document you read before sending would be
+         ~50MB and a cold start, for no gain.
+      ------------------------------------------------------------------ */
+
+      body {
+        background: var(--stone);
+      }
+
+      .bar {
+        display: flex;
+        gap: 1.5rem;
+        align-items: center;
+        padding: 0.6rem 1.25rem;
+        background: var(--charcoal);
+        color: var(--cream);
+        font-size: 0.85rem;
+      }
+      .bar a {
+        color: var(--sage);
+      }
+      .bar kbd {
+        font-family: var(--font-mono);
+        font-size: 0.8em;
+        border: 1px solid var(--stone);
+        border-radius: 3px;
+        padding: 0 0.25rem;
+      }
+
+      .page {
+        background: #fff;
+        color: #26251f;
+        width: 8.5in;
+        min-height: 11in;
+        padding: 0.9in;
+        margin: 1.5rem auto;
+        font-family: var(--font-serif);
+        font-size: 11pt;
+        line-height: 1.55;
+      }
+
+      .page__head {
+        border-bottom: 1px solid #ddd6c6;
+        padding-bottom: 0.8rem;
+        margin-bottom: 1.5rem;
+      }
+
+      .page__kicker,
+      .page__meta {
+        font-family: var(--font-mono);
+        font-size: 8pt;
+        letter-spacing: 0.1em;
+        text-transform: uppercase;
+        color: #6e6a60;
+        margin: 0;
+      }
+
+      .page h1 {
+        font-family: var(--font-serif);
+        font-size: 20pt;
+        font-weight: 400;
+        margin: 0.3rem 0;
+      }
+
+      .page h2 {
+        font-family: var(--font-sans);
+        font-size: 9pt;
+        font-weight: 600;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: #55692d;
+        margin: 0 0 0.6rem;
+      }
+
+      .page section {
+        margin-bottom: 1.4rem;
+      }
+
+      .page p {
+        margin: 0 0 0.7rem;
+        max-width: none;
+      }
+
+      .obs {
+        margin-bottom: 1rem;
+        break-inside: avoid;
+      }
+
+      .obs__artifact {
+        font-family: var(--font-sans);
+        font-size: 9.5pt;
+        font-weight: 600;
+        margin-bottom: 0.15rem;
+      }
+
+      .rec__what {
+        font-size: 12pt;
+      }
+
+      .rec__mode {
+        font-family: var(--font-sans);
+        font-size: 9.5pt;
+        color: #6e6a60;
+      }
+
+      @page {
+        size: letter;
+        margin: 0.9in;
+      }
+
+      @media print {
+        .screen-only {
+          display: none !important;
+        }
+        body {
+          background: #fff;
+        }
+        .page {
+          width: auto;
+          min-height: 0;
+          padding: 0;
+          margin: 0;
+          box-shadow: none;
+        }
+        h2 {
+          break-after: avoid;
+        }
+        /* Never print raw URLs after links — this is a client-facing page. */
+        a[href]::after {
+          content: none;
+        }
+      }
+    </style>
+  </body>
+</html>

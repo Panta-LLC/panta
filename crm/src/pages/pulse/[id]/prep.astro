@@ -1,0 +1,157 @@
+---
+export const prerender = false;
+
+import App from '../../../layouts/App.astro';
+import { requireUser } from '../../../lib/auth/guard.ts';
+import { getPulseCheck } from '../../../lib/db/queries/pulse.ts';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const check = id ? await getPulseCheck(id) : null;
+if (!check) return Astro.redirect('/pulse', 302);
+
+const def = check.instrumentDefinition;
+const prep = (check.pulse.prep ?? {}) as Record<string, { v?: unknown }>;
+const locked = Boolean(check.pulse.fiveSecondReadLockedAt);
+
+const site = check.client.websiteUrl
+  ? check.client.websiteUrl.startsWith('http')
+    ? check.client.websiteUrl
+    : `https://${check.client.websiteUrl}`
+  : null;
+---
+
+<App title={`Prep · ${check.client.name}`}>
+  <p class="kicker">
+    <a href={`/clients/${check.client.id}`}>{check.client.name}</a> · Pulse Check
+  </p>
+  <h1>Before the call</h1>
+  <p class="lede muted">
+    Five minutes, yours not theirs. Do not run tools, crawl the site, or build a
+    checklist — five minutes, four tabs.
+  </p>
+
+  {
+    site && (
+      <p>
+        <a href={site} target="_blank" rel="noreferrer noopener">Open {site.replace(/^https?:\/\//, '')} ↗</a>
+      </p>
+    )
+  }
+
+  <form method="POST" action={`/api/pulse/${check.pulse.id}/prep`} class="prep">
+    <ol class="prep__list">
+      {
+        def.prep.items.map((item) => (
+          <li>
+            <label class="prep__check">
+              <input
+                type="checkbox"
+                name={`check:${item.key}`}
+                checked={prep[item.key]?.v === 'yes'}
+              />
+              <span>{item.label}</span>
+            </label>
+          </li>
+        ))
+      }
+    </ol>
+
+    <div class="prep__fields">
+      {
+        def.prep.fields.map((f) => {
+          const isLocked = f.lockOnCallStart && locked;
+          const value = (prep[f.key]?.v as string) ?? '';
+          return (
+            <div class="prep__field">
+              <label for={f.key}>
+                {f.prompt}
+                {isLocked && <span class="prep__lock">locked</span>}
+              </label>
+              {f.hint && <p class="prep__hint">{f.hint}</p>}
+              {f.type === 'number' ? (
+                <input id={f.key} name={`field:${f.key}`} type="number" value={value} disabled={isLocked} />
+              ) : (
+                <textarea id={f.key} name={`field:${f.key}`} rows="2" disabled={isLocked}>{value}</textarea>
+              )}
+            </div>
+          );
+        })
+      }
+    </div>
+
+    <div class="prep__actions">
+      <button class="btn btn--ghost" type="submit" name="action" value="save">Save prep</button>
+      <button class="btn btn--primary" type="submit" name="action" value="start">
+        Save &amp; open the call →
+      </button>
+    </div>
+    <p class="prep__note">
+      The five-second read locks the moment the call starts. Its whole value is
+      that you wrote it before you knew the answer.
+    </p>
+  </form>
+</App>
+
+<style>
+  .prep {
+    max-width: 40rem;
+    margin-top: 2rem;
+  }
+  .prep__list {
+    list-style: none;
+    counter-reset: step;
+    padding: 0;
+    margin: 0 0 2rem;
+    border-top: 1px solid var(--line);
+  }
+  .prep__list li {
+    border-bottom: 1px solid var(--line);
+    padding: 0.75rem 0;
+  }
+  .prep__check {
+    display: flex;
+    gap: 0.6rem;
+    align-items: flex-start;
+    font-weight: 400;
+    font-size: 0.95rem;
+    margin: 0;
+    cursor: pointer;
+  }
+  .prep__check input {
+    margin-top: 0.25rem;
+    flex-shrink: 0;
+    accent-color: var(--bamboo-deep);
+  }
+  .prep__field {
+    margin-bottom: 1.5rem;
+  }
+  .prep__field label {
+    font-size: 0.95rem;
+  }
+  .prep__hint {
+    font-size: 0.85rem;
+    font-style: italic;
+    color: var(--stone-deep);
+    margin: 0 0 0.4rem;
+  }
+  .prep__lock {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bamboo-deep);
+    margin-left: 0.5rem;
+  }
+  .prep__actions {
+    display: flex;
+    gap: 0.75rem;
+    margin-top: 2rem;
+  }
+  .prep__note {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin-top: 0.85rem;
+  }
+</style>

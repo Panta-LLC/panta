@@ -1,0 +1,7 @@
+# Not a workspace declaration — this file exists only to answer pnpm's
+# build-script prompt, the same way site/ and studio/ do. esbuild and sharp
+# ship prebuilt platform binaries as optional dependencies, so their postinstall
+# scripts are not needed and skipping them keeps `pnpm install` non-interactive.
+allowBuilds:
+  esbuild: false
+  sharp: false

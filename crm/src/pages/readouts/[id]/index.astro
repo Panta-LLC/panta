@@ -1,0 +1,103 @@
+---
+export const prerender = false;
+
+import '../../../styles/global.css';
+import '../../../styles/readout.css';
+
+import { requireUser } from '../../../lib/auth/guard.ts';
+import { getReadout } from '../../../lib/db/queries/readouts.ts';
+import { resolveInstrument } from '../../../lib/instrument/resolve.ts';
+import { fmtCountdown } from '../../../lib/format.ts';
+import ReadoutComposer from '../../../components/readout/ReadoutComposer.tsx';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const row = id ? await getReadout(id) : null;
+if (!row) return Astro.redirect('/pulse', 302);
+
+const { readout, pulse, client, definition } = row;
+
+// Everything they said, labelled by question number, as the quote source.
+const resolved = resolveInstrument(definition, pulse.modulesEnabled ?? []);
+const answers = (pulse.answers ?? {}) as Record<string, { v?: unknown }>;
+
+const evidenceItems = resolved.segments
+  .flatMap((s) => s.questions)
+  .map((q) => {
+    const text = answers[q.key]?.v;
+    if (typeof text !== 'string' || !text.trim()) return null;
+    return {
+      key: q.key,
+      label: q.n != null ? `Q${q.n}` : q.key.replace(/[._]/g, ' '),
+      text: text.trim(),
+    };
+  })
+  .filter((x): x is { key: string; label: string; text: string } => x !== null);
+
+// The capture sheet's own lines are quotable too — they are often where the
+// most useful sentence of the whole call ended up.
+for (const [key, label, value] of [
+  ['goalInTheirWords', 'Their goal', pulse.goalInTheirWords],
+  ['triggerText', 'Why now', pulse.triggerText],
+  ['oneThingSaidOutLoud', 'Said out loud', pulse.oneThingSaidOutLoud],
+] as const) {
+  if (value?.trim()) evidenceItems.unshift({ key, label, text: value.trim() });
+}
+
+const due = pulse.readoutDueAt ? fmtCountdown(pulse.readoutDueAt) : null;
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>Readout · {client.name}</title>
+  </head>
+  <body>
+    <nav class="rc__nav">
+      <a href={`/pulse/${pulse.id}/capture`}>← Capture sheet</a>
+      <span class="rc__navClient">{client.name}</span>
+      {
+        due && (
+          <span class={`rc__due${due.overdue ? ' is-overdue' : due.urgent ? ' is-urgent' : ''}`}>
+            due {due.text}
+          </span>
+        )
+      }
+    </nav>
+
+    <ReadoutComposer
+      client:load
+      pulseCheckId={pulse.id}
+      initial={{
+        observations: readout.observations as any,
+        recWhat: readout.recWhat,
+        recWhyFirst: readout.recWhyFirst,
+        recEffort: readout.recEffort,
+        recMode: readout.recMode,
+        didntCover: readout.didntCover,
+        ladderRule: readout.ladderRule,
+        ladderRationale: readout.ladderRationale,
+      }}
+      evidenceItems={evidenceItems}
+      ladderInput={{
+        lockedAssets: pulse.lockedAssets,
+        findNoticed: pulse.findNoticed,
+        trustNoticed: pulse.trustNoticed,
+        chooseNoticed: pulse.chooseNoticed,
+        stepsToContact: pulse.stepsToContact,
+        honestReplyTime: pulse.honestReplyTime,
+        triggerText: pulse.triggerText,
+        capacity: pulse.capacity,
+        oneThingSaidOutLoud: pulse.oneThingSaidOutLoud,
+      }}
+      capacity={pulse.capacity}
+      goalInTheirWords={pulse.goalInTheirWords}
+      clientName={client.name}
+      status={readout.status}
+    />
+  </body>
+</html>

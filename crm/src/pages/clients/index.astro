@@ -1,0 +1,115 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listClients } from '../../lib/db/queries/clients.ts';
+
+requireUser(Astro.locals);
+
+const rows = await listClients();
+
+const SECTOR_LABELS: Record<string, string> = {
+  nonprofit: 'Nonprofit',
+  independent_practice: 'Independent practice',
+  small_business: 'Small business',
+  community_org: 'Community organization',
+  public_agency: 'Public agency',
+  ecommerce: 'E-commerce',
+  other: 'Other',
+};
+---
+
+<App title="Clients">
+  <div class="head">
+    <div>
+      <p class="kicker">Clients</p>
+      <h1>{rows.length} {rows.length === 1 ? 'organization' : 'organizations'}</h1>
+    </div>
+    <a class="btn btn--primary" href="/clients/new">Add a client</a>
+  </div>
+
+  {
+    rows.length === 0 ? (
+      <div class="card">
+        <p style="margin:0">
+          No clients yet. Add one, then book a Pulse Check against it.
+        </p>
+      </div>
+    ) : (
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Organization</th>
+            <th>Sector</th>
+            <th>Website</th>
+            <th>Pulse Checks</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((c) => (
+            <tr>
+              <td>
+                <a href={`/clients/${c.id}`}>{c.name}</a>
+              </td>
+              <td class="muted">{c.sector ? SECTOR_LABELS[c.sector] ?? c.sector : '—'}</td>
+              <td class="muted">
+                {c.websiteUrl ? (
+                  new URL(
+                    c.websiteUrl.startsWith('http') ? c.websiteUrl : `https://${c.websiteUrl}`,
+                  ).hostname.replace(/^www\./, '')
+                ) : (
+                  <span class="flag">no website</span>
+                )}
+              </td>
+              <td class="muted">{c.pulseCount || '—'}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .head h1 {
+    margin-bottom: 0;
+  }
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+    padding: 0 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .table td {
+    padding: 0.7rem 0.75rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  /* "no website" is not a gap to shame — it routes the interview down the
+     no-website module, so it is worth seeing at a glance. */
+  .flag {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bamboo-deep);
+  }
+</style>

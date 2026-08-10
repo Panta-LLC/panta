@@ -1,0 +1,139 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { getClient } from '../../lib/db/queries/clients.ts';
+import { listPulseChecksForClient } from '../../lib/db/queries/pulse.ts';
+import { fmtDate, fmtDateTime } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const client = id ? await getClient(id) : null;
+if (!client) return Astro.redirect('/clients', 302);
+
+const checks = await listPulseChecksForClient(client.id);
+
+const STATUS_LABELS: Record<string, string> = {
+  scheduled: 'Scheduled',
+  prepped: 'Prep done',
+  in_call: 'In call',
+  captured: 'Captured',
+  readout_drafted: 'Readout drafted',
+  readout_sent: 'Readout sent',
+  abandoned: 'Abandoned',
+};
+
+/** Where a Pulse Check in this state should take you when clicked. */
+function hrefFor(c: (typeof checks)[number]) {
+  if (c.status === 'scheduled') return `/pulse/${c.id}/prep`;
+  if (c.status === 'prepped' || c.status === 'in_call') return `/pulse/${c.id}/run`;
+  return `/pulse/${c.id}/capture`;
+}
+---
+
+<App title={client.name}>
+  <p class="kicker"><a href="/clients">Clients</a></p>
+  <div class="head">
+    <div>
+      <h1>{client.name}</h1>
+      <p class="muted meta">
+        {client.sector ?? 'Sector not set'}
+        {client.city && ` · ${client.city}${client.state ? `, ${client.state}` : ''}`}
+        {' · '}
+        {
+          client.websiteUrl ? (
+            <a href={client.websiteUrl.startsWith('http') ? client.websiteUrl : `https://${client.websiteUrl}`} target="_blank" rel="noreferrer noopener">
+              {client.websiteUrl.replace(/^https?:\/\//, '')}
+            </a>
+          ) : (
+            'no website'
+          )
+        }
+      </p>
+    </div>
+    <form method="POST" action="/api/pulse">
+      <input type="hidden" name="clientId" value={client.id} />
+      <button class="btn btn--primary" type="submit">Start a Pulse Check</button>
+    </form>
+  </div>
+
+  {client.notes && <div class="card" style="margin-bottom:2rem"><p style="margin:0">{client.notes}</p></div>}
+
+  <h2>Pulse Checks</h2>
+  {
+    checks.length === 0 ? (
+      <p class="muted">None yet.</p>
+    ) : (
+      <ul class="checks">
+        {checks.map((c) => (
+          <li>
+            <a href={hrefFor(c)}>
+              <span class="checks__status">{STATUS_LABELS[c.status] ?? c.status}</span>
+              <span class="muted">
+                {c.endedAt
+                  ? `held ${fmtDateTime(c.endedAt)}`
+                  : c.scheduledAt
+                    ? `scheduled ${fmtDateTime(c.scheduledAt)}`
+                    : `created ${fmtDate(c.createdAt)}`}
+              </span>
+              {c.isRehearsal && <span class="checks__rehearsal">rehearsal</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .head h1 {
+    margin-bottom: 0.25rem;
+  }
+  .meta {
+    font-size: 0.9rem;
+    margin: 0;
+  }
+  .checks {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--line);
+  }
+  .checks li {
+    border-bottom: 1px solid var(--line);
+  }
+  .checks a {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.75rem 0;
+    text-decoration: none;
+    color: var(--charcoal);
+  }
+  .checks a:hover .checks__status {
+    color: var(--bamboo-deep);
+  }
+  .checks__status {
+    font-weight: 500;
+    min-width: 9rem;
+  }
+  .checks__rehearsal {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--stone-deep);
+    border: 1px solid var(--line);
+    border-radius: 3px;
+    padding: 0.1rem 0.35rem;
+  }
+</style>
