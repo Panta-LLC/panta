@@ -8,6 +8,9 @@ import {schemaTypes} from './schemaTypes'
 // not be creatable or deletable from the Studio, or the site loses its content.
 const SINGLETONS = [
   {id: 'homeHero', title: 'Home hero (/)'},
+  // Only the kicker, heading and expander label of the packages section — the
+  // cards under it are the Packages collection below.
+  {id: 'homePackages', title: 'Home packages section (/)'},
   // Named for what it renders, not what it used to: the homepage moved to the
   // Pulse build, and this document now only supplies the verbs and origin
   // story on /about/.
@@ -78,6 +81,7 @@ export default defineConfig({
             S.divider(),
             S.documentTypeListItem('pillar').title('Pillars'),
             S.documentTypeListItem('service').title('Services'),
+            S.documentTypeListItem('packageOffer').title('Packages'),
             S.documentTypeListItem('client').title('Clients'),
             S.documentTypeListItem('project').title('Projects'),
             S.documentTypeListItem('testimonial').title('Testimonials'),

@@ -32,6 +32,20 @@ export default defineType({
       to: [{type: 'project'}],
       description: 'Drives the homepage case study section. Delta Bay Impact is the launch pick.',
     }),
+    // Rendered in the footer, in this order, and published as the `sameAs`
+    // array of the site-wide Organization JSON-LD — which is how Google ties
+    // these accounts to Panta as one entity rather than several. That second
+    // job is why the URL field is validated hard: a broken `sameAs` entry is a
+    // worse signal than an absent one.
+    defineField({
+      name: 'socialProfiles',
+      type: 'array',
+      title: 'Social profiles',
+      of: [defineArrayMember({type: 'socialProfile'})],
+      description:
+        'Where Panta exists off-site, in the order they should appear in the footer. Leave empty and the footer block disappears entirely rather than rendering an empty heading. Only list accounts that are actually maintained — a dead profile linked from the footer is a live impression of an abandoned business.',
+    }),
+
     defineField({
       name: 'newsletterBlurb',
       type: 'text',

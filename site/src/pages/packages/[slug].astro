@@ -1,0 +1,270 @@
+---
+import '@fontsource/ibm-plex-mono/400.css';
+import Base from '../../layouts/Base.astro';
+import Placeholder from '../../components/Placeholder.astro';
+import PulseTerm from '../../components/PulseTerm.astro';
+import SectionViews from '../../components/SectionViews.astro';
+import { getPackage, getPackageSlugs } from '../../lib/sanity.js';
+import { serviceHref } from '../../lib/pillars.js';
+import { serviceSchema } from '../../lib/schema.js';
+import { hasText, listItems, paragraphs, toPlainText } from '../../lib/portable.js';
+
+// One template for every package. Same contract as services/[slug].astro —
+// sections render only when their fields are populated — but deliberately far
+// shorter: a service page is the deep end of the site, a package page answers
+// "what exactly do I get and what does it cost" and then asks for the review.
+//
+// Pages are built for every LISTED package, not only the page-ready ones, so an
+// editor can preview the real URL before flipping the flag. `pageReady` controls
+// two things instead: the page is noindex until it is on, and the homepage card
+// keeps pointing at the underlying service (see lib/packages.js).
+export async function getStaticPaths() {
+  const slugs = await getPackageSlugs();
+  return slugs.map((slug) => ({ params: { slug } }));
+}
+
+const { slug } = Astro.params;
+const p = await getPackage(slug);
+if (!p) {
+  // Services fall back to /services/. There is no packages index, so the
+  // homepage grid is the nearest thing to an overview.
+  return Astro.redirect('/#packages');
+}
+
+// Rich text from here down: each of these is a list of HTML strings, one per
+// bullet or paragraph, with inline emphasis and links already rendered. The
+// helpers take a plain string too, so a package written before the fields
+// became rich text still renders.
+const bullets = listItems(p.bullets);
+const goodFit = listItems(p.goodFit);
+const lede = paragraphs(hasText(p.heroLede) ? p.heroLede : p.summary);
+
+// Meta tags and JSON-LD take text, not markup.
+const metaDescription = p.seoDescription ?? toPlainText(p.summary);
+
+// Defaults live here, not in Sanity, so every page ends in a review CTA even if
+// an editor empties the fields. "Pulse Check" never appears on the button —
+// buttons describe, copy brands (§7.1).
+const CTA = {
+  title: p.ctaTitle ?? 'Not sure this is the right one?',
+  // paragraphs() takes the string default as readily as the rich-text field, so
+  // the fallback copy stays a plain string in the source where it is readable.
+  body: paragraphs(
+    hasText(p.ctaBody)
+      ? p.ctaBody
+      : 'Book a free 30-minute review and we will tell you honestly — including if the answer is a different package, or nothing at all. You will get a one-page written readout within 48 hours either way.'
+  ),
+  label: p.ctaLabel ?? 'Book a free 30-minute review',
+  note: p.ctaNote ?? 'We call it the Pulse Check · readout within 48 hours',
+};
+
+const schema = [
+  serviceSchema({
+    name: p.title,
+    serviceType: p.title,
+    description: metaDescription,
+    url: new URL(`/packages/${p.slug}/`, Astro.site).toString(),
+  }),
+].filter(Boolean);
+
+/** A section promised by the page but not yet written blocks the build. */
+const gap = (cond, note) => (p.pageReady && cond ? note : null);
+const gaps = [
+  gap(!bullets.length, `what "${p.title}" includes — 3 or more lines`),
+  gap(!hasText(p.heroLede), `hero lede for "${p.title}"`),
+  ...(p.contentGaps ?? []),
+].filter(Boolean);
+---
+<Base
+  title={p.seoTitle ?? `${p.title} — Panta`}
+  description={metaDescription}
+  schema={schema}
+  noindex={!p.pageReady}
+>
+  <!-- ===================== hero ===================== -->
+  <section class="section section--dark pkg-hero" data-section="hero">
+    <div class="container">
+      <p class="kicker pkg-hero__crumb">
+        <a class="crumb" href="/#packages">Packages</a>
+      </p>
+      <h1 class="pkg-hero__title">{p.title}</h1>
+      {p.priceFrom && <p class="pkg-hero__price">{p.priceFrom}</p>}
+      {lede.map((html) => <p class="lede" set:html={html} />)}
+      {/* .btn--primary, not --filled: the closing CTA below spends the page's
+          filled button and check-launch.mjs caps it at two. */}
+      <div class="btn-row">
+        <a
+          href="/consultation/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="pulse_check"
+          data-track-location={`package_${p.slug}_hero`}
+        >Book a free 30-minute review</a>
+      </div>
+    </div>
+  </section>
+
+  {gaps.length > 0 && (
+    <section class="section">
+      <div class="container">
+        {gaps.map((g) => <Placeholder note={g}>[{g} — not written yet]</Placeholder>)}
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== what's included ===================== -->
+  {bullets.length > 0 && (
+    <section class="section" data-section="includes">
+      <div class="container">
+        <div class="pkg-body">
+          <h2>{p.includesTitle ?? 'What’s included'}</h2>
+          <ul class="checklist pkg-list">
+            {bullets.map((html) => <li set:html={html} />)}
+          </ul>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== who it's for ===================== -->
+  {goodFit.length > 0 && (
+    <section class="section" style="padding-top: 0;" data-section="fit">
+      <div class="container">
+        <div class="pkg-body">
+          <h2>{p.goodFitTitle ?? 'Who this is for'}</h2>
+          <ul class="checklist pkg-list">
+            {goodFit.map((html) => <li set:html={html} />)}
+          </ul>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== the service behind it ===================== -->
+  {/* The package is the offer; the service is the practice it draws on. This
+      row is the only place the two are connected in public, and serviceHref()
+      owns whether it lands on the page or the overview anchor. */}
+  {p.service?.slug && (
+    <section class="section" style="padding-top: 0;" data-section="related">
+      <div class="container">
+        <div class="pkg-body">
+          <p class="kicker">The work behind it</p>
+          <ul class="related">
+            <li>
+              <a
+                href={serviceHref(p.service)}
+                data-track="cta_click"
+                data-track-cta="service_from_package"
+                data-track-location={`package_${p.slug}`}
+              >
+                <span class="related__name">{p.service.title}</span>
+                <span class="related__body">{p.service.summary}</span>
+              </a>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </section>
+  )}
+
+  <!-- ===================== closing review CTA (always) ===================== -->
+  <section class="section section--bamboo" data-section="cta">
+    <div class="container pkg-cta__inner">
+      <h2 class="pkg-cta__head">{CTA.title}</h2>
+      {CTA.body.map((html) => <p class="pkg-cta__body" set:html={html} />)}
+      <a
+        class="btn btn--filled"
+        href="/consultation/"
+        data-track="cta_click"
+        data-track-cta="pulse_check"
+        data-track-location={`package_${p.slug}_cta`}
+      >{CTA.label}</a>
+      <p class="pkg-cta__micro">
+        <PulseTerm text={CTA.note} location={`package_${p.slug}_cta`} />
+      </p>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .pkg-hero { padding-block: clamp(3.5rem, 8vw, 6rem); }
+
+  .pkg-hero__crumb { margin-bottom: 1rem; }
+  .crumb { color: inherit; text-decoration: none; }
+  .crumb:hover { text-decoration: underline; }
+
+  .pkg-hero__title {
+    font-size: clamp(2.2rem, 4.5vw, 3.4rem);
+    line-height: 1.15;
+    margin-bottom: 0.5rem;
+  }
+
+  .pkg-hero__price {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--sage);
+    margin: 0 0 1rem;
+  }
+
+  .pkg-body { max-width: 46rem; }
+  .pkg-list { margin-block: 1.25rem 0; }
+
+  /* --- the service behind it (same hairline rows as service pages) --- */
+  .related {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .related li { border-bottom: 1px solid var(--line); }
+
+  .related a {
+    display: grid;
+    gap: 0.25rem;
+    padding: 0.9rem 0;
+    text-decoration: none;
+  }
+
+  .related__name { font-weight: 500; color: var(--charcoal); }
+  .related a:hover .related__name { color: var(--bamboo-deep); }
+  .related__body { font-size: 0.9rem; color: var(--stone-deep); }
+
+  /* --- closing CTA --- */
+  .pkg-cta__inner {
+    display: grid;
+    gap: 1rem;
+    justify-items: start;
+    max-width: 44rem;
+  }
+
+  .pkg-cta__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    margin: 0;
+    color: var(--cream);
+  }
+
+  .pkg-cta__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--cream);
+    margin: 0;
+    max-width: 54ch;
+  }
+
+  .pkg-cta__micro {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--cream);
+    opacity: 0.85;
+    margin: 0;
+    /* Cream on bamboo — the term's default accent (bamboo-deep) would vanish. */
+    --pulse-term-accent: var(--cream);
+  }
+</style>
+
+<SectionViews />

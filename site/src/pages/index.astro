@@ -8,8 +8,12 @@ import NewsletterForm from '../components/NewsletterForm.astro';
 import Placeholder from '../components/Placeholder.astro';
 import PulseTerm from '../components/PulseTerm.astro';
 import LeadForm from '../components/LeadForm.astro';
-import { getDoc, getFeaturedCaseStudy, getPillars, getPosts, getProjects, getServices } from '../lib/sanity.js';
-import { serviceHref } from '../lib/pillars.js';
+/* Package copy is rich text now. Rendered here rather than through a component
+   because Astro scopes `.pkg-card__list li` to this file — an <li> emitted by a
+   child component carries that component's scope id and none of these rules. */
+import { listItems, paragraphs } from '../lib/portable.js';
+import { getDoc, getFeaturedCaseStudy, getPackages, getPillars, getPosts, getProjects } from '../lib/sanity.js';
+import { packageHref } from '../lib/packages.js';
 import { faqSchema } from '../lib/schema.js';
 
 // Homepage per PULSE-HOME-BUILD.md §4 and panta-homepage-copy.md. Nine
@@ -53,17 +57,27 @@ const BOOK = '/consultation/';
 // decided. html has scroll-padding-top so the anchor clears the sticky header.
 const BOOK_FORM = '/consultation/#book';
 
-// §4.1 — the hero's "What we do" index, from Sanity. Each service links to
-// its own page once `pageReady` is set, and to its block on the overview
-// before that — serviceHref() owns that decision so nothing here hardcodes
-// either form. Every service page ends in its own review CTA, which is what
-// makes these scenic routes rather than leaks.
 const PILLARS = await getPillars();
-// Hero index order is Sanity `service.order` — getServices() already sorts.
-const SERVICES = (await getServices()).map((s) => ({
-  label: s.indexLabel ?? s.title,
-  href: serviceHref(s),
-}));
+
+// §1.5 — the packages grid, and now the page's first answer to "what does
+// Panta sell". It replaced the hero's "What we do" service index rather than
+// joining it: the index listed capabilities, this names what someone can buy,
+// and the two a screen apart read as the same list written twice. Sanity-driven
+// so the set is data — `listed` toggles a card off exactly as it does a
+// service — and packageHref() owns where a card points, which is how a package
+// still routes into its service page without anything here hardcoding a URL.
+const PACKAGES = await getPackages();
+
+// The three strings around the cards — kicker, heading, and the label on each
+// card's expander. Same fallback contract as the hero: the shipped copy is the
+// default, so an absent or half-filled `homePackages` document renders the page
+// as written rather than a blank kicker.
+const pkgSection = (await getDoc('homePackages')) ?? {};
+const PKGS = {
+  kicker: pkgSection.kicker || 'Where to start',
+  heading: pkgSection.heading || 'Ways in, each one scoped before it starts.',
+  expandLabel: pkgSection.expandLabel || 'What’s included',
+};
 
 
 const STEPS = [
@@ -146,44 +160,19 @@ const FAQS = [
   schema={[faqSchema(FAQS)].filter(Boolean)}
 >
   <!-- ===================== 1. hero ===================== -->
-  <!-- Two columns: the claim on the left, what we actually do on the right.
-       The service index is hairline rows with arrows, NOT cards or buttons —
-       nothing may compete with the one filled button (§3, §4.1). -->
+  <!-- One column: the claim, the one filled button, and a quiet route to the
+       work. The right-hand "What we do" service index used to live here; it
+       came out when §1.5 landed, because the two said the same thing a screen
+       apart and the index said it in weaker words — capabilities where the
+       packages name what someone can actually buy. /services/ is still one
+       click away in the nav, and every package card routes into a service.
+       The rule that survives from §3/§4.1 is the important half: nothing in
+       this section may compete with the one filled button. -->
   <section class="hero" id="top" data-section="hero">
     <div class="container hero__grid">
       <div class="hero__claim">
         <h1 class="hero__headline">{HERO.headline}</h1>
         <p class="hero__sub">{HERO.subhead}</p>
-        <a
-          class="hero__quiet"
-          href="/work/"
-          data-track="cta_click"
-          data-track-cta="work"
-          data-track-location="home_hero"
-        >{HERO.secondaryLabel} <span aria-hidden="true">→</span></a>
-      </div>
-
-      {/* The index and the button are wrapped separately so mobile can put the
-          button first — see .hero__index in the stylesheet. */}
-      <div class="hero__index">
-        <div class="hero__svc">
-          <p class="kicker">What we do</p>
-          <ul class="svc-index">
-            {SERVICES.map((s) => (
-              <li>
-                <a
-                  href={s.href}
-                  data-track="cta_click"
-                  data-track-cta="service_index"
-                  data-track-location="home_hero"
-                >
-                  <span>{s.label}</span>
-                  <span class="svc-index__arrow" aria-hidden="true">→</span>
-                </a>
-              </li>
-            ))}
-          </ul>
-        </div>
 
         <div class="hero__act">
           <a
@@ -195,16 +184,113 @@ const FAQS = [
           >{HERO.ctaLabel}</a>
           <p class="hero__micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
         </div>
+
+        <a
+          class="hero__quiet"
+          href="/work/"
+          data-track="cta_click"
+          data-track-cta="work"
+          data-track-location="home_hero"
+        >{HERO.secondaryLabel} <span aria-hidden="true">→</span></a>
       </div>
     </div>
   </section>
 
+  <!-- ===================== 1.5 packages ===================== -->
+  <!-- Fixed-scope offers, from Sanity. The kicker is "Where to start" rather
+       than "What we do" on purpose: the hero owns that phrase and §4 owns
+       "services", and three headings saying the same thing is how a page
+       starts repeating itself. This one has a different job — it names what a
+       visitor can actually buy.
+       No .btn--filled anywhere here. The homepage already spends both (hero +
+       closing form) and check-launch.mjs caps it at two; these are text links
+       for the same reason the hero index is hairline rows. -->
+  {PACKAGES.length > 0 && (
+    <section class="section pkgs" id="packages" data-section="packages">
+      <div class="container">
+        <p class="kicker">{PKGS.kicker}</p>
+        <h2 class="pkgs__head">{PKGS.heading}</h2>
+        <div class="pkg-grid">
+          {PACKAGES.map((p) => {
+            /* A package with no page and no service reference has nowhere to
+               send anyone. Its title renders as plain text rather than an
+               anchor to '#' — a card that leads nowhere should not look
+               clickable. */
+            const href = packageHref(p);
+            /* Both are HTML strings, one per paragraph / per bullet. Extracted
+               rather than length-checked on the raw field: an empty editor is a
+               one-block array holding an empty span — truthy, and worth nothing
+               on the page. */
+            const summary = paragraphs(p.summary);
+            const bullets = listItems(p.bullets);
+            return (
+              /* A div, not an <a>: the card now contains a <details>, and
+                 interactive content inside an anchor is invalid and swallows
+                 the toggle's clicks. Whole-card clickability comes back via
+                 .pkg-card__anchor::after, which covers the card — the same
+                 hit area, with the expander lifted above it. */
+              <div class:list={['pkg-card', { 'pkg-card--link': href }]}>
+                <h3 class="pkg-card__name">
+                  {href ? (
+                    <a
+                      class="pkg-card__anchor"
+                      href={href}
+                      data-track="cta_click"
+                      data-track-cta={`package_${p.slug}`}
+                      data-track-location="home_packages"
+                    >{p.title}</a>
+                  ) : p.title}
+                </h3>
+                {p.priceFrom && <p class="pkg-card__price">{p.priceFrom}</p>}
+                {summary.map((html) => <p class="pkg-card__body" set:html={html} />)}
+                {/* The card reads as heading + blurb; the inclusions are one
+                    click away rather than three-of-N truncated on the face of
+                    it. Native <details> for the same reason as the FAQ:
+                    keyboard, screen readers and find-in-page all work with no
+                    JS. All bullets show now — there is room for them here, so
+                    the "first three" rule the card used to impose is gone. */}
+                {/* A pill, not a full-width row: it used to be a hairline row
+                    stacked directly above "Learn more", and the two read as two
+                    items in one list when only one of them is a control of its
+                    own — everything else on the card belongs to the card-wide
+                    link. Shape carries that difference at a glance, before
+                    anyone hovers anything. */}
+                {bullets.length > 0 && (
+                  <details class="pkg-card__details">
+                    <summary class="pkg-card__toggle">
+                      <span>{PKGS.expandLabel}</span>
+                      <span class="pkg-card__mark" aria-hidden="true"></span>
+                    </summary>
+                    <ul class="pkg-card__list">
+                      {bullets.map((html) => <li set:html={html} />)}
+                    </ul>
+                  </details>
+                )}
+                {/* The label for the stretched link, so it spans the card the
+                    way the hit area does — arrow pushed to the far edge rather
+                    than trailing the words, which is what made a card-wide
+                    target look like a short inline one. */}
+                {href && (
+                  <span class="pkg-card__more">
+                    <span class="pkg-card__more-label">Learn more</span>
+                    <span class="pkg-card__arrow" aria-hidden="true">→</span>
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  )}
+
   <!-- ===================== 2. featured case study ===================== -->
-  <!-- Was §4.6, four screens down, behind the pillars and the process. It now
-       occupies the trust bar's slot: the claim is followed immediately by the
-       evidence for it, which is the move both reference sites make. The logo
-       row that used to sit here is gone — two logos under "trusted by" read
-       thinner than the work itself does.
+  <!-- Was §4.6, four screens down, behind the pillars and the process. It came
+       up into the trust bar's slot so the claim is followed closely by the
+       evidence for it, which is the move both reference sites make; §1.5 now
+       sits between the two, naming the offer the evidence is proof of. The
+       logo row that used to sit here is gone — two logos under "trusted by"
+       read thinner than the work itself does.
        The sector line and the 48-hour promise survive as the closing strip,
        since they were the rest of what the trust bar was doing. -->
   {CASES.length > 0 && (
@@ -279,14 +365,14 @@ const FAQS = [
         </div>
       </div>
 
-      <div class="container case__trust">
+      {/* <div class="container case__trust">
         <p class="case__trust-claim">
           Nonprofits, independent practitioners, and small businesses across Northern California.
         </p>
         <p class="case__trust-promise">
           Free 30-minute review · written readout within 48 hours · yours to keep either way
         </p>
-      </div>
+      </div> */}
     </section>
   )}
 
@@ -350,35 +436,20 @@ const FAQS = [
         ))}
       </div>
       <div class="pillars__close">
-        <div>
+        {/* The offer and its escape hatch are one column, the actions are the
+            other. They were three loose children of a two-column grid, which
+            put the button in column two and stranded the escape line back in
+            column one under the paragraph, a row down and a long way from the
+            thing it is an alternative to. */}
+        <div class="pillars__offer">
           <p class="pillars__cta">
-            Not sure where to start? Our Pulse Check is a free 30-minute conversation about where things stand. You’ll get a one-page readout within 48 hours — three observations and one recommendation, yours to keep either way.
+            Are you looking for ways to improve your website or online presence? Let's start with a free 30-minute review to understand your current needs and goals. No strings attached.
           </p>
-          <div class="pillars__actions">
-            {/* Ghost, not filled. §7.3 caps the page at two filled buttons and
-                they are now spent on the hero (first ask) and the form in the
-                close (the on-page conversion). On charcoal a cream-outlined
-                button is still unmistakably a button — and this is the third
-                ask inside two screens, sitting beside two text links and a
-                testimonial, so it was the one competing rather than earning. */}
-            <a
-              href={BOOK_FORM}
-              class="btn btn--ghost"
-              data-track="cta_click"
-              data-track-cta="pulse_check"
-              data-track-location="home_pillars"
-            >Book a free 30-minute review</a>
-            <a href={BOOK} class="pillars__learn-more" data-track="cta_click" data-track-cta="learn_more_pulse_check" data-track-location="home_pillars_more">
-              Learn more <span aria-hidden="true">→</span>
-            </a>
-          </div>
           {/* Escape hatch: a calendar is a commitment, and some visitors want to
               ask a question first. Kept quiet and text-only so it never competes
               with the booking button — it catches the people who'd otherwise
               leave, not the ones already reaching for a time slot.
-              Now points at the form in the close rather than off to /contact/:
-              the same escape, without leaving the page. */}
-          {/* Points at the compact form one section below (#ask), not the full
+              Points at the compact form one section below (#ask), not the full
               one in the close (#start) — the nearest place to act, ~10% of the
               page away instead of 40%. */}
           <p class="pillars__escape">
@@ -389,12 +460,30 @@ const FAQS = [
           </p>
         </div>
 
+        {/* Ghost, not filled. §7.3 caps the page at two filled buttons and they
+            are now spent on the hero (first ask) and the form in the close (the
+            on-page conversion). This is the third ask inside two screens,
+            sitting beside two text links and a testimonial, so it was the one
+            competing rather than earning. */}
+        <div class="pillars__actions">
+          <a
+            href={BOOK_FORM}
+            class="btn btn--primary"
+            data-track="cta_click"
+            data-track-cta="pulse_check"
+            data-track-location="home_pillars"
+          >Book a free 30-minute review</a>
+          <a href={BOOK} class="pillars__learn-more" data-track="cta_click" data-track-cta="learn_more_pulse_check" data-track-location="home_pillars_more">
+            Learn more <span aria-hidden="true">→</span>
+          </a>
+        </div>
+
         {/* The featured quote is testimony about the Pulse Check itself — "found
             in 30 minutes what two other people missed for months" — so it earns
             the booking button, not the case study four screens down where it
             used to sit describing a website rebuild it isn't about. Same
             `caseStudy` document; §4.6 keeps the image, summary and story link. */}
-        {caseStudy?.quote && (
+        <!-- {caseStudy?.quote && (
           <figure class="pillars__proof">
             <blockquote>“{caseStudy.quote}”</blockquote>
             {caseStudy.quoteAuthor && (
@@ -403,7 +492,7 @@ const FAQS = [
               </figcaption>
             )}
           </figure>
-        )}
+        )} -->
       </div>
     </div>
   </section>
@@ -443,8 +532,7 @@ const FAQS = [
             not "tell us what's going on". */}
         <h2 class="mid-ask__head">Rather we reached out to you?</h2>
         <p class="mid-ask__body">
-          Leave your name and email. We&rsquo;ll reply within one business day — with a time
-          that works, or an answer if it turns out you don&rsquo;t need a call.
+          Leave your name and email and we'll reach out to you within one business day to start the conversation for understanding your needs and how we can help.
         </p>
       </div>
       <LeadForm source="home_mid" variant="compact" />
@@ -515,7 +603,7 @@ const FAQS = [
           lazy image that decodes mid-tween flashes. */}
       <div class="founder__photo">
         <img
-          src="/founder/damon.webp"
+          src="/founder/damon-2026.webp"
           width="900"
           height="1200"
           alt="Damon Hastings, founder of Panta"
@@ -610,16 +698,13 @@ const FAQS = [
     background: var(--cream);
   }
 
+  /* Single column since the service index came out (see the section comment).
+     The 60/40 split it used to carry is gone with it — a lone CTA floating in
+     a 40% column reads as a layout waiting for content that never arrives. */
   .hero__grid {
     display: grid;
     gap: clamp(2.5rem, 5vw, 4rem);
     align-items: start;
-  }
-
-  /* 60/40 per §4.1. Mobile stacks headline → subhead → index → CTA, which is
-     source order, so no reordering is needed. */
-  @media (min-width: 900px) {
-    .hero__grid { grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); }
   }
 
   /* Baloo carries the hero — Panta's display face stays the loudest voice on
@@ -655,56 +740,11 @@ const FAQS = [
 
   .hero__quiet:hover { border-bottom-color: var(--charcoal); }
 
-  /* Stacked, the five-row service index used to push the one filled button to
-     839px on a 375px phone — a full screen below the fold, on the one breakpoint
-     where the header's CTA is also hidden behind the hamburger. So below 900px
-     the button leads and the index becomes the scenic route under it; desktop
-     keeps the brief's order (§4.1), index then button. */
-  .hero__index {
-    display: grid;
-    row-gap: 2.25rem;
-  }
-
-  .hero__act { order: -1; }
-
-  @media (min-width: 900px) {
-    .hero__act { order: 0; }
-  }
-
-  .svc-index {
-    list-style: none;
-    padding: 0;
-    /* Bottom spacing is .hero__index's row-gap now — a margin here would apply
-       in whichever order the two blocks happen to be in, and trail off the
-       bottom of the hero on mobile. */
-    margin: 0.9rem 0 0;
-    border-top: 1px solid var(--line);
-  }
-
-  .svc-index li { border-bottom: 1px solid var(--line); }
-
-  .svc-index a {
-    display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    padding: 0.7rem 0;
-    font-size: 0.95rem;
-    color: var(--charcoal);
-    text-decoration: none;
-  }
-
-  .svc-index a:hover { color: var(--bamboo-deep); }
-
-  .svc-index__arrow {
-    color: var(--stone);
-    transition: transform 0.2s ease;
-  }
-
-  .svc-index a:hover .svc-index__arrow {
-    color: var(--bamboo-deep);
-    transform: translateX(3px);
-  }
+  /* The button now follows the subhead directly in source order, so the
+     ordering fight this block used to arbitrate — index-then-button on desktop,
+     button-first on mobile so the CTA cleared the fold on a 375px phone — no
+     longer exists. It leads at every width. */
+  .hero__act { margin-block: 2rem 2.25rem; }
 
   .hero__micro {
     font-family: var(--font-mono);
@@ -726,32 +766,19 @@ const FAQS = [
     to { opacity: 1; transform: none; }
   }
 
+  /* One beat per element, in reading order. The per-row index delays this used
+     to carry (0.26s–0.51s, six of them) went with the index itself. */
   .hero__headline,
   .hero__sub,
-  .hero__quiet,
-  .hero__svc .kicker,
-  .svc-index li,
-  .hero__act > * {
+  .hero__act > *,
+  .hero__quiet {
     animation: rise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
   }
 
   .hero__headline { animation-delay: 0.05s; }
   .hero__sub { animation-delay: 0.14s; }
-  .hero__quiet { animation-delay: 0.22s; }
-  .hero__svc .kicker { animation-delay: 0.18s; }
-  .svc-index li:nth-child(1) { animation-delay: 0.26s; }
-  .svc-index li:nth-child(2) { animation-delay: 0.31s; }
-  .svc-index li:nth-child(3) { animation-delay: 0.36s; }
-  .svc-index li:nth-child(4) { animation-delay: 0.41s; }
-  .svc-index li:nth-child(5) { animation-delay: 0.46s; }
-  .svc-index li:nth-child(6) { animation-delay: 0.51s; }
-  .hero__act > * { animation-delay: 0.30s; }
-
-  /* Mobile puts .hero__act first (order: -1), so the button must animate on an
-     early beat or it visibly lags the copy it now sits above. */
-  @media (max-width: 899px) {
-    .hero__act > * { animation-delay: 0.20s; }
-  }
+  .hero__act > * { animation-delay: 0.22s; }
+  .hero__quiet { animation-delay: 0.30s; }
 
   /* ----------------------------------------------------------- problem -- */
 
@@ -875,28 +902,40 @@ const FAQS = [
     border-bottom: 1px solid rgba(245, 241, 231, 0.14);
   }
 
-  /* The rule that used to sit on .pillars__cta — it now has to span the offer
-     and the quote beside it. */
+  /* A cream panel on the dark section: the copy asks, the actions answer, and
+     the two sit on one line rather than in a 2×2 grid.
+     The second column is `auto`, not a fraction — sized to the button it holds.
+     As a fraction it reserved half the panel for a button a third that wide and
+     left the rest of the row empty. */
   .pillars__close {
     margin-top: clamp(2.5rem, 5vw, 3.5rem);
-    padding-top: 1.35rem;
-    border-top: 1px solid rgba(245, 241, 231, 0.28);
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    background: var(--cream);
+    border-radius: 10px;
     display: grid;
-    gap: clamp(1.75rem, 4vw, 3rem);
-    align-items: start;
+    gap: clamp(1.5rem, 3vw, 2.5rem);
+    align-items: center;
   }
 
   @media (min-width: 900px) {
-    .pillars__close { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); }
+    .pillars__close { grid-template-columns: minmax(0, 1fr) auto; }
   }
 
   .pillars__cta {
-    margin: 0 0 1.35rem;
+    margin: 0;
     max-width: 54ch;
     font-size: 1.05rem;
+    color: var(--stone-deep);
+  }
+  .pillars__actions .btn--primary {
+    background: var(--charcoal);
     color: var(--cream);
   }
 
+  .pillars__actions .btn--primary:hover {
+    background: var(--sage);
+    color: var(--cream);
+  }
   /* Sage rule rather than a card: the pillar columns above already read as
      ruled text, and a box here would be the only one on the page. */
   .pillars__proof {
@@ -919,7 +958,17 @@ const FAQS = [
     color: var(--sage);
   }
 
-  .pillars__cta a { color: var(--sage); }
+  /* Sage everywhere below was written when this block sat straight on the dark
+     section. It has been a cream panel since, which left the escape link cream
+     on cream — invisible — and the rest of it barely legible. These are the
+     same roles the packages cards use on the same surface. */
+  .pillars__cta a { color: var(--bamboo-deep); }
+
+  .pillars__offer {
+    display: grid;
+    gap: 0.9rem;
+    justify-items: start;
+  }
 
   .pillars__actions {
     display: flex;
@@ -929,20 +978,27 @@ const FAQS = [
   }
 
   .pillars__learn-more {
-    color: var(--sage);
+    color: var(--bamboo-deep);
     font-size: 0.95rem;
   }
 
-  .pillars__escape {
-    margin-top: 1.25rem;
-    max-width: none;
-    font-size: 0.9rem;
-    color: var(--sage);
+  .pillars__learn-more:hover {
+    color: var(--charcoal);
   }
 
+  .pillars__escape {
+    margin: 0;
+    max-width: none;
+    font-size: 0.9rem;
+    color: var(--stone-deep);
+  }
+
+  /* The question wraps before the answer does, rather than the link breaking
+     across two lines with its arrow orphaned on the second. */
   .pillars__escape a {
-    color: var(--cream);
+    color: var(--bamboo-deep);
     text-underline-offset: 3px;
+    white-space: nowrap;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -959,8 +1015,6 @@ const FAQS = [
     .hero__headline,
     .hero__sub,
     .hero__quiet,
-    .hero__svc .kicker,
-    .svc-index li,
     .hero__act > *,
     .faq__item[open] .faq__panel { animation: none !important; }
 
@@ -1053,6 +1107,287 @@ const FAQS = [
     line-height: 1.6;
     color: var(--stone-deep);
     margin: 0;
+  }
+
+  /* ---------------------------------------------------------- packages -- */
+
+  /* cream-soft, not cream: the hero above and the case study below are both
+     cream, and three flat cream bands in a row lose their edges. The cards
+     invert to plain cream so they still read as raised on it — which is why
+     they don't use the global .card class, whose surface is the other way up.
+     scroll-margin-top so the sticky header doesn't sit on the heading when
+     someone lands on /#packages. */
+  .pkgs {
+    background: var(--cream-soft);
+    scroll-margin-top: calc(var(--header-h) + 1.5rem);
+  }
+
+  .pkgs__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    line-height: 1.25;
+    margin: 0.25rem 0 0;
+    max-width: 22ch;
+  }
+
+  /* Explicit breakpoints rather than auto-fit: the number of cards is data —
+     an editor toggling `listed` changes it — and auto-fit would silently
+     re-flow five cards into four uneven columns on a wide screen. Three
+     columns max keeps five reading as 3+2 and six as 3+3. */
+  /* align-items: start is the whole fix for "expanding one card stretches its
+     neighbours": a grid item defaults to stretching to its row's height, so an
+     open <details> in one card grew every card beside it. With start, each card
+     is exactly as tall as its own content and nothing else in the row moves. */
+  .pkg-grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 2rem;
+    align-items: start;
+  }
+
+  @media (min-width: 720px) {
+    .pkg-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  @media (min-width: 1040px) {
+    .pkg-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  /* Masonry, switched on by the script at the foot of this file. Cards keep
+     their assigned column and span as many 1px rows as their content needs, so
+     the card below one that just expanded slides down and the rest of the grid
+     stays where it was — a plain grid instead leaves a band of dead space under
+     every short card in a row.
+     row-gap is 0 because the gap is folded into each span; the negative margin
+     cancels the trailing one under the tallest column. Without JS the attribute
+     is never set and the rule above stands on its own. */
+  .pkg-grid[data-masonry] {
+    grid-auto-flow: row dense;
+    grid-auto-rows: 1px;
+    row-gap: 0;
+    margin-bottom: -1.25rem;
+  }
+
+  /* The global .card surface, as a flex column. */
+  .pkg-card {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1.75rem;
+  }
+
+  /* `translate`, not `transform`. The reveal below animates these cards with
+     GSAP, which leaves an inline `transform` on every one of them when it
+     finishes — an inline declaration outranks this rule, so the lift silently
+     never happened. The standalone translate property composes with that
+     transform instead of losing to it. */
+  .pkg-card--link {
+    transition: translate 0.25s ease, box-shadow 0.25s ease;
+  }
+
+  /* "Pointing at the card, and not at the pill inside it" — the state in which
+     a click navigates. All three of the link's hover signals hang off it, so
+     reaching for the one control that ISN'T the link never dresses the card up
+     as one. :where() keeps the guard from inflating specificity. */
+  .pkg-card--link:hover:not(:where(:has(.pkg-card__toggle:is(:hover, :focus-visible)))) {
+    translate: 0 -3px;
+    box-shadow: 0 20px 40px -28px rgba(0, 0, 0, 0.45);
+  }
+
+  .pkg-card--link:hover:not(:where(:has(.pkg-card__toggle:is(:hover, :focus-visible)))) .pkg-card__more-label,
+  .pkg-card:has(.pkg-card__anchor:focus-visible) .pkg-card__more-label {
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  .pkg-card--link:hover:not(:where(:has(.pkg-card__toggle:is(:hover, :focus-visible)))) .pkg-card__arrow {
+    transform: translateX(4px);
+  }
+
+  .pkg-card__name {
+    font-family: var(--font-sans);
+    font-size: 1.1rem;
+    line-height: 1.3;
+    margin: 0;
+  }
+
+  /* Stretched link: the anchor is only the title in the markup, but its ::after
+     covers the whole card, so the card stays clickable end to end without
+     wrapping the <details> in an anchor. */
+  .pkg-card__anchor {
+    text-decoration: none;
+    color: inherit;
+  }
+
+  .pkg-card__anchor::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: var(--radius);
+  }
+
+  /* The overlay swallows the focus ring the title alone would show, so the
+     outline is drawn on the card instead — otherwise keyboard users get a
+     highlight around three words in the corner of a clickable card. */
+  .pkg-card:has(.pkg-card__anchor:focus-visible) {
+    outline: 2px solid var(--bamboo);
+    outline-offset: 2px;
+  }
+
+  .pkg-card__price {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.04em;
+    color: var(--bamboo-deep);
+    margin: 0.4rem 0 0;
+  }
+
+  .pkg-card__body {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+    margin: 0.75rem 0 0;
+  }
+
+  /* Lifted above .pkg-card__anchor::after — without the stacking context the
+     stretched link sits on top of the summary and the card navigates away
+     instead of expanding. width: max-content so only the pill is lifted: a
+     full-width block here would take the rest of the line out of the card's
+     hit area for no visible reason. */
+  .pkg-card__details {
+    position: relative;
+    z-index: 1;
+    width: max-content;
+    max-width: 100%;
+    margin-top: 1.15rem;
+  }
+
+  /* The one control on the card that is not the card. It gets a border and a
+     hit area that stops at its own edges; everything else — title, blurb, the
+     "Learn more" row — belongs to the link underneath. */
+  .pkg-card__toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.4rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    font-size: 0.82rem;
+    font-weight: 500;
+    color: var(--stone-deep);
+    background: transparent;
+    cursor: pointer;
+    list-style: none;
+    transition: border-color 0.2s ease, color 0.2s ease, background-color 0.2s ease;
+  }
+
+  .pkg-card__toggle::-webkit-details-marker { display: none; }
+
+  .pkg-card__toggle:hover,
+  .pkg-card__details[open] .pkg-card__toggle {
+    border-color: var(--bamboo);
+    color: var(--charcoal);
+    background: var(--cream-soft);
+  }
+
+  .pkg-card__toggle:focus-visible {
+    outline: 2px solid var(--bamboo);
+    outline-offset: 2px;
+  }
+
+
+  /* Same two-rule "+" as the FAQ, at card scale: generated content can't be
+     transformed into an "×", a real element can. */
+  .pkg-card__mark {
+    position: relative;
+    flex: none;
+    width: 10px;
+    height: 10px;
+    transition: transform 0.25s ease;
+  }
+
+  .pkg-card__mark::before,
+  .pkg-card__mark::after {
+    content: '';
+    position: absolute;
+    inset: 50% 0 auto 0;
+    height: 1px;
+    background: currentColor;
+  }
+
+  .pkg-card__mark::after { transform: rotate(90deg); }
+  .pkg-card__details[open] .pkg-card__mark { transform: rotate(135deg); }
+
+  /* The global .checklist marker rather than the hairline rows it had: rows
+     with rules read as more tappable things, and there is already one control
+     and one link on this card. */
+  .pkg-card__list {
+    list-style: none;
+    display: grid;
+    gap: 0.5rem;
+    padding: 0;
+    margin: 0.85rem 0 0.15rem;
+    font-size: 0.88rem;
+    line-height: 1.5;
+  }
+
+  .pkg-card__list li {
+    position: relative;
+    padding-left: 1.15rem;
+    color: var(--stone-deep);
+  }
+
+  .pkg-card__list li::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0.46em;
+    width: 0.5em;
+    height: 0.5em;
+    border: 1.5px solid var(--bamboo);
+    border-radius: 50%;
+  }
+
+  /* Panel-only keyframe, for the reason spelled out at .faq__panel: a closed
+     <details> is display:none, so open animates and close is instant. */
+  @keyframes pkg-open {
+    from { opacity: 0; transform: translateY(-6px); }
+    to { opacity: 1; transform: none; }
+  }
+
+  .pkg-card__details[open] .pkg-card__list {
+    animation: pkg-open 0.28s cubic-bezier(0.22, 0.61, 0.36, 1);
+  }
+
+  /* No margin-top: auto any more. It existed to push the link to the bottom of
+     a stretched card; cards are content-height now, so it would only pin the
+     link to the bottom of a box it already ends.
+     Full width with the arrow at the far edge — the row is the label for a hit
+     area that IS the whole card, and a short inline "Learn more →" claimed a
+     much smaller one than the pointer actually gets. */
+  .pkg-card__more {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-top: 1.3rem;
+    padding-top: 0.9rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.88rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+  }
+
+  /* The hover rules for both of these live with the card's own hover state at
+     the top of this block — the link's feedback is one behaviour, and splitting
+     it across the file is how half of it fell out of sync. */
+  .pkg-card__arrow { transition: transform 0.25s ease; }
+
+  @media (prefers-reduced-motion: reduce) {
+    .pkg-card--link { transition: none; }
   }
 
   /* -------------------------------------------------------- case study -- */
@@ -1464,6 +1799,93 @@ const FAQS = [
 </script>
 
 <script>
+  /* Masonry for the packages grid (§1.5).
+
+     Chrome, Safari and Firefox all still ship CSS masonry behind a flag, so
+     `grid-template-rows: masonry` cannot be the layout — but the ingredients
+     for it are stable everywhere: every card is given a COLUMN and a row SPAN
+     measured off its own height, and `dense` placement drops each one into the
+     first free slot in its column. No element is moved in the DOM, which is
+     what keeps the GSAP reveals below and the <details> open state intact.
+
+     The column is `i % columns`, not the shortest-column packing a masonry
+     library would do. Shortest-column re-sorts on every expand — click "What's
+     included" and a card two positions away jumps to another column, which
+     reads as a bug. Round-robin keeps the first row in reading order (1, 2, 3)
+     and, because a card's column never changes, expanding one only ever moves
+     the cards under it.
+
+     Everything here is enhancement: with the script absent or failed, no
+     data-masonry attribute is set and the CSS above renders a plain grid whose
+     cards are already independent of one another. */
+  const grid = document.querySelector<HTMLElement>('.pkg-grid');
+
+  if (grid) {
+    const cards = Array.from(grid.querySelectorAll<HTMLElement>('.pkg-card'));
+    /* Must match the grid's own gap. A 1px row unit makes the spans exact —
+       a coarser unit rounds every card up and the gaps stop matching the
+       column gap, which is the misalignment this is meant to remove. */
+    const GAP = 20;
+
+    const columnCount = () =>
+      window.matchMedia('(min-width: 1040px)').matches ? 3 :
+      window.matchMedia('(min-width: 720px)').matches ? 2 : 1;
+
+    const layout = () => {
+      const n = columnCount();
+
+      /* One column is a plain stack — spans and dense placement would only
+         re-derive what the grid already does, and the trailing-gap correction
+         would cut into the section's padding. */
+      if (n === 1) {
+        grid.removeAttribute('data-masonry');
+        for (const card of cards) {
+          card.style.gridColumn = '';
+          card.style.gridRowEnd = '';
+        }
+        return;
+      }
+
+      grid.dataset.masonry = '';
+      cards.forEach((card, i) => {
+        card.style.gridColumn = String((i % n) + 1);
+        /* offsetHeight, not the row area: align-items: start means the card is
+           its content height whatever span it currently has, so measuring can
+           never feed back into what it measures. */
+        card.style.gridRowEnd = `span ${card.offsetHeight + GAP}`;
+      });
+    };
+
+    /* Cards change height for reasons a resize listener never sees: a
+       <details> opening, a late webfont rewrapping a heading, an image
+       settling. Observing the cards themselves catches all of it, and the
+       window listener is only here for the breakpoint crossings, which change
+       the column count rather than any card's height. */
+    const observer = new ResizeObserver(() => layout());
+    for (const card of cards) observer.observe(card);
+
+    /* Synchronous inside the observer, deliberately. Its callbacks run after
+       layout and before paint, so re-spanning there lands in the same frame the
+       card grew in; deferring to rAF would paint one frame of the open card
+       overlapping the one below it. It cannot recurse — a span changes a card's
+       grid AREA, and align-items: start means the area never feeds back into
+       the card's height.
+       The window listener is coalesced because resize fires per pixel and only
+       the breakpoint crossings in it matter. */
+    let frame = 0;
+    window.addEventListener('resize', () => {
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        layout();
+      });
+    });
+
+    layout();
+  }
+</script>
+
+<script>
   /* Scroll reveals for everything below the fold. Deliberately a SEPARATE
      script from the header observer above: that observer is functional and has
      to run for everyone, and burying it inside a matchMedia('no-preference')
@@ -1497,9 +1919,16 @@ const FAQS = [
       });
     };
 
-    // 2. case — now the section directly under the hero, so it needs an early
-    //    start: at `top 80%` the cards are already on screen at first paint on
-    //    a tall viewport and the reveal never visibly runs.
+    // 1.5 packages — two calls, not one: a single stagger across a kicker, a
+    //     head and five cards would put a ~1.2s ramp on one screen. This is the
+    //     section directly under the hero now, so it takes the early start the
+    //     case study used to need — at `top 80%` the first row is already on
+    //     screen at first paint on a tall viewport and never visibly runs.
+    reveal('.pkgs .kicker, .pkgs__head', '.pkgs', { y: 16, stagger: 0.08, start: 'top 88%' });
+    reveal('.pkg-card', '.pkg-grid', { y: 20, duration: 0.5, stagger: 0.08, start: 'top 88%' });
+
+    // 2. case — kept at the early start: the packages grid above it is short
+    //    enough that on a tall viewport the first card is still near the fold.
     reveal('.case__item', '.case__grid', { y: 22, stagger: 0.12, start: 'top 88%' });
     reveal('.case__trust > *', '.case__trust', { y: 12, duration: 0.45, stagger: 0.08 });
 

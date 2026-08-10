@@ -116,6 +116,53 @@ export const getService = (slug) =>
     { slug }
   );
 
+// ------------------------------------------------------------- packages ----
+// Fixed-scope offers, shown as the homepage card grid. Same visibility contract
+// as services — `listed` hides a package everywhere, `pageReady` decides where
+// its card points — so the two read identically in the Studio.
+
+// The service reference is filtered on the SERVICE's own `listed`, the way
+// getService() filters relatedServices. Without it, unlisting a service would
+// leave a package card pointing at a service getServiceSlugs() no longer builds
+// a page for — a 404 introduced by a toggle in an unrelated document. `select()`
+// with no fallback yields null, which packageHref() reads as "no destination".
+const PACKAGE_CARD = `_id, title, summary, order, listed, pageReady, priceFrom,
+  bullets, "slug": slug.current,
+  "service": select(
+    coalesce(service->listed, true) == true => service->{title, pageReady, "slug": slug.current}
+  )`;
+
+// Same reason as SERVICE_LISTED: docs created before the field existed stay
+// visible until an editor explicitly turns Listed off.
+const PACKAGE_LISTED = `coalesce(listed, true) == true`;
+
+/** Every listed package, in card order (`packageOffer.order`). Memoised. */
+export const getPackages = memo(() =>
+  sanity.fetch(
+    `*[_type == "packageOffer" && ${PACKAGE_LISTED} && !(_id in path("drafts.**")) && defined(slug.current)]
+      | order(order asc, title asc){${PACKAGE_CARD}}`
+  )
+);
+
+/** Slugs only — for getStaticPaths. Unlisted packages get no page. */
+export const getPackageSlugs = () =>
+  sanity.fetch(
+    `*[_type == "packageOffer" && ${PACKAGE_LISTED} && !(_id in path("drafts.**")) && defined(slug.current)].slug.current`
+  );
+
+/** One listed package, fully dereferenced, for its detail page. */
+export const getPackage = (slug) =>
+  sanity.fetch(
+    `*[_type == "packageOffer" && ${PACKAGE_LISTED} && slug.current == $slug][0]{
+      ...,
+      "slug": slug.current,
+      "service": select(
+        coalesce(service->listed, true) == true => service->{title, summary, pageReady, "slug": slug.current}
+      )
+    }`,
+    { slug }
+  );
+
 // `name` and `clientType` are the project's own free-text copies; `client` is
 // the profile they were copied from. Both ship until the pages that read the
 // flat fields are moved over — see studio/schemaTypes/project.ts.

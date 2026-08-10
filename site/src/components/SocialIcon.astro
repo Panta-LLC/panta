@@ -1,0 +1,67 @@
+---
+/**
+ * Monochrome glyphs for the footer social row.
+ *
+ * Every icon is drawn in `currentColor` on a 24×24 grid, so the footer's
+ * existing `a { color: var(--sage) }` / hover `cream` rules light them without
+ * any colour of their own — and the same component works on cream if it is ever
+ * reused outside the footer.
+ *
+ * Built from primitives (circle/rect/stroked paths) rather than pasted logo
+ * path data. Two reasons: geometry we can reason about survives a stroke-weight
+ * change without redrawing, and these sit next to the ripple mark, which is
+ * itself three stroked circles at fine weight. Solid-filled logo blobs beside it
+ * would read as a different drawing system.
+ *
+ * Anything not listed here renders nothing — SocialLinks falls back to a text
+ * link, which is the honest outcome for a platform we have no mark for.
+ */
+interface Props {
+  platform: string;
+  size?: number;
+}
+const { platform, size = 21 } = Astro.props;
+
+// Shared by every stroked glyph. Fine weight to sit with the ripple mark.
+const S = 1.8;
+---
+
+{platform === 'linkedin' && (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    {/* the "i": dot plus stem */}
+    <circle cx="4.3" cy="3.9" r="2.1" fill="currentColor" />
+    <rect x="2.4" y="7.9" width="3.8" height="13.2" fill="currentColor" />
+    {/* the "n": stem, shoulder, second stem */}
+    <path
+      d="M9.2 7.9h3.6v1.8c0.9-1.4 2.4-2.1 4-2.1 3 0 4.5 2 4.5 5.1v8.4h-3.9v-7.9c0-1.4-0.7-2.3-2-2.3s-2.3 1-2.3 2.4v7.8H9.2z"
+      fill="currentColor"
+    />
+  </svg>
+)}
+
+{platform === 'instagram' && (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <rect x="2.6" y="2.6" width="18.8" height="18.8" rx="5.4" stroke="currentColor" stroke-width={S} />
+    <circle cx="12" cy="12" r="4.5" stroke="currentColor" stroke-width={S} />
+    <circle cx="17.4" cy="6.6" r="1.25" fill="currentColor" />
+  </svg>
+)}
+
+{platform === 'facebook' && (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="9.5" stroke="currentColor" stroke-width={S} />
+    {/* the "f": top hook into the stem, then the crossbar */}
+    <path d="M15.1 7.7h-1.3a2.2 2.2 0 0 0-2.2 2.2v11.5" stroke="currentColor" stroke-width={S} stroke-linecap="round" />
+    <path d="M9.3 12.8h5.4" stroke="currentColor" stroke-width={S} stroke-linecap="round" />
+  </svg>
+)}
+
+{platform === 'x' && (
+  <svg width={size} height={size} viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    {/* The X mark: one unbroken top-left→bottom-right bar, and a second bar on
+        the opposite diagonal split where the first crosses over it. */}
+    <path d="M2.6 2.9h4.3l14.5 18.2h-4.3z" fill="currentColor" />
+    <path d="M20.5 2.9h1.8l-7.6 8.7-1.2-1.5z" fill="currentColor" />
+    <path d="M3.5 21.1H1.7l7.9-9.1 1.2 1.5z" fill="currentColor" />
+  </svg>
+)}

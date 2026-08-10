@@ -3,7 +3,10 @@ import '../styles/global.css';
 import RippleMark from '../components/RippleMark.astro';
 import Analytics from '../components/Analytics.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
+import SocialLinks from '../components/SocialLinks.astro';
 import { getDoc, getServices } from '../lib/sanity.js';
+import { normalizeSocialProfiles } from '../lib/social.js';
+import { serviceHref } from '../lib/pillars.js';
 
 interface Props {
   title: string;
@@ -24,6 +27,12 @@ const settings = await getDoc('siteSettings');
 // `service.order` (site-wide), already applied in the GROQ query.
 const services = await getServices();
 
+// `sameAs` is the whole reason the URL field is validated so hard in the
+// Studio: it is the claim that these accounts and this site are one entity,
+// which is what lets Google consolidate them. Omitted rather than emitted
+// empty — a bare `sameAs: []` asserts "no other profiles exist".
+const socialUrls = normalizeSocialProfiles(settings.socialProfiles).map((s) => s.url);
+
 const orgSchema = {
   '@context': 'https://schema.org',
   '@type': 'ProfessionalService',
@@ -37,6 +46,7 @@ const orgSchema = {
   slogan: 'One good move, felt everywhere.',
   areaServed: 'United States',
   knowsAbout: [...services.map((s) => s.title.toLowerCase()), 'nonprofit digital strategy'],
+  ...(socialUrls.length > 0 && { sameAs: socialUrls }),
 };
 
 // `desktop: false` keeps an item out of the header but still in the mobile
@@ -50,8 +60,10 @@ const flatNavItems = [
   { href: '/contact/', label: 'Contact', cta: 'contact', desktop: false },
 ];
 
-// Kept for the mega quick links and footer; no longer its own header item.
-const websitesNav = { href: '/services/web-design-development/', label: 'Websites', cta: 'websites' };
+// The `websitesNav` shortcut that used to lead the mobile panel is gone: with
+// the services enumerated in both navs, "Websites" was the third link to
+// /services/web-design-development/ in the same panel (the other two being the
+// enumeration and the "Start here" quick link, which is also removed below).
 
 // Practices are framed by the brand verbs (see practice-taxonomy.md): the verb
 // is the eyebrow, the plain-English name is the link, because prospects search
@@ -59,14 +71,20 @@ const websitesNav = { href: '/services/web-design-development/', label: 'Website
 // the old three-practice structure incoherent — BUILD is client services,
 // CONNECT is community work with no buyer, CREATE is our own products.
 
-// BUILD: the one practice with an offer. Full-size card in the mega menu.
-// Points at the services overview (ordered list from Sanity) and its review CTA.
-const megaPrimary = {
-  href: '/services/',
-  label: 'Digital, Strategic & Creative',
-  desc: 'Digital, strategic and creative support — bought one service at a time.',
-  cta: 'web_strategy',
-};
+// BUILD: the one practice with an offer. It used to be a single full-size card
+// reading "Digital, Strategic & Creative" and pointing at /services/ — the same
+// destination the intro column's "All services" already offers. The menu now
+// enumerates the services themselves instead.
+//
+// The reason is that the homepage hero's "What we do" index came out when the
+// packages grid landed, and the mega menu was the only other place a visitor
+// could see the full list. A menu that names one abstraction and links to a
+// page listing four things is a click of indirection for no information; the
+// list is short enough to just show.
+//
+// `services` is already fetched above for the org JSON-LD, and getServices() is
+// memoised, so enumerating here costs no extra query across the build.
+// serviceHref() owns the pageReady decision, exactly as the hero index did.
 
 // Roadmap practices: still linked, still indexed, visually subordinate.
 const megaNext = [
@@ -78,7 +96,8 @@ const megaQuickLinks = [
   // #book, not the page top: the label promises booking, and the scheduler sits
   // at 49% of /consultation/ — a plain link costs an extra click and a scroll.
   { href: '/consultation/#book', label: 'Book a free 30-minute review', cta: 'consultation' },
-  { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
+  // Web design & development was here; it is now in the enumerated list above,
+  // and a "Start here" row repeating a link one row up is not a shortcut.
   { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
   { href: '/contact/', label: 'Contact', cta: 'contact' },
@@ -101,15 +120,42 @@ const footerNextLinks = [
   { href: '/product-development/', label: 'Products we release', cta: 'product_development' },
 ];
 
+/**
+ * The "Start here" shortcuts, minus anything the mobile panel already reaches.
+ *
+ * On desktop the full set is fine: it sits in its own labelled strip at the
+ * foot of the mega panel, visually separate from everything above it. The
+ * mobile panel has no such separation, so the same four links ran straight on
+ * from the enumerated services and read as more services — and three of them
+ * were already on screen. "Client work" and "Contact" repeat the Panta group
+ * below, and "Book a free 30-minute review" is the same URL as BOTH the
+ * persistent header button and the button closing this panel, so it was the
+ * third copy of one link.
+ *
+ * Filtering by href rather than deleting entries keeps the desktop strip whole
+ * and means a genuinely new shortcut added later shows up on mobile by itself.
+ */
+const mobileReachable = new Set([
+  '/services/',
+  '/consultation/#book',
+  ...services.map((s) => serviceHref(s)),
+  ...megaNext.map((p) => p.href),
+  ...flatNavItems.map((i) => i.href),
+]);
+const mobileQuickLinks = megaQuickLinks.filter((l) => !mobileReachable.has(l.href));
+
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
 
-// Websites is its own top-level item now, so it must not also light up the
-// "What we do" branch.
+// Every /services/* page lights the "What we do" branch. Web design used to be
+// excluded because it was its own top-level header item; it stopped being one,
+// and the exclusion outlived the reason — so the trigger sat unhighlighted on
+// the one service page most likely to be landed on. Now that the menu
+// enumerates that service, an unlit trigger above a highlighted row in the
+// panel it opens would be plainly wrong.
 const workActive =
-  currentPath !== websitesNav.href &&
-  (['/services/', '/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
-    currentPath.startsWith('/services/') ||
-    currentPath === '/digital-presence-plan/');
+  ['/services/', '/work/', '/community-programs/', '/product-development/'].includes(currentPath) ||
+  currentPath.startsWith('/services/') ||
+  currentPath === '/digital-presence-plan/';
 ---
 <!doctype html>
 <html lang="en">
@@ -173,24 +219,30 @@ const workActive =
                   <a class="nav-mega__overview" href="/services/">All services</a>
                 </div>
                 <div class="nav-mega__cards">
-                  <a
-                    class="nav-mega__card"
-                    href={megaPrimary.href}
-                    aria-current={currentPath === megaPrimary.href ? 'page' : undefined}
-                    data-track="cta_click"
-                    data-track-cta={megaPrimary.cta}
-                    data-track-location="mega_menu"
-                  >
-                    <span class="nav-mega__icon" aria-hidden="true">
-                      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                        <circle cx="12" cy="12" r="9" />
-                        <path d="M15.5 8.5l-2.2 4.8-4.8 2.2 2.2-4.8z" />
-                      </svg>
-                    </span>
-                    <span class="nav-mega__card-title">{megaPrimary.label}</span>
-                    <span class="nav-mega__card-desc">{megaPrimary.desc}</span>
-                    <span class="nav-mega__card-arrow" aria-hidden="true">→</span>
-                  </a>
+                  {/* Hairline rows with arrows, two columns — the pattern the
+                      homepage hero index used before it came out. It reads as a
+                      list of things you can go to, which is what a menu is, and
+                      it deliberately does not compete with the header CTA. */}
+                  <div class="nav-mega__services">
+                    <p class="nav-mega__next-label">Services</p>
+                    <ul class="nav-mega__svc-list">
+                      {services.map((s) => (
+                        <li>
+                          <a
+                            class="nav-mega__svc"
+                            href={serviceHref(s)}
+                            aria-current={currentPath === `/services/${s.slug}/` ? 'page' : undefined}
+                            data-track="cta_click"
+                            data-track-cta={`service_${s.slug}`}
+                            data-track-location="mega_menu"
+                          >
+                            <span>{s.indexLabel ?? s.title}</span>
+                            <span class="nav-mega__svc-arrow" aria-hidden="true">→</span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                   <div class="nav-mega__next">
                     <p class="nav-mega__next-label">What we’re building</p>
                     {megaNext.map((p) => (
@@ -262,44 +314,49 @@ const workActive =
       </div>
       <div class="mobile-nav" id="mobile-nav">
         <nav class="container mobile-nav__inner" aria-label="Mobile">
-          <ul class="mobile-nav__list">
-            <li>
-              <a
-                href={websitesNav.href}
-                aria-current={currentPath === websitesNav.href ? 'page' : undefined}
-                data-track="cta_click"
-                data-track-cta={websitesNav.cta}
-                data-track-location="mobile_nav"
-              >{websitesNav.label}</a>
-            </li>
-          </ul>
           <p class="mobile-nav__label">What we do</p>
           <ul class="mobile-nav__list">
             <li>
               <a href="/services/" aria-current={currentPath === '/services/' ? 'page' : undefined}>All services</a>
             </li>
-            <li>
-              <a
-                href={megaPrimary.href}
-                aria-current={currentPath === megaPrimary.href ? 'page' : undefined}
-                data-track="cta_click"
-                data-track-cta={megaPrimary.cta}
-                data-track-location="mobile_nav"
-              >{megaPrimary.label}</a>
-            </li>
-            <li>
-              {megaQuickLinks.map((l) => (
+            {/* Enumerated for the same reason the desktop mega is — this panel
+                is the only nav a phone gets, and it used to name one abstraction
+                where the list itself fits fine. */}
+            {services.map((s) => (
+              <li>
                 <a
                   class="mobile-nav__sub"
-                  href={l.href}
-                  aria-current={currentPath === l.href ? 'page' : undefined}
+                  href={serviceHref(s)}
+                  aria-current={currentPath === `/services/${s.slug}/` ? 'page' : undefined}
                   data-track="cta_click"
-                  data-track-cta={l.cta}
+                  data-track-cta={`service_${s.slug}`}
                   data-track-location="mobile_nav"
-                >{l.label}</a>
-              ))}
-            </li>
+                >{s.indexLabel ?? s.title}</a>
+              </li>
+            ))}
           </ul>
+          {/* Its own labelled group, not a tail on the services list. These
+              were previously four anchors crammed into a single <li>, which is
+              why they ran on with no separation — and invalid list markup
+              besides. */}
+          {mobileQuickLinks.length > 0 && (
+            <>
+              <p class="mobile-nav__label">Start here</p>
+              <ul class="mobile-nav__list">
+                {mobileQuickLinks.map((l) => (
+                  <li>
+                    <a
+                      href={l.href}
+                      aria-current={currentPath === l.href ? 'page' : undefined}
+                      data-track="cta_click"
+                      data-track-cta={l.cta}
+                      data-track-location="mobile_nav"
+                    >{l.label}</a>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
           <p class="mobile-nav__label">What we’re building</p>
           <ul class="mobile-nav__list">
             {megaNext.map((p) => (
@@ -423,6 +480,7 @@ const workActive =
               <li><a href={`mailto:${settings.email}`}>{settings.email}</a></li>
               <li><span style="color: var(--stone);">{settings.locationLine}</span></li>
             </ul>
+            <SocialLinks profiles={settings.socialProfiles} />
           </div>
         </div>
         <div class="site-footer__meta">

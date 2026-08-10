@@ -665,7 +665,7 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
 
 .nav-mega__worklink:hover { color: var(--bamboo-deep); }
 
-/* One card for the practice that sells, one narrow column for the roadmap. */
+/* The services list, one narrow column for the roadmap. */
 .nav-mega__cards {
   display: grid;
   grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
@@ -673,22 +673,53 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
   align-items: start;
 }
 
-/* .site-nav prefix: outranks the generic `.site-nav a` padding rule */
-.site-nav .nav-mega__card {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 0.6rem;
-  padding: 1.25rem;
-  border-radius: 10px;
-  background: var(--cream-soft);
-  border: 1px solid var(--line);
-  text-decoration: none;
-  color: var(--charcoal);
-  transition: transform 0.25s ease, box-shadow 0.25s ease, border-color 0.25s ease;
-  /* staggered entrance when the panel opens */
+/* Shares the roadmap column's entrance. */
+.nav-mega__services {
   opacity: 0;
   translate: 0 8px;
+}
+
+/* One column, not two. The services column is ~1.35fr of a 2.1fr half of a
+   68rem container — splitting that again gave each row about 200px, which
+   wrapped three of the four labels ("Web Design & Development", "Operations
+   and systems", "Storytelling and content") at an ordinary 1280px desktop.
+   Four full-width rows is the hero-index pattern and never wraps. */
+.nav-mega__svc-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.nav-mega__svc-list li { border-bottom: 1px solid var(--line); }
+
+/* .site-nav prefix: outranks the generic `.site-nav a` padding rule */
+/* center, not baseline: a label that does wrap (a longer service added later)
+   would otherwise strand the arrow against its first line. */
+.site-nav .nav-mega__svc {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 0;
+  font-size: 0.92rem;
+  font-weight: 500;
+  color: var(--charcoal);
+  text-decoration: none;
+}
+
+.site-nav .nav-mega__svc:hover { color: var(--bamboo-deep); }
+
+.site-nav .nav-mega__svc[aria-current='page'] { color: var(--bamboo-deep); }
+
+.nav-mega__svc-arrow {
+  color: var(--stone);
+  transition: transform 0.2s ease;
+}
+
+.nav-mega__svc:hover .nav-mega__svc-arrow {
+  color: var(--bamboo-deep);
+  transform: translateX(3px);
 }
 
 /* Roadmap column: shares the card's entrance, not its surface. */
@@ -699,8 +730,8 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
   translate: 0 8px;
 }
 
-.nav-drop:hover .nav-mega__card,
-.nav-drop:focus-within .nav-mega__card,
+.nav-drop:hover .nav-mega__services,
+.nav-drop:focus-within .nav-mega__services,
 .nav-drop:hover .nav-mega__next,
 .nav-drop:focus-within .nav-mega__next {
   opacity: 1;
@@ -741,74 +772,6 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
   color: var(--stone-deep);
   margin: 0.6rem 0 0;
   max-width: 24ch;
-}
-
-.nav-mega__card:hover {
-  transform: translateY(-3px);
-  border-color: var(--sage);
-  box-shadow: 0 16px 32px -20px rgba(0, 0, 0, 0.3);
-}
-
-.nav-mega__card[aria-current='page'] {
-  border-color: var(--bamboo);
-}
-
-.nav-mega__icon {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1.5px solid var(--charcoal);
-  display: grid;
-  place-items: center;
-  color: var(--charcoal);
-  transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
-}
-
-.nav-mega__card:hover .nav-mega__icon {
-  background: var(--bamboo);
-  border-color: var(--bamboo);
-  color: var(--cream);
-}
-
-/* The brand verb as an eyebrow on each practice. Block above the card title,
-   inline before the subordinate practice links — the verb frames the practice
-   without ever being the thing a prospect has to search for. */
-.nav-mega__verb {
-  display: block;
-  font-size: 0.62rem;
-  font-weight: 600;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: var(--bamboo-deep);
-}
-
-.nav-mega__verb--inline {
-  display: inline-block;
-  margin-right: 0.5rem;
-  color: var(--stone-deep);
-}
-
-.nav-mega__card-title {
-  font-weight: 600;
-  font-size: 1rem;
-  line-height: 1.3;
-}
-
-.nav-mega__card-desc {
-  font-size: 0.84rem;
-  line-height: 1.5;
-  color: var(--stone-deep);
-}
-
-.nav-mega__card-arrow {
-  margin-top: auto;
-  padding-top: 0.4rem;
-  color: var(--bamboo-deep);
-  transition: transform 0.25s ease;
-}
-
-.nav-mega__card:hover .nav-mega__card-arrow {
-  transform: translateX(5px);
 }
 
 .nav-mega__foot {
@@ -933,6 +896,11 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(6) { transition-delay: 0.25s; }
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(7) { transition-delay: 0.3s; }
 .mobile-nav.is-open .mobile-nav__inner > :nth-child(8) { transition-delay: 0.35s; }
+/* 9 and 10 cover the "Start here" group, which adds a label + list when there
+   is a shortcut the panel does not already reach. Without these the last group
+   would open on the base delay and arrive ahead of the ones above it. */
+.mobile-nav.is-open .mobile-nav__inner > :nth-child(9) { transition-delay: 0.4s; }
+.mobile-nav.is-open .mobile-nav__inner > :nth-child(10) { transition-delay: 0.45s; }
 
 .mobile-nav__label {
   font-size: 0.68rem;
@@ -1010,10 +978,10 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
 
 @media (prefers-reduced-motion: reduce) {
   .nav-mega,
-  .site-nav .nav-mega__card,
+  .nav-mega__services,
   .nav-mega__next,
   .nav-drop__caret,
-  .nav-mega__card-arrow,
+  .nav-mega__svc-arrow,
   .nav-toggle__bar,
   .mobile-nav,
   .mobile-nav__inner > * {

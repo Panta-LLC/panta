@@ -51,6 +51,20 @@ for (const file of files) {
 // script/class names, and a false positive here would train people to ignore
 // the gate.
 const BANNED = ['leverage', 'solutions', 'empower', 'seamless', 'digital transformation']
+
+// Words a CLIENT owns. The ban is on Panta's register, and quoting a client's
+// own word for their own work is not Panta writing in that register —
+// "empowerment" is Delta Bay's word for what Delta Bay does, and it reaches the
+// page through `project.outcome`, which is their line and not ours.
+//
+// Scoped by proximity to the client's name rather than to the sentence it
+// currently sits in: the allowance has to survive that line being reworded in
+// the Studio, and it must not quietly clear the word for a page with nothing to
+// do with the client. The window is wide enough to span a card — the homepage
+// case card runs ~330 characters from the client's name to its outcome line —
+// and nowhere near wide enough to cover a page.
+const CLIENT_WORDS = [{word: 'empower', client: 'delta bay', window: 600}]
+
 for (const file of files) {
   const html = readFileSync(file, 'utf8')
   const text = html
@@ -58,12 +72,28 @@ for (const file of files) {
     .replace(/<style[\s\S]*?<\/style>/g, ' ')
     .replace(/<[^>]+>/g, ' ')
     .toLowerCase()
+  const where = file.replace(DIST, '') || '/'
   for (const word of BANNED) {
     // "You don't need a digital transformation" is the copy deck's own line —
     // it names the phrase to reject it. Allow that single negated construction.
     if (word === 'digital transformation' && /(?:need|not) a digital transformation/.test(text)) continue
+
+    const owned = CLIENT_WORDS.find((c) => c.word === word)
+    if (owned) {
+      // Per occurrence, not per page: one use next to the client's name must
+      // not vouch for a second use somewhere else on the same page.
+      for (const match of text.matchAll(new RegExp(`${owned.word}\\w*`, 'g'))) {
+        const from = Math.max(0, match.index - owned.window)
+        const near = text.slice(from, match.index + owned.window)
+        if (!near.includes(owned.client)) {
+          problems.push({kind: 'banned word', where, detail: `"${match[0]}"`})
+        }
+      }
+      continue
+    }
+
     if (text.includes(word)) {
-      problems.push({kind: 'banned word', where: file.replace(DIST, '') || '/', detail: `"${word}"`})
+      problems.push({kind: 'banned word', where, detail: `"${word}"`})
     }
   }
 }
@@ -98,7 +128,30 @@ if (servicesIndex) {
   }
 }
 
-// --- 3c. two filled buttons per page, besides nav (§3 / §7.3) ---------------
+// --- 3c. the packages grid cannot ship half-empty ---------------------------
+// Same failure as 3b: packages come from Sanity at build time, so a bad fetch
+// ships a homepage that silently lost a section. Gated on the section being
+// rendered at all, because deliberately unlisting every package is a legitimate
+// editorial choice — the homepage guard is against a broken fetch, not against
+// an empty catalogue.
+if (home) {
+  const html = readFileSync(home, 'utf8')
+  if (html.includes('data-section="packages"')) {
+    // The character class is load-bearing: a bare /class="pkg-card/ also
+    // matches pkg-card__name, __body, __list and __more, which made the count
+    // ~5x the real one and let a one-card grid pass. Require the token to end.
+    const cards = (html.match(/class="pkg-card[ "]/g) ?? []).length
+    if (cards < 3) {
+      problems.push({
+        kind: 'content',
+        where: '/',
+        detail: `packages grid has ${cards} cards — an empty Sanity fetch ships a thin section silently`,
+      })
+    }
+  }
+}
+
+// --- 3d. two filled buttons per page, besides nav (§3 / §7.3) ---------------
 // The cap was a review convention until .btn--filled became global; now it is
 // mechanical. The header CTA is chrome and is excluded, matching §5a's own
 // phrasing ("the only filled CTA on the page besides nav").

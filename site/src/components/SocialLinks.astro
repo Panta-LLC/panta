@@ -1,0 +1,106 @@
+---
+/**
+ * The social profile row, as managed in Site settings → Social profiles.
+ *
+ * Icons for the platforms SocialIcon draws (see ICON_PLATFORMS); a text link for
+ * anything else, so a profile added in the Studio can never silently vanish from
+ * the footer just because this codebase has no glyph for it. The Studio's
+ * "Other" option makes that a real case, not a hypothetical.
+ *
+ * Renders nothing at all when there are no valid profiles — an empty
+ * "Follow along" heading is worse than no heading.
+ *
+ * The links carry `rel="me"`: it marks the far profile as the same entity as
+ * this site, which is what Mastodon-style verification reads, and a cheap
+ * corroboration of the `sameAs` array in the org JSON-LD.
+ *
+ * Accessibility: the glyphs are `aria-hidden`, and the name lives on the link
+ * itself via `aria-label`, so a screen reader announces "LinkedIn, link" rather
+ * than reading nothing. Each hit area is padded to 44px so the row is usable on
+ * touch even though the glyph is 21px.
+ *
+ * The heading's colour and spacing are inline for the same reason the footer's
+ * other `.label`s are — a scoped `.label` override would tie on specificity
+ * with global.css and depend on bundle order to win.
+ */
+import SocialIcon from './SocialIcon.astro';
+import { normalizeSocialProfiles } from '../lib/social.js';
+
+interface Props {
+  /** Raw `siteSettings.socialProfiles`. Normalised here, so callers pass it through untouched. */
+  profiles?: Array<{ platform?: string; url?: string; label?: string }>;
+  heading?: string;
+  /** Analytics context, matching the `data-track-location` used by its neighbours. */
+  location?: string;
+}
+
+const { profiles, heading = 'Follow along', location = 'footer' } = Astro.props;
+
+const links = normalizeSocialProfiles(profiles);
+---
+
+{links.length > 0 && (
+  <>
+    <p class="label" style="color: var(--sage); margin-top: 1.5rem;">{heading}</p>
+    <ul class="social-row">
+      {links.map((l) => (
+        <li>
+          <a
+            href={l.url}
+            target="_blank"
+            rel="me noopener noreferrer"
+            aria-label={l.label}
+            class={l.hasIcon ? 'social-row__icon' : 'social-row__text'}
+            data-track="cta_click"
+            data-track-cta={l.cta}
+            data-track-location={location}
+          >
+            {l.hasIcon ? <SocialIcon platform={l.platform} /> : l.label}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </>
+)}
+
+<style>
+  .social-row {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-wrap: wrap;
+    /* Negative inline margin pulls the first hit area's padding back so the row
+       optically aligns with the email above it rather than sitting indented. */
+    margin-inline-start: -0.6rem;
+    align-items: center;
+  }
+
+  .social-row__icon,
+  .social-row__text {
+    display: inline-flex;
+    align-items: center;
+    /* 21px glyph + 2 × 0.72rem ≈ 44px touch target. */
+    padding: 0.72rem;
+    /* The footer's link colour/hover already applies; this only kills the
+       underline the glyph would otherwise inherit. */
+    text-decoration: none;
+  }
+
+  .social-row__icon svg { display: block; }
+
+  /* A platform with no glyph. Sized down so a stray word cannot outweigh the
+     icons it sits beside. */
+  .social-row__text {
+    font-size: 0.9rem;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+  }
+
+  /* The glyphs are the only footer links with no text to carry a focus ring. */
+  .social-row a:focus-visible {
+    outline: 2px solid var(--sage);
+    outline-offset: -2px;
+    border-radius: var(--radius);
+  }
+</style>

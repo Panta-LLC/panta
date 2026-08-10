@@ -1,7 +1,10 @@
 // Pulse editorial (PULSE-HOME-BUILD.md §6)
+import {richText, richList} from './richText'
 import homeHero from './homeHero'
+import homePackages from './homePackages'
 import pillar from './pillar'
 import service from './service'
+import packageOffer from './packageOffer'
 import post from './post'
 import category from './category'
 import author from './author'
@@ -22,13 +25,19 @@ import faqItem from './faqItem'
 import homePage from './homePage'
 import webStrategyPage from './webStrategyPage'
 import siteSettings from './siteSettings'
+import socialProfile from './socialProfile'
 import websitesPage from './websitesPage'
 import aboutPage from './aboutPage'
 
 export const schemaTypes = [
+  // Reusable field types first — documents below refer to them by name.
+  richText,
+  richList,
   homeHero,
+  homePackages,
   pillar,
   service,
+  packageOffer,
   post,
   category,
   author,
@@ -37,6 +46,7 @@ export const schemaTypes = [
   project,
   client,
   labeledCard,
+  socialProfile,
   testimonial,
   planPage,
   missionPage,
