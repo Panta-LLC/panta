@@ -1,0 +1,128 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import {
+  listProjects,
+  PROJECT_KIND_LABELS,
+  PROJECT_STATUS_LABELS,
+  OPEN_STATUSES,
+  fmtPrice,
+} from '../../lib/db/queries/projects.ts';
+import { fmtDate } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const rows = await listProjects();
+const open = rows.filter((r) => (OPEN_STATUSES as readonly string[]).includes(r.status));
+const closed = rows.filter((r) => !(OPEN_STATUSES as readonly string[]).includes(r.status));
+
+// Only work that is actually live counts toward the figure — counting lost
+// proposals as pipeline is how a pipeline stops meaning anything.
+const openValue = open.reduce((n, r) => n + (r.priceCents ?? 0), 0);
+---
+
+<App title="Projects">
+  <div class="head">
+    <div>
+      <p class="kicker">Projects</p>
+      <h1>{open.length} open{openValue > 0 && ` · ${fmtPrice(openValue)}`}</h1>
+    </div>
+    <a class="btn btn--primary" href="/projects/new">New project</a>
+  </div>
+
+  {
+    rows.length === 0 ? (
+      <div class="card">
+        <p style="margin:0">
+          Nothing yet. Projects usually start from a Pulse Check — open a client and
+          create one from the readout you sent.
+        </p>
+      </div>
+    ) : (
+      <>
+        {[
+          ['Open', open],
+          ['Closed', closed],
+        ].map(([label, list]) =>
+          (list as typeof rows).length === 0 ? null : (
+            <section>
+              <h2>{label}</h2>
+              <ul class="list">
+                {(list as typeof rows).map((p) => (
+                  <li>
+                    <a href={`/projects/${p.id}`}>
+                      <span class="list__name">{p.name}</span>
+                      <span class="muted list__client">{p.clientName}</span>
+                      <span class="kicker">
+                        {p.kind ? PROJECT_KIND_LABELS[p.kind] ?? p.kind : '—'}
+                      </span>
+                      <span class="kicker">{PROJECT_STATUS_LABELS[p.status] ?? p.status}</span>
+                      <span class="list__price">{fmtPrice(p.priceCents)}</span>
+                      {p.dueOn && <span class="kicker">due {fmtDate(p.dueOn)}</span>}
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ),
+        )}
+      </>
+    )
+  }
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .head h1 {
+    margin-bottom: 0;
+  }
+  section {
+    margin-bottom: 2.5rem;
+  }
+  h2 {
+    font-size: 1.05rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .list {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .list li {
+    border-bottom: 1px solid var(--line);
+  }
+  .list a {
+    display: flex;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.75rem 0;
+    text-decoration: none;
+    color: var(--charcoal);
+    flex-wrap: wrap;
+  }
+  .list__name {
+    font-weight: 500;
+    min-width: 14rem;
+  }
+  .list a:hover .list__name {
+    color: var(--bamboo-deep);
+  }
+  .list__client {
+    font-size: 0.9rem;
+    min-width: 10rem;
+  }
+  .list__price {
+    margin-left: auto;
+    font-family: var(--font-mono);
+    font-size: 0.85rem;
+  }
+</style>

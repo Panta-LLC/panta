@@ -1,0 +1,146 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listClients, getClient } from '../../lib/db/queries/clients.ts';
+import {
+  PROJECT_KIND_LABELS,
+  PROJECT_STATUS_LABELS,
+  unlinkedPulseChecks,
+} from '../../lib/db/queries/projects.ts';
+import { fmtDate } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const preselected = Astro.url.searchParams.get('clientId');
+const [clients, client] = await Promise.all([
+  listClients(),
+  preselected ? getClient(preselected) : Promise.resolve(null),
+]);
+
+// Offer the Pulse Checks that have not already produced a project, so the link
+// back to where the work came from is one click rather than a lookup.
+const candidates = client ? await unlinkedPulseChecks(client.id) : [];
+---
+
+<App title="New project">
+  <p class="kicker">
+    <a href="/projects">Projects</a> · New
+  </p>
+  <h1>New project</h1>
+
+  <form method="POST" action="/api/projects" class="form">
+    <div>
+      <label for="clientId">Client</label>
+      {
+        client ? (
+          <>
+            <input type="hidden" name="clientId" value={client.id} />
+            <p class="fixed">{client.name}</p>
+          </>
+        ) : (
+          <select id="clientId" name="clientId" required>
+            <option value="">—</option>
+            {clients.map((c) => <option value={c.id}>{c.name}</option>)}
+          </select>
+        )
+      }
+    </div>
+
+    <div>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" required autofocus placeholder="Digital Presence Plan" />
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="kind">Kind</label>
+        <select id="kind" name="kind">
+          <option value="">—</option>
+          {Object.entries(PROJECT_KIND_LABELS).map(([v, l]) => <option value={v}>{l}</option>)}
+        </select>
+      </div>
+      <div>
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          {
+            Object.entries(PROJECT_STATUS_LABELS).map(([v, l]) => (
+              <option value={v} selected={v === 'proposed'}>{l}</option>
+            ))
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="price">Price</label>
+        <input id="price" name="price" type="text" inputmode="decimal" placeholder="750" />
+        <p class="hint">Dollars. Stored as cents, so nothing rounds oddly later.</p>
+      </div>
+      <div>
+        <label for="dueOn">Due</label>
+        <input id="dueOn" name="dueOn" type="date" />
+      </div>
+    </div>
+
+    {
+      candidates.length > 0 && (
+        <div>
+          <label for="originatingPulseCheckId">Came from which Pulse Check?</label>
+          <select id="originatingPulseCheckId" name="originatingPulseCheckId">
+            <option value="">—</option>
+            {candidates.map((c) => (
+              <option value={c.id}>
+                {c.endedAt ? fmtDate(c.endedAt) : 'undated'}
+                {c.oneThing ? ` · ${c.oneThing.slice(0, 60)}` : ''}
+              </option>
+            ))}
+          </select>
+          <p class="hint">
+            Recording this is what makes the free-review-to-paid-work rate visible later.
+          </p>
+        </div>
+      )
+    }
+
+    <div>
+      <label for="summary">Summary</label>
+      <textarea id="summary" name="summary" rows="3"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn--primary" type="submit">Create project</button>
+      <a class="btn btn--ghost" href={client ? `/clients/${client.id}` : '/projects'}>Cancel</a>
+    </div>
+  </form>
+</App>
+
+<style>
+  .form {
+    max-width: 34rem;
+  }
+  .form > * + * {
+    margin-top: 1.25rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .fixed {
+    font-weight: 500;
+    margin: 0;
+  }
+  .hint {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin: 0.35rem 0 0;
+  }
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+</style>

@@ -2,10 +2,18 @@
 export const prerender = false;
 
 import App from '../../layouts/App.astro';
+import Timeline from '../../components/Timeline.astro';
 import { requireUser } from '../../lib/auth/guard.ts';
 import { getClient } from '../../lib/db/queries/clients.ts';
 import { listPulseChecksForClient } from '../../lib/db/queries/pulse.ts';
-import { fmtDate, fmtDateTime } from '../../lib/format.ts';
+import { listTimeline, MANUAL_KINDS } from '../../lib/db/queries/interactions.ts';
+import {
+  listProjectsForClient,
+  PROJECT_KIND_LABELS,
+  PROJECT_STATUS_LABELS,
+  fmtPrice,
+} from '../../lib/db/queries/projects.ts';
+import { fmtDate, fmtCountdown } from '../../lib/format.ts';
 
 requireUser(Astro.locals);
 
@@ -13,7 +21,11 @@ const { id } = Astro.params;
 const client = id ? await getClient(id) : null;
 if (!client) return Astro.redirect('/clients', 302);
 
-const checks = await listPulseChecksForClient(client.id);
+const [checks, timeline, projects] = await Promise.all([
+  listPulseChecksForClient(client.id),
+  listTimeline(client.id),
+  listProjectsForClient(client.id),
+]);
 
 const STATUS_LABELS: Record<string, string> = {
   scheduled: 'Scheduled',
@@ -25,12 +37,22 @@ const STATUS_LABELS: Record<string, string> = {
   abandoned: 'Abandoned',
 };
 
-/** Where a Pulse Check in this state should take you when clicked. */
 function hrefFor(c: (typeof checks)[number]) {
   if (c.status === 'scheduled') return `/pulse/${c.id}/prep`;
   if (c.status === 'prepped' || c.status === 'in_call') return `/pulse/${c.id}/run`;
   return `/pulse/${c.id}/capture`;
 }
+
+const site = client.websiteUrl
+  ? client.websiteUrl.startsWith('http')
+    ? client.websiteUrl
+    : `https://${client.websiteUrl}`
+  : null;
+
+// Pre-fill the note timestamp with now, in the input's expected local format.
+const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
+  .toISOString()
+  .slice(0, 16);
 ---
 
 <App title={client.name}>
@@ -43,9 +65,9 @@ function hrefFor(c: (typeof checks)[number]) {
         {client.city && ` · ${client.city}${client.state ? `, ${client.state}` : ''}`}
         {' · '}
         {
-          client.websiteUrl ? (
-            <a href={client.websiteUrl.startsWith('http') ? client.websiteUrl : `https://${client.websiteUrl}`} target="_blank" rel="noreferrer noopener">
-              {client.websiteUrl.replace(/^https?:\/\//, '')}
+          site ? (
+            <a href={site} target="_blank" rel="noreferrer noopener">
+              {site.replace(/^https?:\/\//, '')}
             </a>
           ) : (
             'no website'
@@ -61,30 +83,80 @@ function hrefFor(c: (typeof checks)[number]) {
 
   {client.notes && <div class="card" style="margin-bottom:2rem"><p style="margin:0">{client.notes}</p></div>}
 
-  <h2>Pulse Checks</h2>
-  {
-    checks.length === 0 ? (
-      <p class="muted">None yet.</p>
-    ) : (
-      <ul class="checks">
-        {checks.map((c) => (
-          <li>
-            <a href={hrefFor(c)}>
-              <span class="checks__status">{STATUS_LABELS[c.status] ?? c.status}</span>
-              <span class="muted">
-                {c.endedAt
-                  ? `held ${fmtDateTime(c.endedAt)}`
-                  : c.scheduledAt
-                    ? `scheduled ${fmtDateTime(c.scheduledAt)}`
-                    : `created ${fmtDate(c.createdAt)}`}
-              </span>
-              {c.isRehearsal && <span class="checks__rehearsal">rehearsal</span>}
-            </a>
-          </li>
-        ))}
-      </ul>
-    )
-  }
+  <div class="cols">
+    <div>
+      <h2 id="timeline">Timeline</h2>
+
+      <form method="POST" action="/api/interactions" class="note">
+        <div class="note__row">
+          <select name="kind" aria-label="Kind">
+            {MANUAL_KINDS.map((k) => <option value={k}>{k[0]!.toUpperCase() + k.slice(1)}</option>)}
+          </select>
+          <input type="datetime-local" name="occurredAt" value={nowLocal} aria-label="When" />
+        </div>
+        <input type="hidden" name="clientId" value={client.id} />
+        <input type="text" name="subject" placeholder="Subject (optional)" />
+        <textarea name="body" rows="2" placeholder="What happened?" required></textarea>
+        <button class="btn btn--ghost" type="submit">Log it</button>
+      </form>
+
+      <Timeline entries={timeline} />
+    </div>
+
+    <aside>
+      <h2>Pulse Checks</h2>
+      {
+        checks.length === 0 ? (
+          <p class="muted">None yet.</p>
+        ) : (
+          <ul class="side">
+            {checks.map((c) => {
+              const due =
+                c.readoutDueAt && c.status !== 'readout_sent'
+                  ? fmtCountdown(c.readoutDueAt)
+                  : null;
+              return (
+                <li>
+                  <a href={hrefFor(c)}>{STATUS_LABELS[c.status] ?? c.status}</a>
+                  <span class="kicker">
+                    {c.endedAt ? fmtDate(c.endedAt) : fmtDate(c.createdAt)}
+                  </span>
+                  {due && (
+                    <span class={`kicker${due.overdue || due.urgent ? ' is-warn' : ''}`}>
+                      readout {due.text}
+                    </span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )
+      }
+
+      <div class="side__head">
+        <h2>Projects</h2>
+        <a class="kicker" href={`/projects/new?clientId=${client.id}`}>+ new</a>
+      </div>
+      {
+        projects.length === 0 ? (
+          <p class="muted">None yet.</p>
+        ) : (
+          <ul class="side">
+            {projects.map((p) => (
+              <li>
+                <a href={`/projects/${p.id}`}>{p.name}</a>
+                <span class="kicker">
+                  {PROJECT_STATUS_LABELS[p.status] ?? p.status}
+                  {p.kind && ` · ${PROJECT_KIND_LABELS[p.kind] ?? p.kind}`}
+                </span>
+                <span class="kicker">{fmtPrice(p.priceCents)}</span>
+              </li>
+            ))}
+          </ul>
+        )
+      }
+    </aside>
+  </div>
 </App>
 
 <style>
@@ -102,38 +174,69 @@ function hrefFor(c: (typeof checks)[number]) {
     font-size: 0.9rem;
     margin: 0;
   }
-  .checks {
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 17rem;
+    gap: 3rem;
+    align-items: start;
+  }
+  .cols h2 {
+    font-size: 1.05rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1rem;
+  }
+  .note {
+    margin-bottom: 2rem;
+  }
+  .note > * + * {
+    margin-top: 0.5rem;
+  }
+  .note__row {
+    display: flex;
+    gap: 0.5rem;
+  }
+  .note__row select {
+    max-width: 9rem;
+  }
+  .side {
     list-style: none;
     padding: 0;
-    margin: 0;
-    border-top: 1px solid var(--line);
+    margin: 0 0 2rem;
   }
-  .checks li {
+  .side li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    padding: 0.6rem 0;
     border-bottom: 1px solid var(--line);
   }
-  .checks a {
-    display: flex;
-    gap: 1rem;
-    align-items: baseline;
-    padding: 0.75rem 0;
+  .side a {
+    font-weight: 500;
     text-decoration: none;
     color: var(--charcoal);
   }
-  .checks a:hover .checks__status {
+  .side a:hover {
     color: var(--bamboo-deep);
   }
-  .checks__status {
-    font-weight: 500;
-    min-width: 9rem;
+  .side .is-warn {
+    color: var(--amber);
   }
-  .checks__rehearsal {
-    font-family: var(--font-mono);
-    font-size: 0.7rem;
-    text-transform: uppercase;
-    letter-spacing: 0.08em;
-    color: var(--stone-deep);
-    border: 1px solid var(--line);
-    border-radius: 3px;
-    padding: 0.1rem 0.35rem;
+  .side__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+  }
+  .side__head h2 {
+    flex: 1;
+  }
+  .side__head .kicker {
+    padding-left: 0.5rem;
+  }
+  @media (max-width: 60rem) {
+    .cols {
+      grid-template-columns: minmax(0, 1fr);
+      gap: 2rem;
+    }
   }
 </style>

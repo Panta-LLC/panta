@@ -1,0 +1,162 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import {
+  getProject,
+  PROJECT_KIND_LABELS,
+  PROJECT_STATUS_LABELS,
+  fmtPrice,
+} from '../../lib/db/queries/projects.ts';
+import { fmtDate } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const row = id ? await getProject(id) : null;
+if (!row) return Astro.redirect('/projects', 302);
+
+const { project: p, client } = row;
+const iso = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+---
+
+<App title={p.name}>
+  <p class="kicker">
+    <a href="/projects">Projects</a> · <a href={`/clients/${client.id}`}>{client.name}</a>
+  </p>
+
+  <div class="head">
+    <div>
+      <h1>{p.name}</h1>
+      <p class="muted meta">
+        {p.kind ? PROJECT_KIND_LABELS[p.kind] ?? p.kind : 'No kind set'} ·{' '}
+        {PROJECT_STATUS_LABELS[p.status] ?? p.status} · {fmtPrice(p.priceCents)}
+        {p.dueOn && ` · due ${fmtDate(p.dueOn)}`}
+      </p>
+    </div>
+    {
+      p.originatingPulseCheckId && (
+        <a class="btn btn--ghost" href={`/readouts/${p.originatingPulseCheckId}`}>
+          The readout that led here
+        </a>
+      )
+    }
+  </div>
+
+  {p.summary && <div class="card" style="margin-bottom:2rem"><p style="margin:0">{p.summary}</p></div>}
+
+  <form method="POST" action={`/api/projects/${p.id}`} class="form">
+    <h2>Details</h2>
+
+    <div>
+      <label for="name">Name</label>
+      <input id="name" name="name" type="text" value={p.name} required />
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="kind">Kind</label>
+        <select id="kind" name="kind">
+          <option value="">—</option>
+          {
+            Object.entries(PROJECT_KIND_LABELS).map(([v, l]) => (
+              <option value={v} selected={p.kind === v}>{l}</option>
+            ))
+          }
+        </select>
+      </div>
+      <div>
+        <label for="status">Status</label>
+        <select id="status" name="status">
+          {
+            Object.entries(PROJECT_STATUS_LABELS).map(([v, l]) => (
+              <option value={v} selected={p.status === v}>{l}</option>
+            ))
+          }
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="price">Price</label>
+        <input
+          id="price"
+          name="price"
+          type="text"
+          inputmode="decimal"
+          value={p.priceCents != null ? (p.priceCents / 100).toString() : ''}
+        />
+      </div>
+      <div>
+        <label for="startedOn">Started</label>
+        <input id="startedOn" name="startedOn" type="date" value={iso(p.startedOn)} />
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="dueOn">Due</label>
+        <input id="dueOn" name="dueOn" type="date" value={iso(p.dueOn)} />
+      </div>
+      <div>
+        <label for="closedOn">Closed</label>
+        <input id="closedOn" name="closedOn" type="date" value={iso(p.closedOn)} />
+      </div>
+    </div>
+
+    <div>
+      <label for="summary">Summary</label>
+      <textarea id="summary" name="summary" rows="3">{p.summary ?? ''}</textarea>
+    </div>
+
+    <div>
+      <label for="notes">Notes</label>
+      <textarea id="notes" name="notes" rows="5">{p.notes ?? ''}</textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn--primary" type="submit">Save</button>
+      <a class="btn btn--ghost" href={`/clients/${client.id}`}>Back to {client.name}</a>
+    </div>
+  </form>
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+    margin-bottom: 2rem;
+  }
+  .head h1 {
+    margin-bottom: 0.25rem;
+  }
+  .meta {
+    font-size: 0.9rem;
+    margin: 0;
+  }
+  .form {
+    max-width: 34rem;
+  }
+  .form > * + * {
+    margin-top: 1.25rem;
+  }
+  .form h2 {
+    font-size: 1.05rem;
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+</style>

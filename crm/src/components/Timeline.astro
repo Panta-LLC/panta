@@ -1,0 +1,152 @@
+---
+/**
+ * A client's history, newest first.
+ *
+ * Every entry carries where it came from — a note you typed, a Pulse Check
+ * that happened, a readout that went out, and from Phase 3b an email that was
+ * filed automatically. Showing the source matters: "we discussed this" reads
+ * very differently when it came from a synced thread than when you wrote it
+ * down deliberately.
+ */
+import type { TimelineEntry } from '../lib/db/queries/interactions.ts';
+import { fmtDateTime } from '../lib/format.ts';
+
+interface Props {
+  entries: TimelineEntry[];
+}
+
+const { entries } = Astro.props;
+
+const KIND_LABELS: Record<string, string> = {
+  note: 'Note',
+  call: 'Call',
+  meeting: 'Meeting',
+  email: 'Email',
+  pulse_check: 'Pulse Check',
+  readout_sent: 'Readout sent',
+  proposal: 'Proposal',
+};
+
+/** Entries that point at something you can open. */
+function linkFor(e: TimelineEntry): string | null {
+  if (e.entityType === 'pulse_check' && e.entityId) return `/pulse/${e.entityId}/capture`;
+  if (e.entityType === 'readout' && e.entityId) return `/readouts/${e.entityId}`;
+  if (e.source === 'gmail' && e.externalThreadId) {
+    return `https://mail.google.com/mail/u/0/#inbox/${e.externalThreadId}`;
+  }
+  return null;
+}
+---
+
+{
+  entries.length === 0 ? (
+    <p class="muted">Nothing recorded yet.</p>
+  ) : (
+    <ol class="tl">
+      {entries.map((e) => {
+        const href = linkFor(e);
+        const label = KIND_LABELS[e.kind] ?? e.kind;
+        return (
+          <li class={`tl__item tl__item--${e.source}`}>
+            <div class="tl__meta">
+              <span class="tl__kind">{label}</span>
+              <time class="kicker">{fmtDateTime(e.occurredAt)}</time>
+              {e.source === 'gmail' && <span class="tl__auto kicker">auto-filed</span>}
+              {e.direction && (
+                <span class="kicker">{e.direction === 'in' ? '← in' : '→ out'}</span>
+              )}
+              {e.messageCount > 1 && <span class="kicker">{e.messageCount} messages</span>}
+            </div>
+
+            {e.subject && (
+              <p class="tl__subject">
+                {href ? (
+                  <a
+                    href={href}
+                    target={href.startsWith('http') ? '_blank' : undefined}
+                    rel={href.startsWith('http') ? 'noreferrer noopener' : undefined}>
+                    {e.subject}
+                  </a>
+                ) : (
+                  e.subject
+                )}
+              </p>
+            )}
+
+            {e.body && <p class="tl__body">{e.body}</p>}
+
+            {e.contactName && <p class="kicker">{e.contactName}</p>}
+          </li>
+        );
+      })}
+    </ol>
+  )
+}
+
+<style>
+  .tl {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+    border-left: 1px solid var(--line);
+  }
+
+  .tl__item {
+    position: relative;
+    padding: 0 0 1.5rem 1.25rem;
+  }
+
+  /* The dot on the rail. Charcoal for things you did deliberately; bamboo for
+     the two moments the practice is actually measured by. */
+  .tl__item::before {
+    content: '';
+    position: absolute;
+    left: -4px;
+    top: 0.45rem;
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--stone);
+  }
+
+  .tl__item--pulse_check::before,
+  .tl__item--readout::before {
+    background: var(--bamboo);
+  }
+
+  /* Hollow, because nobody chose to record it — a machine did. */
+  .tl__item--gmail::before {
+    background: var(--cream);
+    border: 1px solid var(--stone);
+  }
+
+  .tl__meta {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin-bottom: 0.2rem;
+  }
+
+  .tl__kind {
+    font-size: 0.85rem;
+    font-weight: 500;
+  }
+
+  .tl__auto {
+    color: var(--stone-deep);
+  }
+
+  .tl__subject {
+    margin: 0 0 0.2rem;
+    font-weight: 500;
+  }
+
+  .tl__body {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 0.98rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+  }
+</style>
