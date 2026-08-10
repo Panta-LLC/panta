@@ -1,2 +1,12 @@
 .vercel
-.env*
+
+# secrets — .env.local holds SMTP credentials and the Buttondown API key.
+# The example file documents the variable names and must stay committed.
+.env
+.env.*
+!.env.example
+
+# `vercel link` appends its own `.vercel` and `.env*` rules here on every run.
+# Both are already covered above — and a bare `.env*` placed after the
+# `!.env.example` negation silently re-ignores the example file, so if the CLI
+# adds them again, delete them rather than keeping the duplicates.
