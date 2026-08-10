@@ -1,0 +1,170 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { getGoogleAccount, getSyncState } from '../../lib/db/queries/gmail.ts';
+import { encryptionConfigured } from '../../lib/crypto.ts';
+import { fmtDateTime } from '../../lib/format.ts';
+
+const user = requireUser(Astro.locals);
+
+const account = await getGoogleAccount(user.id);
+const state = account ? await getSyncState(account.id) : null;
+const hasKey = encryptionConfigured();
+
+const error = Astro.url.searchParams.get('error');
+const connected = Astro.url.searchParams.get('connected') === '1';
+
+const ERRORS: Record<string, string> = {
+  not_configured: 'Google sign-in is not configured.',
+  no_key: 'TOKEN_ENCRYPTION_KEY is missing or invalid, so a refresh token could not be stored safely. Set it and try again.',
+  no_refresh_token:
+    'Google completed the consent but issued no refresh token, so the connection could not be saved. Revoke the app at myaccount.google.com/permissions and connect again — that forces a fresh one.',
+};
+---
+
+<App title="Google">
+  <p class="kicker">Settings</p>
+  <h1>Gmail</h1>
+
+  {connected && <p class="ok">Connected. Run a dry run before the first real sync.</p>}
+  {error && <p class="err">{ERRORS[error] ?? 'Something went wrong connecting to Google.'}</p>}
+
+  <div class="card" style="margin-bottom:2rem">
+    <p style="margin:0 0 0.5rem"><strong>What this does</strong></p>
+    <p class="muted" style="margin:0">
+      Reads your mailbox and files messages onto a client's timeline when the sender
+      or recipient matches a known contact. Read-only — it never sends, replies to,
+      or deletes anything. Only the subject and a snippet are stored, never the
+      message body.
+    </p>
+  </div>
+
+  {
+    !hasKey && (
+      <p class="err">
+        <code>TOKEN_ENCRYPTION_KEY</code> is not set. Refresh tokens are encrypted at
+        rest, so connecting is blocked until it is.
+      </p>
+    )
+  }
+
+  {
+    account ? (
+      <>
+        <dl class="facts">
+          <div><dt>Account</dt><dd>{account.email}</dd></div>
+          <div><dt>Scopes</dt><dd>{account.scopes.join(', ')}</dd></div>
+          <div>
+            <dt>Backfill</dt>
+            <dd>{state?.backfillDone ? 'complete' : 'in progress — runs a page at a time'}</dd>
+          </div>
+          <div><dt>Last run</dt><dd>{state?.lastRunAt ? fmtDateTime(state.lastRunAt) : 'never'}</dd></div>
+          {state?.lastError && <div><dt>Last error</dt><dd class="warn">{state.lastError}</dd></div>}
+        </dl>
+
+        <div class="actions">
+          <button class="btn btn--ghost" type="button" data-action="dry-run">Dry run</button>
+          <button class="btn btn--primary" type="button" data-action="sync">Sync now</button>
+          <form method="POST" action="/api/gmail/disconnect" style="display:inline">
+            <button class="btn btn--ghost" type="submit">Disconnect</button>
+          </form>
+        </div>
+
+        <pre id="out" hidden></pre>
+      </>
+    ) : (
+      <a class={`btn btn--primary${hasKey ? '' : ' is-disabled'}`} href={hasKey ? '/api/auth/google/upgrade' : undefined}>
+        Connect Gmail
+      </a>
+    )
+  }
+</App>
+
+<script>
+  // Small enough to not warrant an island: two buttons that POST and print.
+  const out = document.getElementById('out') as HTMLPreElement | null;
+
+  async function run(path: string, label: string) {
+    if (!out) return;
+    out.hidden = false;
+    out.textContent = `${label}…`;
+    try {
+      const res = await fetch(path, { method: 'POST' });
+      out.textContent = JSON.stringify(await res.json(), null, 2);
+    } catch (err) {
+      out.textContent = `Failed: ${err instanceof Error ? err.message : err}`;
+    }
+  }
+
+  document.querySelector('[data-action="dry-run"]')?.addEventListener('click', () => {
+    void run('/api/gmail/dry-run?limit=40', 'Reading the last 40 messages, writing nothing');
+  });
+
+  document.querySelector('[data-action="sync"]')?.addEventListener('click', () => {
+    void run('/api/gmail/sync?force=1', 'Syncing');
+  });
+</script>
+
+<style>
+  .ok {
+    border-left: 2px solid var(--bamboo);
+    background: var(--cream-soft);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+  .err {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+    max-width: 46rem;
+  }
+  .facts {
+    margin: 0 0 2rem;
+  }
+  .facts > div {
+    display: grid;
+    grid-template-columns: 9rem 1fr;
+    gap: 1rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .facts dt {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+  .facts dd {
+    margin: 0;
+    font-size: 0.92rem;
+    word-break: break-word;
+  }
+  .facts .warn {
+    color: var(--amber);
+  }
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    margin-bottom: 1.5rem;
+  }
+  .is-disabled {
+    opacity: 0.45;
+    pointer-events: none;
+  }
+  #out {
+    background: var(--charcoal);
+    color: var(--cream);
+    padding: 1rem;
+    border-radius: var(--radius);
+    font-family: var(--font-mono);
+    font-size: 0.78rem;
+    line-height: 1.5;
+    overflow-x: auto;
+    max-height: 32rem;
+  }
+</style>

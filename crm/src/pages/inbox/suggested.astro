@@ -1,0 +1,121 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listReviewQueue } from '../../lib/db/queries/gmail.ts';
+import { listClients } from '../../lib/db/queries/clients.ts';
+import { fmtDateTime } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const [queue, clients] = await Promise.all([listReviewQueue(), listClients()]);
+---
+
+<App title="Suggested">
+  <p class="kicker">Inbox</p>
+  <h1>{queue.length} suggested {queue.length === 1 ? 'message' : 'messages'}</h1>
+  <p class="muted lede">
+    These matched a client's domain but not a known contact, so they were held here
+    rather than filed. Filing one offers to remember the address, which is how the
+    contact list fills itself in.
+  </p>
+
+  {
+    queue.length === 0 ? (
+      <div class="card">
+        <p style="margin:0">
+          Nothing waiting. Messages from known contacts are filed automatically.
+        </p>
+      </div>
+    ) : (
+      <ul class="q">
+        {queue.map((m) => (
+          <li>
+            <div class="q__head">
+              <span class="q__from">{m.fromEmail}</span>
+              <time class="kicker">{fmtDateTime(m.occurredAt)}</time>
+            </div>
+            <p class="q__subject">{m.subject ?? '(no subject)'}</p>
+            {m.snippet && <p class="q__snippet">{m.snippet}</p>}
+
+            <form method="POST" action={`/api/inbox/${m.id}/resolve`} class="q__form">
+              <select name="clientId">
+                {clients.map((c) => (
+                  <option value={c.id} selected={c.id === m.suggestedClientId}>{c.name}</option>
+                ))}
+              </select>
+              <label class="q__remember">
+                <input type="checkbox" name="addContact" value="1" checked />
+                <span>Remember {m.fromEmail} as a contact</span>
+              </label>
+              <button class="btn btn--primary" type="submit" name="action" value="file">File it</button>
+              <button class="btn btn--ghost" type="submit" name="action" value="ignore">Ignore</button>
+            </form>
+          </li>
+        ))}
+      </ul>
+    )
+  }
+</App>
+
+<style>
+  .lede {
+    max-width: 46rem;
+    margin-bottom: 2rem;
+  }
+  .q {
+    list-style: none;
+    padding: 0;
+    margin: 0;
+  }
+  .q li {
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    padding: 1rem 1.25rem;
+    margin-bottom: 1rem;
+    max-width: 46rem;
+  }
+  .q__head {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 1rem;
+  }
+  .q__from {
+    font-family: var(--font-mono);
+    font-size: 0.8rem;
+  }
+  .q__subject {
+    font-weight: 500;
+    margin: 0.3rem 0 0.2rem;
+  }
+  .q__snippet {
+    font-family: var(--font-serif);
+    font-size: 0.95rem;
+    color: var(--stone-deep);
+    margin: 0 0 0.85rem;
+  }
+  .q__form {
+    display: flex;
+    gap: 0.6rem;
+    align-items: center;
+    flex-wrap: wrap;
+    border-top: 1px solid var(--line);
+    padding-top: 0.85rem;
+  }
+  .q__form select {
+    max-width: 14rem;
+  }
+  .q__remember {
+    display: flex;
+    gap: 0.4rem;
+    align-items: center;
+    font-size: 0.85rem;
+    font-weight: 400;
+    margin: 0;
+  }
+  .q__remember input {
+    accent-color: var(--bamboo-deep);
+  }
+</style>

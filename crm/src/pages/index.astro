@@ -4,11 +4,17 @@ export const prerender = false;
 import App from '../layouts/App.astro';
 import { requireUser } from '../lib/auth/guard.ts';
 import { listReadoutsDue, listUpcoming } from '../lib/db/queries/pulse.ts';
+import { listReviewQueue, getGoogleAccount } from '../lib/db/queries/gmail.ts';
 import { fmtCountdown, fmtDateTime } from '../lib/format.ts';
 
-requireUser(Astro.locals);
+const user = requireUser(Astro.locals);
 
-const [due, upcoming] = await Promise.all([listReadoutsDue(), listUpcoming()]);
+const [due, upcoming, suggested, googleAccount] = await Promise.all([
+  listReadoutsDue(),
+  listUpcoming(),
+  listReviewQueue(),
+  getGoogleAccount(user.id),
+]);
 ---
 
 <App title="Dashboard">
@@ -49,6 +55,16 @@ const [due, upcoming] = await Promise.all([listReadoutsDue(), listUpcoming()]);
     )
   }
 
+  {
+    suggested.length > 0 && (
+      <p class="suggested">
+        <a href="/inbox/suggested">
+          {suggested.length} email{suggested.length === 1 ? '' : 's'} waiting to be filed
+        </a>
+      </p>
+    )
+  }
+
   <section>
     <h2>Coming up</h2>
     {
@@ -73,7 +89,29 @@ const [due, upcoming] = await Promise.all([listReadoutsDue(), listUpcoming()]);
       )
     }
   </section>
+
+  {/* Marker for the sync-on-open script below. A data attribute rather than a
+      conditionally-rendered <script>, because escaping JavaScript braces
+      inside a JSX expression is a trap and reads terribly. */}
+  {googleAccount && <div data-gmail-connected hidden />}
 </App>
+
+<script>
+  /**
+   * Sync on open.
+   *
+   * The endpoint debounces server-side to one pass per ten minutes, so firing
+   * on every dashboard load is safe — and it means the timeline is freshest
+   * exactly when it is being read, which beats a schedule. It also sidesteps
+   * the Hobby plan's one-cron-per-day cap.
+   *
+   * Failures are silent on purpose: a mailbox that cannot be reached right now
+   * is not a reason to interrupt the page.
+   */
+  if (document.querySelector('[data-gmail-connected]')) {
+    fetch('/api/gmail/sync', { method: 'POST' }).catch(() => {});
+  }
+</script>
 
 <style>
   h1 {
@@ -137,6 +175,14 @@ const [due, upcoming] = await Promise.all([listReadoutsDue(), listUpcoming()]);
   }
   .up__prep {
     color: var(--stone-deep);
+  }
+  .suggested {
+    border-left: 2px solid var(--bamboo);
+    padding: 0.5rem 0.85rem;
+    background: var(--cream-soft);
+    font-size: 0.92rem;
+    margin-bottom: 2.5rem;
+    max-width: 30rem;
   }
   section h2 {
     padding-bottom: 0.4rem;

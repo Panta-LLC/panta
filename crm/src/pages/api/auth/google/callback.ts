@@ -5,6 +5,7 @@ import { eq } from 'drizzle-orm';
 
 import { db } from '../../../../lib/db/client.ts';
 import { appUser } from '../../../../lib/db/schema.ts';
+import { upsertGoogleAccount } from '../../../../lib/db/queries/gmail.ts';
 import {
   decodeIdToken,
   exchangeCode,
@@ -35,7 +36,7 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request, clientAdd
   const stash = cookies.get(OAUTH_STATE_COOKIE)?.value;
   if (!stash) return fail('state');
 
-  let expected: { state: string; codeVerifier: string; next: string };
+  let expected: { state: string; codeVerifier: string; next: string; mode?: string };
   try {
     expected = JSON.parse(stash);
   } catch {
@@ -49,8 +50,9 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request, clientAdd
   }
 
   let identity;
+  let tokens;
   try {
-    const tokens = await exchangeCode(code, expected.codeVerifier);
+    tokens = await exchangeCode(code, expected.codeVerifier);
     identity = decodeIdToken(tokens.id_token);
   } catch (err) {
     console.error('auth: token exchange failed', err instanceof Error ? err.message : err);
@@ -92,6 +94,35 @@ export const GET: APIRoute = async ({ url, cookies, redirect, request, clientAdd
       })
       .returning({ id: appUser.id });
     userId = inserted[0]!.id;
+  }
+
+  /**
+   * The Gmail upgrade path.
+   *
+   * Google only issues a refresh token when it feels like it — re-consenting
+   * an already-granted scope often returns none. `prompt=consent` on the
+   * upgrade request is what forces one, but if it still comes back empty we
+   * must say so rather than storing a connection that cannot refresh and will
+   * silently die in an hour.
+   */
+  if (expected.mode === 'gmail') {
+    if (!tokens.refresh_token) {
+      cookies.delete(OAUTH_STATE_COOKIE, { path: '/' });
+      return redirect('/settings/google?error=no_refresh_token', 302);
+    }
+
+    await upsertGoogleAccount({
+      userId,
+      googleSub: identity.sub,
+      email: identity.email,
+      scopes: tokens.scope.split(' '),
+      refreshToken: tokens.refresh_token,
+      accessToken: tokens.access_token,
+      accessTokenExpiresAt: new Date(Date.now() + tokens.expires_in * 1000),
+    });
+
+    cookies.delete(OAUTH_STATE_COOKIE, { path: '/' });
+    return redirect('/settings/google?connected=1', 302);
   }
 
   const { token } = await createSession(userId, {
