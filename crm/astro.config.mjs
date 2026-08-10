@@ -13,12 +13,16 @@ import react from '@astrojs/react';
  * accidentally prerendered would be a page that served one user's data to
  * whoever asked next.
  *
- * `checkOrigin` is ENABLED here, where site/astro.config.mjs had to disable it.
- * The site disabled it because Vercel's proxy rewrites the request URL and it
- * broke /api/contact; that route works around it by comparing Origin against
- * x-forwarded-host by hand. The CRM's forms are all same-origin and all of
- * them mutate a database, so CSRF protection is worth far more here than the
- * one edge case it costs.
+ * `checkOrigin` is DISABLED, and that is not a relaxation — the equivalent
+ * check is enforced for every mutating request in src/middleware.ts instead.
+ *
+ * Astro's built-in version compares the Origin header against the request URL.
+ * Vercel's proxy rewrites that URL, so a form posted from crm.panta.llc to
+ * crm.panta.llc is judged cross-site and rejected with "Cross-site POST form
+ * submissions are forbidden". site/src/pages/api/contact.ts hit exactly this
+ * and works around it by comparing Origin to x-forwarded-host by hand; the
+ * middleware here does the same thing once, for every route, which is stronger
+ * than the per-route version and actually works behind the proxy.
  *
  * No webAnalytics: this is a private tool, and the pages are named after
  * clients. There is nothing here that should reach an analytics vendor.
@@ -27,7 +31,9 @@ export default defineConfig({
   output: 'server',
   adapter: vercel(),
   integrations: [react()],
-  security: { checkOrigin: true },
+  // See the note above — enforced in src/middleware.ts instead, because the
+  // built-in check cannot see the real host behind Vercel's proxy.
+  security: { checkOrigin: false },
   // 4380 is site/, 3333 is studio/. 4321 is Astro's default and was already
   // taken on this machine by an unrelated process.
   server: { port: 4390 },
