@@ -1,0 +1,114 @@
+/* The task board. Amber means one thing here as everywhere: out of time. */
+
+.tk__add {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.tk__add input[type='text'] {
+  flex: 1;
+  min-width: 14rem;
+}
+
+.tk__add select {
+  max-width: 8rem;
+}
+
+.tk__add input[type='date'] {
+  max-width: 10rem;
+}
+
+.tk__list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  border-top: 1px solid var(--line);
+}
+
+.tk__row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.tk__row input[type='checkbox'] {
+  flex-shrink: 0;
+  accent-color: var(--bamboo-deep);
+  width: 1rem;
+  height: 1rem;
+}
+
+.tk__title {
+  flex: 1;
+  min-width: 0;
+  font-size: 0.95rem;
+}
+
+.tk__row.is-done .tk__title {
+  text-decoration: line-through;
+  color: var(--stone-deep);
+}
+
+.tk__ctx {
+  color: var(--stone-deep);
+  text-decoration: none;
+  white-space: nowrap;
+  max-width: 12rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tk__ctx:hover {
+  color: var(--bamboo-deep);
+}
+
+/* Priority is a quiet control — it should not compete with the task text. */
+.tk__pri {
+  width: auto;
+  min-width: 5.5rem;
+  font-size: 0.78rem;
+  padding: 0.2rem 0.35rem;
+  border-color: transparent;
+  background: transparent;
+  color: var(--stone-deep);
+}
+
+.tk__pri:hover {
+  border-color: var(--line);
+  background: #fff;
+}
+
+.tk__due {
+  color: var(--stone-deep);
+  white-space: nowrap;
+  min-width: 3.5rem;
+  text-align: right;
+}
+
+.tk__due.is-overdue {
+  color: var(--amber);
+}
+
+.tk__toggle {
+  background: none;
+  border: none;
+  padding: 0.75rem 0 0;
+  font-family: var(--font-mono);
+  font-size: 0.7rem;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  cursor: pointer;
+}
+
+.tk__toggle:hover {
+  color: var(--charcoal);
+}
+
+.tk__list--done {
+  margin-top: 0.5rem;
+}

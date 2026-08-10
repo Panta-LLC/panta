@@ -2,7 +2,9 @@
 export const prerender = false;
 
 import App from '../../layouts/App.astro';
+import TaskList from '../../components/TaskList.tsx';
 import { requireUser } from '../../lib/auth/guard.ts';
+import { listTasksForProject } from '../../lib/db/queries/tasks.ts';
 import {
   getProject,
   PROJECT_KIND_LABELS,
@@ -19,6 +21,14 @@ if (!row) return Astro.redirect('/projects', 302);
 
 const { project: p, client } = row;
 const iso = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : '');
+
+// Includes tasks attached to the client but not to any project — during
+// delivery that distinction is rarely how the work is actually thought about.
+const tasks = (await listTasksForProject(p.id, client.id)).map((t) => ({
+  ...t,
+  dueAt: t.dueAt ? new Date(t.dueAt).toISOString() : null,
+  doneAt: t.doneAt ? new Date(t.doneAt).toISOString() : null,
+}));
 ---
 
 <App title={p.name}>
@@ -45,6 +55,16 @@ const iso = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : ''
   </div>
 
   {p.summary && <div class="card" style="margin-bottom:2rem"><p style="margin:0">{p.summary}</p></div>}
+
+  <section class="tasks">
+    <h2>Tasks</h2>
+    <TaskList
+      client:load
+      initial={tasks}
+      scope={{ clientId: client.id, projectId: p.id }}
+      showContext={false}
+    />
+  </section>
 
   <form method="POST" action={`/api/projects/${p.id}`} class="form">
     <h2>Details</h2>
@@ -144,10 +164,15 @@ const iso = (d: Date | null) => (d ? new Date(d).toISOString().slice(0, 10) : ''
   .form > * + * {
     margin-top: 1.25rem;
   }
-  .form h2 {
+  .form h2,
+  .tasks h2 {
     font-size: 1.05rem;
     padding-bottom: 0.4rem;
     border-bottom: 1px solid var(--line);
+  }
+  .tasks {
+    max-width: 40rem;
+    margin-bottom: 3rem;
   }
   .row {
     display: grid;

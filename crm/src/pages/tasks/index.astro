@@ -1,0 +1,39 @@
+---
+export const prerender = false;
+
+import App from '../../layouts/App.astro';
+import TaskList from '../../components/TaskList.tsx';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listTasks, taskCounts } from '../../lib/db/queries/tasks.ts';
+
+requireUser(Astro.locals);
+
+const [rows, counts] = await Promise.all([listTasks({ includeDone: true }), taskCounts()]);
+
+// Dates cross into the island as JSON, so normalise them here rather than
+// letting each component guess what it received.
+const serialized = rows.map((t) => ({
+  ...t,
+  dueAt: t.dueAt ? new Date(t.dueAt).toISOString() : null,
+  doneAt: t.doneAt ? new Date(t.doneAt).toISOString() : null,
+}));
+---
+
+<App title="Tasks">
+  <p class="kicker">Tasks</p>
+  <h1>
+    {counts.live} outstanding
+    {counts.overdue > 0 && <span class="overdue">· {counts.overdue} overdue</span>}
+  </h1>
+
+  <TaskList client:load initial={serialized} showContext={true} />
+</App>
+
+<style>
+  h1 {
+    margin-bottom: 1.5rem;
+  }
+  .overdue {
+    color: var(--amber);
+  }
+</style>
