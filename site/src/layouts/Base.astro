@@ -3,6 +3,7 @@ import '../styles/global.css';
 import RippleMark from '../components/RippleMark.astro';
 import Analytics from '../components/Analytics.astro';
 import ConsentBanner from '../components/ConsentBanner.astro';
+import SpeedInsights from '@vercel/speed-insights/astro';
 import SocialLinks from '../components/SocialLinks.astro';
 import { getDoc, getServices } from '../lib/sanity.js';
 import { normalizeSocialProfiles } from '../lib/social.js';
@@ -491,5 +492,16 @@ const workActive =
     </footer>
 
     <ConsentBanner />
+
+    {/*
+      Core Web Vitals from real visits. Not consent-gated, and deliberately so:
+      it sets no cookies, stores nothing on the device and identifies nobody,
+      which is the same basis on which Vercel's page counts already run for
+      everyone. /privacy says exactly that, and says it covers speed too.
+
+      Gating it would also make the numbers useless — you would only ever
+      measure the loading experience of visitors who accepted a banner.
+    */}
+    <SpeedInsights />
   </body>
 </html>
