@@ -14,6 +14,13 @@
       "runtimeArgs": ["run", "dev", "--prefix", "studio", "--", "--port", "3333"],
       "port": 3333,
       "autoPort": false
+    },
+    {
+      "name": "panta-crm",
+      "runtimeExecutable": "pnpm",
+      "runtimeArgs": ["--dir", "crm", "dev", "--port", "4390"],
+      "port": 4390,
+      "autoPort": false
     }
   ]
 }

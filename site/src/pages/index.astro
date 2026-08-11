@@ -74,8 +74,8 @@ const PACKAGES = await getPackages();
 // as written rather than a blank kicker.
 const pkgSection = (await getDoc('homePackages')) ?? {};
 const PKGS = {
-  kicker: pkgSection.kicker || 'Where to start',
-  heading: pkgSection.heading || 'Ways in, each one scoped before it starts.',
+  kicker: pkgSection.kicker || 'Our Services',
+  heading: pkgSection.heading || 'We offer distinct services to help you grow your business.',
   expandLabel: pkgSection.expandLabel || 'What’s included',
 };
 
@@ -184,17 +184,114 @@ const FAQS = [
           >{HERO.ctaLabel}</a>
           <p class="hero__micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
         </div>
-
-        <a
-          class="hero__quiet"
-          href="/work/"
-          data-track="cta_click"
-          data-track-cta="work"
-          data-track-location="home_hero"
-        >{HERO.secondaryLabel} <span aria-hidden="true">→</span></a>
       </div>
     </div>
   </section>
+
+  <!-- ===================== 2. featured case study ===================== -->
+  <!-- Was §4.6, four screens down, behind the pillars and the process. It came
+       up into the trust bar's slot so the claim is followed closely by the
+       evidence for it, which is the move both reference sites make; §1.5 now
+       sits between the two, naming the offer the evidence is proof of. The
+       logo row that used to sit here is gone — two logos under "trusted by"
+       read thinner than the work itself does.
+       The sector line and the 48-hour promise survive as the closing strip,
+       since they were the rest of what the trust bar was doing. -->
+       {CASES.length > 0 && (
+        <section class="section case" data-section="case">
+          <div class="container">
+            <p class="kicker">Recent work</p>
+            <div class="case__grid">
+              {CASES.map((c, i) => (
+                <article class="case__item">
+                  {/* Tracked like the text link below it: without this, clicks on
+                      the image read as zero engagement while the identical link
+                      underneath gets the credit. */}
+                  <a
+                    class="case__media"
+                    href={`/work/${c.slug}/`}
+                    tabindex="-1"
+                    aria-hidden="true"
+                    data-track="cta_click"
+                    data-track-cta={i === 0 ? 'case_study_image' : 'case_study_secondary_image'}
+                    data-track-location="home_case"
+                  >
+                    {c.thumbnail ? (
+                      <img src={c.thumbnail.replace('-thumb', '')} alt="" loading="lazy" decoding="async" />
+                    ) : (
+                      <div class="case__media-empty"></div>
+                    )}
+                  </a>
+                  {/* The quote moved up to the pillars close, so each preview leads
+                      on the client's name — it says what the work was, which is
+                      what a visitor is here for by this point. */}
+                  <h2 class="case__head">{c.name}</h2>
+                  <p class="case__meta">{c.client?.sector ?? c.clientType}</p>
+                  <p class="case__body">{c.summary}</p>
+    
+                  {/* `project.contributions` — the scope of the engagement. It says
+                      what Panta actually did, which the summary describes and the
+                      outcome doesn't. Inline rather than stacked rows: three items
+                      as hairline rows would be taller than the summary above it. */}
+                  {(c.contributions ?? []).length > 0 && (
+                    <div class="case__did">
+                      <p class="kicker">What we did</p>
+                      <p class="case__did-list">{c.contributions.join(' · ')}</p>
+                    </div>
+                  )}
+    
+                  {/* §7.4 still holds — nothing here may be invented. What changed
+                      is that the slot no longer demands a NUMBER: `project.outcome`
+                      is a real field ("Short outcome line shown on cards") the
+                      query already selects, so a true sentence fills it. The
+                      blocking placeholder is kept for the FEATURED case only:
+                      making every card demand one would add launch blockers for
+                      secondary work that was never promised an outcome line. */}
+                  {c.outcome ? (
+                    <p class="case__outcome">{c.outcome}</p>
+                  ) : i === 0 ? (
+                    <p class="case__outcome-ph">
+                      <Placeholder note={`the outcome line for ${c.name} — a sentence, not a number`}>
+                        [What changed for them — one sentence]
+                      </Placeholder>
+                    </p>
+                  ) : null}
+    
+                  <a
+                    class="case__link"
+                    href={`/work/${c.slug}/`}
+                    data-track="cta_click"
+                    data-track-cta={i === 0 ? 'case_study' : 'case_study_secondary'}
+                    data-track-location="home_case"
+                  >Read the full story <span aria-hidden="true">→</span></a>
+                </article>
+              ))}
+            </div>
+          <div class="case__view-all" style="margin-top:4rem;">
+            <a
+              class="case__link case__link--all"
+              href="/work/"
+              data-track="cta_click"
+              data-track-cta="view_all_work"
+              data-track-location="home_case"
+            >
+              View all work <span aria-hidden="true">→</span>
+            </a>
+          </div>
+ 
+ 
+          </div>
+    
+          {/* <div class="container case__trust">
+            <p class="case__trust-claim">
+              Nonprofits, independent practitioners, and small businesses across Northern California.
+            </p>
+            <p class="case__trust-promise">
+              Free 30-minute review · written readout within 48 hours · yours to keep either way
+            </p>
+          </div> */}
+        </section>
+      )}
 
   <!-- ===================== 1.5 packages ===================== -->
   <!-- Fixed-scope offers, from Sanity. The kicker is "Where to start" rather
@@ -281,98 +378,6 @@ const FAQS = [
           })}
         </div>
       </div>
-    </section>
-  )}
-
-  <!-- ===================== 2. featured case study ===================== -->
-  <!-- Was §4.6, four screens down, behind the pillars and the process. It came
-       up into the trust bar's slot so the claim is followed closely by the
-       evidence for it, which is the move both reference sites make; §1.5 now
-       sits between the two, naming the offer the evidence is proof of. The
-       logo row that used to sit here is gone — two logos under "trusted by"
-       read thinner than the work itself does.
-       The sector line and the 48-hour promise survive as the closing strip,
-       since they were the rest of what the trust bar was doing. -->
-  {CASES.length > 0 && (
-    <section class="section case" data-section="case">
-      <div class="container">
-        <p class="kicker">Recent work</p>
-        <div class="case__grid">
-          {CASES.map((c, i) => (
-            <article class="case__item">
-              {/* Tracked like the text link below it: without this, clicks on
-                  the image read as zero engagement while the identical link
-                  underneath gets the credit. */}
-              <a
-                class="case__media"
-                href={`/work/${c.slug}/`}
-                tabindex="-1"
-                aria-hidden="true"
-                data-track="cta_click"
-                data-track-cta={i === 0 ? 'case_study_image' : 'case_study_secondary_image'}
-                data-track-location="home_case"
-              >
-                {c.thumbnail ? (
-                  <img src={c.thumbnail.replace('-thumb', '')} alt="" loading="lazy" decoding="async" />
-                ) : (
-                  <div class="case__media-empty"></div>
-                )}
-              </a>
-              {/* The quote moved up to the pillars close, so each preview leads
-                  on the client's name — it says what the work was, which is
-                  what a visitor is here for by this point. */}
-              <h2 class="case__head">{c.name}</h2>
-              <p class="case__meta">{c.client?.sector ?? c.clientType}</p>
-              <p class="case__body">{c.summary}</p>
-
-              {/* `project.contributions` — the scope of the engagement. It says
-                  what Panta actually did, which the summary describes and the
-                  outcome doesn't. Inline rather than stacked rows: three items
-                  as hairline rows would be taller than the summary above it. */}
-              {(c.contributions ?? []).length > 0 && (
-                <div class="case__did">
-                  <p class="kicker">What we did</p>
-                  <p class="case__did-list">{c.contributions.join(' · ')}</p>
-                </div>
-              )}
-
-              {/* §7.4 still holds — nothing here may be invented. What changed
-                  is that the slot no longer demands a NUMBER: `project.outcome`
-                  is a real field ("Short outcome line shown on cards") the
-                  query already selects, so a true sentence fills it. The
-                  blocking placeholder is kept for the FEATURED case only:
-                  making every card demand one would add launch blockers for
-                  secondary work that was never promised an outcome line. */}
-              {c.outcome ? (
-                <p class="case__outcome">{c.outcome}</p>
-              ) : i === 0 ? (
-                <p class="case__outcome-ph">
-                  <Placeholder note={`the outcome line for ${c.name} — a sentence, not a number`}>
-                    [What changed for them — one sentence]
-                  </Placeholder>
-                </p>
-              ) : null}
-
-              <a
-                class="case__link"
-                href={`/work/${c.slug}/`}
-                data-track="cta_click"
-                data-track-cta={i === 0 ? 'case_study' : 'case_study_secondary'}
-                data-track-location="home_case"
-              >Read the full story <span aria-hidden="true">→</span></a>
-            </article>
-          ))}
-        </div>
-      </div>
-
-      {/* <div class="container case__trust">
-        <p class="case__trust-claim">
-          Nonprofits, independent practitioners, and small businesses across Northern California.
-        </p>
-        <p class="case__trust-promise">
-          Free 30-minute review · written readout within 48 hours · yours to keep either way
-        </p>
-      </div> */}
     </section>
   )}
 

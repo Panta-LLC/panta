@@ -139,7 +139,7 @@ em { font-family: var(--font-serif); }
   padding-inline: clamp(1.25rem, 5vw, 2.5rem);
 }
 
-.section { padding-block: clamp(3.5rem, 9vw, 6.5rem); }
+.section { padding-block: clamp(3.5rem, 9vw, 5rem); }
 
 .section--dark {
   background: var(--charcoal);
