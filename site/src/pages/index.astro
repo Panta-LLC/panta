@@ -12,8 +12,9 @@ import LeadForm from '../components/LeadForm.astro';
    because Astro scopes `.pkg-card__list li` to this file — an <li> emitted by a
    child component carries that component's scope id and none of these rules. */
 import { listItems, paragraphs } from '../lib/portable.js';
-import { getDoc, getFeaturedCaseStudy, getPackages, getPillars, getPosts, getProjects } from '../lib/sanity.js';
+import { getDoc, getFeaturedCaseStudy, getPackages, getPillars, getPosts, getProjects, getServices } from '../lib/sanity.js';
 import { packageHref } from '../lib/packages.js';
+import { serviceHref } from '../lib/pillars.js';
 import { faqSchema } from '../lib/schema.js';
 
 // Homepage per PULSE-HOME-BUILD.md §4 and panta-homepage-copy.md. Nine
@@ -43,6 +44,19 @@ const HERO = {
   ctaMicrocopy: hero.ctaMicrocopy || 'We call it the Pulse Check · written readout in 48 hours',
   secondaryLabel: hero.secondaryLabel || 'See our work',
 };
+// The headline animates per word, so it has to be split here rather than in
+// JS — splitting after paint would mean rewriting the LCP element's DOM.
+const HEADLINE_WORDS = HERO.headline.split(/\s+/).filter(Boolean);
+
+// §1.1, the services band under the hero. Sanity like every other enumeration
+// of the services (Base's nav, /services/); `indexLabel` is the short form
+// written for exactly this kind of tight slot, title the fallback. The band
+// renders nothing at all if the list is empty rather than an empty strip.
+const MARQUEE = ((await getServices()) ?? []).map((s) => ({
+  label: s.indexLabel || s.title,
+  href: serviceHref(s),
+}));
+
 const caseStudy = await getFeaturedCaseStudy();
 const posts = await getPosts(3);
 
@@ -159,31 +173,124 @@ const FAQS = [
   description="Panta helps small businesses and community organizations get found, run smoother, and tell their story — without the agency runaround."
   schema={[faqSchema(FAQS)].filter(Boolean)}
 >
+  {/* Parser-blocking on purpose. It runs before the hero is painted, which is
+      the whole point: it stamps the pre-animation hidden state on <html> so
+      there is no flash of final-position text before the timeline starts.
+      Everything it does is conditional on motion being wanted, and the watchdog
+      guarantees the copy appears even if the GSAP module below never loads. */}
+  <script is:inline>
+    (() => {
+      const root = document.documentElement;
+      if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+      root.dataset.heroIntro = 'pending';
+      window.__heroIntroWatchdog = window.setTimeout(() => {
+        root.dataset.heroIntro = 'done';
+      }, 1500);
+    })();
+  </script>
+
   <!-- ===================== 1. hero ===================== -->
-  <!-- One column: the claim, the one filled button, and a quiet route to the
-       work. The right-hand "What we do" service index used to live here; it
-       came out when §1.5 landed, because the two said the same thing a screen
-       apart and the index said it in weaker words — capabilities where the
-       packages name what someone can actually buy. /services/ is still one
+  <!-- Centred on a charcoal surface, with the mark run as a background graphic
+       off the right edge. The claim, the one filled button, and a quiet route
+       to the work — the right-hand "What we do" service index used to live
+       here and came out when §1.5 landed, because the two said the same thing
+       a screen apart and the index said it in weaker words. The services are
+       now named directly under this section by the marquee, /services/ is one
        click away in the nav, and every package card routes into a service.
        The rule that survives from §3/§4.1 is the important half: nothing in
        this section may compete with the one filled button. -->
   <section class="hero" id="top" data-section="hero">
+    {/* The mark as environment rather than as an element: off the right edge at
+        ~30x its header size, roughly two thirds of it in frame.
+
+        Inlined rather than <RippleMark /> because the component fixes what this
+        needs to vary — a pixel size, and a currentColor that would inherit the
+        hero's text colour at full strength. Same drawing either way: every
+        value here is the component's own, normalised from its 48 box to this
+        100 box. Radii 21/13.5/6 → 43.75/28.125/12.5, stroke weights 1.4/2.2/3.4
+        → 2.917/4.583/7.083. Both must scale together — scaling the radii while
+        leaving the strokes near-hairline flattens it, because the mark's whole
+        character is that it thickens inward.
+
+        aria-hidden with no title: it carries no information the copy does not,
+        and the real mark is already announced in the header. */}
+    <div class="hero__bg" data-hero="bg" aria-hidden="true">
+      <svg class="hero__mark" viewBox="0 0 100 100" fill="none" focusable="false">
+        <circle class="hero__ring" cx="50" cy="50" r="43.75" stroke-width="2.917" />
+        <circle class="hero__ring" cx="50" cy="50" r="28.125" stroke-width="4.583" />
+        <circle class="hero__ring hero__ring--accent" cx="50" cy="50" r="12.5" stroke-width="7.083" />
+      </svg>
+    </div>
+
     <div class="container hero__grid">
       <div class="hero__claim">
-        <h1 class="hero__headline">{HERO.headline}</h1>
-        <p class="hero__sub">{HERO.subhead}</p>
+        {/* Each word is a mask (overflow:hidden) wrapping the glyphs, so the
+            intro stagger reads as type rising out of the line rather than
+            fading. Split server-side: doing it in JS would mean rewriting the
+            LCP element's DOM after paint. */}
+        <h1 class="hero__headline">
+          {HEADLINE_WORDS.map((word) => (
+            <span class="hero__word"><span class="hero__word-in">{word}</span></span>
+          ))}
+        </h1>
+        <p class="hero__sub" data-hero="sub">{HERO.subhead}</p>
 
-        <div class="hero__act">
-          <a
-            class="btn btn--filled hero__cta"
-            href={BOOK_FORM}
-            data-track="cta_click"
-            data-track-cta="pulse_check"
-            data-track-location="home_hero"
-          >{HERO.ctaLabel}</a>
-          <p class="hero__micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
+        <div class="hero__act" data-hero="act">
+          <div class="hero__buttons">
+            <a
+              class="btn btn--filled hero__cta"
+              href={BOOK_FORM}
+              data-track="cta_click"
+              data-track-cta="pulse_check"
+              data-track-location="home_hero"
+            >{HERO.ctaLabel}</a>
+            {/* Quiet by design: §7.3 allows one filled button in this section,
+                and a second button here would split the click. */}
+            <a
+              class="hero__quiet"
+              href="/work/"
+              data-track="cta_click"
+              data-track-cta="work"
+              data-track-location="home_hero"
+            >{/* Explicit {' '}: the compiler trims a literal space sitting
+                  between an expression and an element, and the arrow ends up
+                  welded to the last word. */}
+              {HERO.secondaryLabel}{' '}<span aria-hidden="true">→</span></a>
+          </div>
+          <p class="hero__micro" data-hero="micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
         </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ===================== 1.1 services marquee ===================== -->
+  <!-- The service index, as a band rather than a column: it is the answer to
+       "what do you actually do" and it now sits directly under the claim, which
+       is where that question gets asked. Labelled rather than decorative, so it
+       gets a heading for screen readers and real links. The visible duplicate
+       that makes the loop seamless is aria-hidden and untabbable, so the list is
+       announced and tabbed through exactly once. -->
+  <section class="svc-band" data-section="services_marquee" aria-labelledby="svc-band-h">
+    <h2 class="svc-band__sr" id="svc-band-h">What we do</h2>
+    <div class="svc-band__viewport">
+      <div class="svc-band__track">
+        {[0, 1].map((copy) => (
+          <ul class="svc-band__list" aria-hidden={copy === 1 ? 'true' : undefined}>
+            {MARQUEE.map((item) => (
+              <li class="svc-band__item">
+                <a
+                  class="svc-band__link"
+                  href={item.href}
+                  tabindex={copy === 1 ? -1 : undefined}
+                  data-track="cta_click"
+                  data-track-cta="services_marquee"
+                  data-track-location="home_services_band"
+                >{item.label}</a>
+                <span class="svc-band__dot" aria-hidden="true">◦</span>
+              </li>
+            ))}
+          </ul>
+        ))}
       </div>
     </div>
   </section>
@@ -697,93 +804,335 @@ const FAQS = [
 <style>
   /* ---------------------------------------------------------------- hero -- */
 
-  .hero {
-    margin-top: calc(var(--header-h) * -1);
-    padding-block: calc(var(--header-h) + clamp(2.5rem, 7vw, 3rem)) clamp(3rem, 7vw, 5rem);
-    background: var(--cream);
+  /* The hero is a charcoal surface. Every colour it uses is a token rather than
+     a palette name, so the same markup renders on cream by overriding six
+     values — the light variant is not dead code, it is one block away.
+     --hero-wash is a bare triple because it is consumed inside rgba(); a hex
+     custom property cannot be given an alpha. */
+  .hero,
+  .svc-band {
+    --hero-surface: var(--charcoal);
+    --hero-type: var(--cream);
+    --hero-quiet: var(--sage); /* sage on charcoal = 7.9:1 */
+    --hero-rule: rgba(245, 241, 231, 0.28);
+    --hero-wash: 38, 37, 31;
+    /* The mark's own colouring, not a decorative palette: RippleMark draws its
+       two outer rings in currentColor and only the innermost one in bamboo. So
+       the rings follow the surface's ink and the accent is bamboo either way,
+       exactly as the logo behaves in the header. */
+    --hero-ring: var(--cream);
+    --hero-ring-alpha: 0.16;
+    --hero-ring-accent: var(--bamboo);
+    --hero-ring-accent-alpha: 0.7;
+    /* The band inverts with the hero — a charcoal strip under a charcoal hero
+       is not a band, it is a gap with links in it. */
+    --band-surface: var(--cream);
+    --band-type: var(--charcoal);
+    --band-accent: var(--bamboo-deep);
+    /* PulseTerm's own hook. Its default, bamboo-deep, is 2.2:1 on charcoal —
+       the term in the microcopy would read as a smudge without it. */
+    --pulse-term-accent: var(--sage);
   }
 
-  /* Single column since the service index came out (see the section comment).
-     The 60/40 split it used to carry is gone with it — a lone CTA floating in
-     a 40% column reads as a layout waiting for content that never arrives. */
+  .hero {
+    position: relative;
+    margin-top: calc(var(--header-h) * -1);
+    padding-block: calc(var(--header-h) + clamp(3rem, 9vw, 5.5rem)) clamp(2.5rem, 6vw, 4rem);
+    background: var(--hero-surface);
+    color: var(--hero-type);
+    /* Two jobs: the word masks clip to the line box, so nothing may bleed
+       sideways while a word is travelling — and the mark is deliberately wider
+       than the section, so it is cropped by the hero's own edges rather than
+       shrinking to fit inside them. */
+    overflow: hidden;
+  }
+
+  /* Single column, centred. The 60/40 split this used to carry went with the
+     service index — a lone CTA floating in a 40% column reads as a layout
+     waiting for content that never arrives — and centring it gives the mark
+     the whole right side to occupy. */
   .hero__grid {
+    position: relative; /* above the mark */
+    z-index: 1;
     display: grid;
+    justify-items: center;
+    text-align: center;
     gap: clamp(2.5rem, 5vw, 4rem);
     align-items: start;
+  }
+
+  .hero__bg {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  /* Anchored by its CENTRE at 96% across, not by an edge offset: the fraction
+     of the mark left in frame then stays constant as the graphic resizes, where
+     `right: -Xrem` re-crops it at every breakpoint. Vertically centred, so it
+     reads as a horizon behind the column rather than a shape sitting under one
+     corner of it.
+
+     Sized off the larger axis so it stays a circle filling the frame at any
+     ratio — a vw-only size leaves a small medallion on a tall phone. The cap
+     stops it becoming an arc with no visible centre on a wide monitor. */
+  .hero__mark {
+    position: absolute;
+    top: 50%;
+    left: 96%;
+    transform: translate(-50%, -50%);
+    width: min(112vh, 92vw, 60rem);
+    aspect-ratio: 1;
+    /* The outer ring's stroke straddles the viewBox edge; without this it would
+       be shaved flat on all four sides by the SVG viewport. */
+    overflow: visible;
+  }
+
+  .hero__ring {
+    stroke: var(--hero-ring);
+    opacity: var(--hero-ring-alpha);
+  }
+
+  .hero__ring--accent {
+    stroke: var(--hero-ring-accent);
+    opacity: var(--hero-ring-accent-alpha);
   }
 
   /* Baloo carries the hero — Panta's display face stays the loudest voice on
      the page. The brief's other "voice" surfaces (problem framing, quotes,
      Pulse masthead, founder note, final CTA) use Spectral, so the serif/sans
-     alternation below the fold is preserved. */
+     alternation below the fold is preserved. Centred type wants a wider measure
+     than the left-aligned original (16ch), or the ragged edges fight the axis. */
   .hero__headline {
     font-family: 'Baloo 2', var(--font-sans);
     font-weight: 800;
-    font-size: clamp(2.1rem, 4.2vw, 3.2rem);
+    font-size: clamp(2.1rem, 5vw, 3.6rem);
     line-height: 1.08;
     letter-spacing: 0.005em;
-    max-width: 16ch;
-    margin: 0 0 1.35rem;
+    max-width: 19ch;
+    margin: 0 0 1.4rem;
+    text-wrap: balance;
   }
 
+  /* The mask. Descenders would be clipped by overflow:hidden at the exact line
+     box, so the box is padded down and the padding pulled back out. */
+  .hero__word {
+    display: inline-block;
+    overflow: hidden;
+    vertical-align: bottom;
+    padding-bottom: 0.14em;
+    margin-bottom: -0.14em;
+    margin-right: 0.26em;
+  }
+
+  .hero__word-in { display: inline-block; }
+
   .hero__sub {
-    font-size: clamp(1rem, 1.25vw, 1.1rem);
+    font-size: clamp(1rem, 1.3vw, 1.12rem);
     line-height: 1.65;
-    color: var(--stone-deep);
-    max-width: 46ch;
-    margin: 0 0 1.5rem;
+    color: var(--hero-quiet);
+    max-width: 52ch;
+    margin: 0 auto 1.5rem;
+    padding: 0.5rem 1.25rem;
+  }
+
+  /* A wash in the surface colour under the two small-text blocks, and only
+     those. A ring crossing small type costs it contrast, and no ring opacity
+     low enough to fix that leaves a visible graphic — on cream the accent ring
+     takes stone-deep from 4.78:1 to 2.91:1, and even at 0.18 it only recovers
+     3.97:1. Dimming the mark is therefore the wrong lever. A local wash at 0.9
+     restores the worst case while leaving the mark at full strength everywhere
+     else: the headline needs no help (it clears 8:1 over any ring) and the CTA
+     is an opaque fill. */
+  .hero__sub,
+  .hero__micro {
+    background: radial-gradient(
+      ellipse 118% 128% at 50% 50%,
+      rgba(var(--hero-wash), 0.93) 0%,
+      rgba(var(--hero-wash), 0.9) 52%,
+      rgba(var(--hero-wash), 0) 100%
+    );
   }
 
   .hero__quiet {
     font-size: 0.95rem;
     font-weight: 500;
-    color: var(--charcoal);
+    color: var(--hero-type);
     text-decoration: none;
-    border-bottom: 1px solid var(--line);
+    border-bottom: 1px solid var(--hero-rule);
     padding-bottom: 2px;
   }
 
-  .hero__quiet:hover { border-bottom-color: var(--charcoal); }
+  .hero__quiet:hover { border-bottom-color: var(--hero-type); }
 
-  /* The button now follows the subhead directly in source order, so the
-     ordering fight this block used to arbitrate — index-then-button on desktop,
+  /* The button follows the subhead directly in source order, so the ordering
+     fight this block used to arbitrate — index-then-button on desktop,
      button-first on mobile so the CTA cleared the fold on a 375px phone — no
      longer exists. It leads at every width. */
   .hero__act { margin-block: 2rem 2.25rem; }
+
+  .hero__buttons {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+
+  /* The hero is not a .section--dark, so global.css's inversion for filled
+     buttons (a charcoal fill on charcoal reads as a hole) does not reach it.
+     Restated against the same values rather than adding .section--dark to the
+     markup, which would also pull in that class's padding and background. */
+  .hero__cta {
+    background: var(--cream);
+    color: var(--charcoal);
+    border-color: var(--cream);
+  }
+
+  .hero__cta:hover {
+    background: var(--charcoal);
+    border-color: var(--cream);
+    color: var(--cream);
+  }
 
   .hero__micro {
     font-family: var(--font-mono);
     font-size: 0.68rem;
     letter-spacing: 0.04em;
-    color: var(--stone-deep);
-    margin: 0.7rem 0 0;
+    color: var(--hero-quiet);
+    margin: 0.7rem auto 0;
+    padding: 0.5rem 1.25rem;
   }
 
   /* ------------------------------------------------------ hero motion -- */
-  /* The hero animates in CSS, not GSAP, unlike every section below it.
-     `gsap.from` sets its start state when the tween is CREATED, and Astro
+  /* The intro is a GSAP timeline, and the pre-state below is what makes that
+     safe. `gsap.from` sets its start state when the tween is CREATED, and Astro
      ships module scripts deferred — so the browser can paint the hero at its
-     final position, then GSAP yanks it back to opacity 0 and replays. Below
-     the fold nobody sees that hand-off; here it is a visible flash on the LCP
-     element. Keyframes start at first paint and need no JS. */
-  @keyframes rise {
-    from { opacity: 0; transform: translateY(16px); }
-    to { opacity: 1; transform: none; }
+     final position, then GSAP yanks it back to opacity 0 and replays. Below the
+     fold nobody sees that hand-off; here it would be a visible flash on the LCP
+     element. So: an inline parser-blocking script stamps html[data-hero-intro]
+     before first paint, these rules hide what is about to animate, every tween
+     is a fromTo() landing on explicit visible values rather than inheriting the
+     hidden ones, and a 1.5s watchdog un-hides everything if the module never
+     runs. The remaining cost is real and deliberate — the LCP element is gated
+     on JS, where the previous CSS-keyframe hero painted without it. */
+  html[data-hero-intro='pending'] .hero__word-in {
+    transform: translateY(105%);
   }
 
-  /* One beat per element, in reading order. The per-row index delays this used
-     to carry (0.26s–0.51s, six of them) went with the index itself. */
-  .hero__headline,
-  .hero__sub,
-  .hero__act > *,
-  .hero__quiet {
-    animation: rise 0.55s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+  html[data-hero-intro='pending'] .hero__bg,
+  html[data-hero-intro='pending'] [data-hero='sub'],
+  html[data-hero-intro='pending'] [data-hero='act'],
+  html[data-hero-intro='pending'] [data-hero='micro'],
+  html[data-hero-intro='pending'] .svc-band {
+    opacity: 0;
   }
 
-  .hero__headline { animation-delay: 0.05s; }
-  .hero__sub { animation-delay: 0.14s; }
-  .hero__act > * { animation-delay: 0.22s; }
-  .hero__quiet { animation-delay: 0.30s; }
+  /* -------------------------------------------------- services band -- */
+
+  /* No site-wide sr-only utility exists yet. */
+  .svc-band__sr {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    margin: -1px;
+    padding: 0;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+    border: 0;
+  }
+
+  .svc-band {
+    background: var(--band-surface);
+    color: var(--band-type);
+    /* The band is cream and so is the section under it; without a rule the
+       links read as floating over the page rather than sitting in a strip. */
+    border-bottom: 1px solid var(--line);
+    padding-block: 0.95rem;
+  }
+
+  .svc-band__viewport {
+    overflow: hidden;
+    /* Fades the band into its own edges so items enter and leave rather than
+       being cut off mid-word. */
+    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
+  }
+
+  /* Two identical copies inside the track, so translating exactly -50% lands
+     copy 2 where copy 1 started — a seamless loop with no JS measuring. */
+  .svc-band__track {
+    display: flex;
+    width: max-content;
+    animation: svc-scroll 34s linear infinite;
+  }
+
+  @keyframes svc-scroll {
+    from { transform: translate3d(0, 0, 0); }
+    to { transform: translate3d(-50%, 0, 0); }
+  }
+
+  /* A moving link is a hard target — stopping on hover or keyboard focus makes
+     the band clickable rather than decorative. */
+  .svc-band:hover .svc-band__track,
+  .svc-band:focus-within .svc-band__track {
+    animation-play-state: paused;
+  }
+
+  /* min-width is what keeps the loop gap-free, and it is not cosmetic: the
+     track translates by exactly one copy, so if a copy is narrower than the
+     viewport the tail of the second one runs out mid-screen and leaves dead
+     space at the right edge. Four services at their natural width are ~990px —
+     fine at 1280, blank at 1600. Forcing each copy to at least fill the screen
+     makes that true at every width and for any number of services, which
+     matters because the list is Sanity data. space-around then distributes the
+     slack instead of pooling it after the last item. */
+  .svc-band__list {
+    display: flex;
+    align-items: center;
+    justify-content: space-around;
+    flex: 0 0 auto;
+    min-width: 100vw;
+    list-style: none;
+    margin: 0;
+    padding: 0;
+  }
+
+  .svc-band__item {
+    display: flex;
+    align-items: center;
+    gap: clamp(1.1rem, 3vw, 2rem);
+    padding-right: clamp(1.1rem, 3vw, 2rem);
+  }
+
+  .svc-band__link {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    white-space: nowrap;
+    color: var(--band-type);
+    text-decoration: none;
+    border-bottom: 1px solid transparent;
+    padding-bottom: 2px;
+    transition: color 0.15s ease, border-color 0.15s ease;
+  }
+
+  .svc-band__link:hover,
+  .svc-band__link:focus-visible {
+    color: var(--band-accent);
+    border-bottom-color: var(--band-accent);
+  }
+
+  /* bamboo-deep on cream is 4.6:1 — the separator stays legible rather than
+     dropping to a smudge. */
+  .svc-band__dot {
+    color: var(--band-accent);
+    font-size: 0.8rem;
+    line-height: 1;
+  }
 
   /* ----------------------------------------------------------- problem -- */
 
@@ -1016,12 +1365,26 @@ const FAQS = [
        but says nothing about `animation` — every keyframe on this page has to
        be switched off here by hand, or reduced-motion users get exactly the
        motion they asked not to have. GSAP is handled separately: its tweens
-       live inside a matchMedia('no-preference') block and never run. */
-    .hero__headline,
-    .hero__sub,
-    .hero__quiet,
-    .hero__act > *,
+       live inside a matchMedia('no-preference') block and never run, and the
+       hero's pre-state is never stamped because the inline script checks the
+       same query — so the hero renders static and fully visible. */
     .faq__item[open] .faq__panel { animation: none !important; }
+
+    /* Stopped, the services band becomes an ordinary horizontally scrollable
+       list, which is why the viewport gets a scrollbar back: every service must
+       stay reachable. The duplicate copy exists only to make a loop seamless;
+       with no loop it is a second reading of the same list. */
+    .svc-band__track { animation: none; }
+
+    .svc-band__viewport {
+      overflow-x: auto;
+      -webkit-mask-image: none;
+      mask-image: none;
+    }
+
+    .svc-band__list[aria-hidden='true'] { display: none; }
+
+    .svc-band__link { transition: none; }
 
     /* :hover transforms are a state, not a transition, so the backstop misses
        these too. */
@@ -1786,12 +2149,15 @@ const FAQS = [
 <SectionViews />
 
 <script>
-  /* The hero is a light surface running under the sticky header, so the header
-     needs to know whether it is floating on it. Same mechanism the previous
-     homepage used; global.css still keys off data-hero-theme + data-header. */
+  /* The hero is a charcoal surface running under the sticky header, so the
+     header needs to know both that it is floating on it AND what colour to be:
+     charcoal nav links on a charcoal hero disappear. global.css keys off
+     data-hero-theme + data-header, and 'connect' is its charcoal-surface theme
+     — every header token follows it. Reusing that rather than restyling the
+     header here keeps the two in agreement if either changes. */
   const hero = document.querySelector<HTMLElement>('.hero');
   if (hero) {
-    document.documentElement.dataset.heroTheme = 'intro';
+    document.documentElement.dataset.heroTheme = 'connect';
     const setHeaderState = (over: boolean) => {
       document.documentElement.dataset.header = over ? 'over-hero' : 'stuck';
     };
@@ -1899,8 +2265,10 @@ const FAQS = [
 
      Same contract as about.astro:248-285 — `from` + autoAlpha means the no-JS
      and reduced-motion states are the fully-visible ones, so nothing can get
-     stranded at opacity 0. The hero is absent on purpose; it animates in CSS
-     so it paints on the first frame (see the hero motion block above). */
+     stranded at opacity 0. The hero is the exception and is handled first,
+     below: it is above the fold, so it runs on load rather than on scroll, and
+     it is fromTo() rather than from() because the CSS pre-state means its
+     current values ARE the hidden ones (see the hero motion block above). */
   import { gsap } from 'gsap';
   import { ScrollTrigger } from 'gsap/ScrollTrigger';
 
@@ -1909,6 +2277,65 @@ const FAQS = [
   const mm = gsap.matchMedia();
 
   mm.add('(prefers-reduced-motion: no-preference)', () => {
+    /* §1 — the hero, on load. Ordered so the mark settles first and the type
+       lands on it: it is the ground, not a competitor. */
+    if (document.documentElement.dataset.heroIntro === 'pending') {
+      clearTimeout((window as any).__heroIntroWatchdog);
+
+      const intro = gsap.timeline({
+        defaults: { ease: 'power3.out' },
+        // Dropping the attribute at the end takes the CSS pre-state rules out
+        // of play, so a later reflow cannot re-hide anything GSAP has finished.
+        onComplete: () => { document.documentElement.dataset.heroIntro = 'done'; },
+      });
+
+      intro
+        // Scaling from 0.88 rather than fading alone means the whole mark
+        // expands into place — one ripple outward, which is the gesture the
+        // logo is a drawing of.
+        .fromTo('.hero__bg',
+          { opacity: 0, scale: 0.88 },
+          { opacity: 1, scale: 1, duration: 1.1, ease: 'power2.out' }
+        )
+        // Each word rises out of its own mask, 0.055s apart — close enough to
+        // read as one gesture on a ten-word line rather than as ten.
+        //
+        // `y: 0` in both halves is load-bearing. GSAP parses whatever transform
+        // it finds when the tween is created, and the pre-state is
+        // translateY(105%) — which computes to a matrix, so GSAP records it as
+        // y ≈ 38px, a SEPARATE component from yPercent. Tweening yPercent
+        // 105 → 0 alone leaves that 38px in place and every word ends the
+        // timeline still sitting below its mask, invisible.
+        .fromTo('.hero__word-in',
+          { yPercent: 105, y: 0 },
+          { yPercent: 0, y: 0, duration: 0.75, stagger: 0.055 },
+          '-=0.2'
+        )
+        .fromTo('[data-hero="sub"]',
+          { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, duration: 0.55 },
+          '-=0.45'
+        )
+        .fromTo('[data-hero="act"]',
+          { opacity: 0, y: 14 },
+          { opacity: 1, y: 0, duration: 0.5 },
+          '-=0.35'
+        )
+        .fromTo('[data-hero="micro"]',
+          { opacity: 0 },
+          { opacity: 1, duration: 0.4 },
+          '-=0.3'
+        )
+        // The band lifts in last, already scrolling — its loop is a CSS
+        // animation on the track inside, so this transform on the section
+        // cannot collide with it.
+        .fromTo('.svc-band',
+          { opacity: 0, y: 18 },
+          { opacity: 1, y: 0, duration: 0.55 },
+          '-=0.25'
+        );
+    }
+
     /* One call per visual GROUP, never per section: a single stagger spanning
        a whole section puts a ~1.2s ramp on one screen, which reads as the page
        withholding rather than arriving. */
