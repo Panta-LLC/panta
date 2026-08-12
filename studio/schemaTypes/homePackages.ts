@@ -29,6 +29,14 @@ export default defineType({
         'Defaults to “Ways in, each one scoped before it starts.” Keep it under about 60 characters — it is capped at 22ch wide and a long one wraps to four lines.',
     }),
     defineField({
+      name: 'priceNote',
+      type: 'text',
+      rows: 2,
+      title: 'Price band',
+      description:
+        'The line under the heading that says what this costs. Defaults to the same $2,000–$10,000 range the FAQ answers in full, so the two must be changed together. Basic HTML is allowed here for emphasis, e.g. <strong>.',
+    }),
+    defineField({
       name: 'expandLabel',
       type: 'string',
       description:

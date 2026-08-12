@@ -142,14 +142,20 @@ const PILLARS = await getPillars();
 // still routes into its service page without anything here hardcoding a URL.
 const PACKAGES = await getPackages();
 
-// The three strings around the cards — kicker, heading, and the label on each
-// card's expander. Same fallback contract as the hero: the shipped copy is the
-// default, so an absent or half-filled `homePackages` document renders the page
-// as written rather than a blank kicker.
+// The strings around the cards — kicker, heading, the price band, and the label
+// on each card's expander. Same fallback contract as the hero: the shipped copy
+// is the default, so an absent or half-filled `homePackages` document renders
+// the page as written rather than a blank kicker.
 const pkgSection = (await getDoc('homePackages')) ?? {};
 const PKGS = {
   kicker: pkgSection.kicker || 'Our Services',
   heading: pkgSection.heading || 'We offer distinct services to help you grow your business.',
+  // The band, restating the FAQ's own numbers in the place they qualify people.
+  // Rendered with set:html for the one <strong>; it is a fixed string in this
+  // file or a plain line from the Studio, never visitor input.
+  priceNote:
+    pkgSection.priceNote ||
+    'Most projects land between <strong>$2,000 and $10,000</strong>, depending on scope — quoted at a fixed price, in writing, before anything starts.',
   expandLabel: pkgSection.expandLabel || 'What’s included',
 };
 
@@ -495,6 +501,9 @@ const FAQS = [
       <div class="container">
         <p class="kicker">{PKGS.kicker}</p>
         <h2 class="pkgs__head">{PKGS.heading}</h2>
+        {PKGS.priceNote && (
+          <p class="pkgs__price" set:html={PKGS.priceNote} />
+        )}
         <div class="pkg-grid">
           {PACKAGES.map((p) => {
             /* A package with no page and no service reference has nowhere to
@@ -723,9 +732,9 @@ const FAQS = [
             a stutter. This one also promises only what the two fields can
             deliver: compact has no message box, so it says we'll reach out,
             not "tell us what's going on". */}
-        <h2 class="mid-ask__head">Rather we reached out to you?</h2>
+        <h2 class="mid-ask__head">Would you rather we reached out?</h2>
         <p class="mid-ask__body">
-          Leave your name and email and we'll reach out to you within one business day to start the conversation for understanding your needs and how we can help.
+          Leave your name and email and we’ll get in touch within one business day to understand what you need and how we can help.
         </p>
       </div>
       <LeadForm source="home_mid" variant="compact" />
@@ -804,17 +813,20 @@ const FAQS = [
         />
       </div>
       <div class="founder__copy">
-        <!-- <p>
+        {/* This paragraph and its abstract replacement swapped places. The
+            replacement said the organizations deserve "the capabilities and
+            support that larger companies take for granted" — true, and true of
+            every agency's About page. This one names who is failing them and
+            how, which is what makes the mission land as an observation rather
+            than a sentiment. */}
+        <p>
           I started Panta because the organizations doing the most important work are usually
           the ones with the least support. Big agencies don’t want the account. DIY tools eat
           your weekends. So the work that holds communities together stays invisible.
-        </p> -->
-        <p>
-          I started Panta because I believe the small businesses and organizations that serve our communities deserve the capabilities and support that larger companies take for granted. Our mission is to help them build and grow in a way that is sustainable and impactful.
         </p>
         <p>
           I’ve spent over 15 years building for companies of every size. Now I bring that experience to the
-          people that serve people. If that’s you, We’d love to talk.
+          people that serve people. If that’s you, we’d love to talk.
         </p>
         <p class="founder__sign">
           — Damon<br />
@@ -1609,6 +1621,24 @@ const FAQS = [
     line-height: 1.25;
     margin: 0.25rem 0 0;
     max-width: 22ch;
+  }
+
+  /* The price band, next to the things it prices. The same number is answered
+     in full in the FAQ, but the FAQ is at ~90% scroll — which means it only
+     ever reached people who had already decided. Here it does the work a price
+     is supposed to do: it qualifies, and it disqualifies, at the moment
+     someone is reading what they might buy. */
+  .pkgs__price {
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+    max-width: 48ch;
+    margin: 0.9rem 0 0;
+  }
+
+  .pkgs__price strong {
+    font-weight: 600;
+    color: var(--charcoal);
   }
 
   /* Explicit breakpoints rather than auto-fit: the number of cards is data —
