@@ -64,8 +64,9 @@ export function readPath(doc, path) {
  * @param {Array}  [batch.sets]            [docId, path, expectedOld, newValue]
  * @param {Array}  [batch.inserts]         [docId, arrayField, item, afterKey]
  * @param {Array}  [batch.replacements]    [docId, arrayField, item] — replace by _key
+ * @param {Array}  [batch.unsets]          [docId, path, expectedOld] — remove a field
  */
-export async function run({ name, sets = [], inserts = [], replacements = [] }) {
+export async function run({ name, sets = [], inserts = [], replacements = [], unsets = [] }) {
   const apply = process.argv.includes('--apply');
   const token = process.env.SANITY_WRITE_TOKEN || tokenFromEnvFile();
 
@@ -82,6 +83,7 @@ export async function run({ name, sets = [], inserts = [], replacements = [] }) 
       ...sets.map((s) => s[0]),
       ...inserts.map((i) => i[0]),
       ...replacements.map((r) => r[0]),
+      ...unsets.map((u) => u[0]),
     ]),
   ];
   const docs = Object.fromEntries(
@@ -114,6 +116,33 @@ export async function run({ name, sets = [], inserts = [], replacements = [] }) 
     } else if (current === from) {
       console.log(`  WILL SET      ${id}.${path}`);
       queue(id, (p) => p.set({ [path]: to }));
+      changes++;
+    } else {
+      console.log(
+        `  CONFLICT      ${id}.${path}\n                expected: ${JSON.stringify(from)}\n                found:    ${JSON.stringify(current)}`,
+      );
+      conflicts++;
+    }
+  }
+
+  /* Same expected-value contract as set(): a field holding something other
+     than what the batch says it holds is a conflict, because "remove it" was
+     written about the value we knew about. Already-absent is done, not a
+     conflict — that is what a re-run looks like. */
+  for (const [id, path, from] of unsets) {
+    const doc = docs[id];
+    if (!doc) {
+      console.log(`  MISSING DOC   ${id}`);
+      conflicts++;
+      continue;
+    }
+    const current = readPath(doc, path);
+    if (current === undefined) {
+      console.log(`  already done  ${id}.${path}`);
+      done++;
+    } else if (current === from) {
+      console.log(`  WILL UNSET    ${id}.${path}`);
+      queue(id, (p) => p.unset([path]));
       changes++;
     } else {
       console.log(

@@ -1,5 +1,4 @@
 ---
-import '@fontsource/baloo-2/800.css';
 import '@fontsource/ibm-plex-mono/400.css';
 import Base from '../layouts/Base.astro';
 import RippleMark from '../components/RippleMark.astro';
@@ -36,26 +35,87 @@ const settings = await getDoc('siteSettings');
 // alternate headlines can be tested without a deploy.
 const hero = (await getDoc('homeHero')) ?? {};
 const HERO = {
-  headline: hero.headline || 'For organizations that serve people, not algorithms.',
+  // The mission, not the audience. `*asterisks*` mark the accented phrase; see
+  // HEADLINE_WORDS. There is no eyebrow above this by design — the subhead now
+  // names who the page is for, and a category label plus a mission line plus a
+  // range line is three qualifications before the first ask.
+  headline: hero.headline || 'Built to serve the people *who serve people.*',
+  // Audience and range in one breath: who it's for, then the span of what is
+  // on offer. The range named here must match the cards under the CTA — an
+  // earlier draft promised marketing and custom software, neither of which has
+  // a service page to land on, so the reader met the word and then a wall.
+  // Widen this line the day those two services exist in the Studio, not before.
   subhead:
     hero.subhead ||
-    'Panta helps small businesses and community organizations get found, run smoother, and tell their story — without the agency runaround.',
-  ctaLabel: hero.ctaLabel || 'Book a free 30-minute review',
-  ctaMicrocopy: hero.ctaMicrocopy || 'We call it the Pulse Check · written readout in 48 hours',
-  secondaryLabel: hero.secondaryLabel || 'See our work',
+    'A full-service partner for private practices, community organizations, and local businesses — websites, brand, content, and operations, under one roof.',
+  ctaLabel: hero.ctaLabel || 'Get a free website review',
+  // The deliverable, in the line the button owns. The Pulse Check name stays
+  // here because PulseTerm needs it to hang the definition on, and because the
+  // button itself must pass the no-context test without it.
+  ctaMicrocopy:
+    hero.ctaMicrocopy || 'We call it the Pulse Check · 30 minutes + a written action plan in 48 hours',
+  // Directly under the ask, where the objection is actually forming. Says the
+  // same thing as PulseTerm's tooltip, out loud, for the reader who never
+  // hovers anything.
+  //
+  // A fragment, not a sentence, and deliberately missing its subject: the line
+  // directly above already named the action plan, and saying the noun twice in
+  // twenty-four words made this read as a restatement of the spec rather than a
+  // promise added to it. Without it, the two lines are one thought — what you
+  // get, then what it costs you. PulseTerm's tooltip still carries the whole
+  // sentence for anyone who wants it (PulseTerm.astro's `tip` default).
+  riskReversal: hero.riskReversal || 'Yours to keep, whether we work together or not.',
+  secondaryLabel: hero.secondaryLabel || 'See client work',
+  // Names only, one line. The section carried a testimonial for exactly one
+  // revision; it costs ~90px of fold and Arielle's words do more work beside
+  // her own case study than floating above it.
+  trustedByLabel: hero.trustedByLabel || 'Trusted by',
+  trustedBy:
+    hero.trustedBy ||
+    'Delta Bay Impact · Arielle Rae Hastings Therapy · + small businesses across Northern California',
 };
 // The headline animates per word, so it has to be split here rather than in
 // JS — splitting after paint would mean rewriting the LCP element's DOM.
-const HEADLINE_WORDS = HERO.headline.split(/\s+/).filter(Boolean);
+//
+// Text between *asterisks* is the accented phrase — the emotional anchor of the
+// claim, set in sage against the cream. Marked inline in the string rather than
+// in a second field so the whole headline stays one editable text area, and so
+// a headline written without markers simply renders unaccented.
+//
+// Split on the marker rather than testing each word for one: the phrase is
+// delimited at its ends, so a word in the MIDDLE of it carries no asterisk and
+// a per-word test drops it out of the emphasis. Odd segments are the inside.
+const HEADLINE_WORDS = HERO.headline
+  .split('*')
+  .flatMap((segment, i) =>
+    segment
+      .split(/\s+/)
+      .filter(Boolean)
+      .map((text) => ({ text, accent: i % 2 === 1 })),
+  );
+const TRUSTED_BY_LINES = HERO.trustedBy.split('\n').filter(Boolean);
 
-// §1.1, the services band under the hero. Sanity like every other enumeration
-// of the services (Base's nav, /services/); `indexLabel` is the short form
-// written for exactly this kind of tight slot, title the fallback. The band
-// renders nothing at all if the list is empty rather than an empty strip.
-const MARQUEE = ((await getServices()) ?? []).map((s) => ({
+// The service cards, inside the hero directly under the CTA. They replaced the
+// scrolling services band that used to sit immediately below this section:
+// same list, same source, same links — a band under a grid of the same six
+// names is the list printed twice within one screen.
+//
+// Sanity like every other enumeration of the services (Base's nav,
+// /services/); `indexLabel` is the short form written for exactly this kind of
+// tight slot, title the fallback. The grid renders nothing at all if the list
+// is empty rather than an empty rack.
+//
+// The count is data, not layout: whatever is `listed` in the Studio appears
+// here, and CARD_COLUMNS below keeps the result a full rectangle. Adding the
+// two services the subhead promises but the Studio does not yet hold —
+// digital marketing, custom software — is a Studio job, not a code change.
+const SERVICE_CARDS = ((await getServices()) ?? []).map((s) => ({
   label: s.indexLabel || s.title,
   href: serviceHref(s),
 }));
+// Three columns when the count divides by three, two otherwise — so four cards
+// are 2x2 rather than a row of three with an orphan under it.
+const CARD_COLUMNS = SERVICE_CARDS.length % 3 === 0 ? 3 : 2;
 
 const caseStudy = await getFeaturedCaseStudy();
 const posts = await getPosts(3);
@@ -230,7 +290,9 @@ const FAQS = [
             LCP element's DOM after paint. */}
         <h1 class="hero__headline">
           {HEADLINE_WORDS.map((word) => (
-            <span class="hero__word"><span class="hero__word-in">{word}</span></span>
+            <span class="hero__word">
+              <span class:list={['hero__word-in', word.accent && 'hero__word-in--accent']}>{word.text}</span>
+            </span>
           ))}
         </h1>
         <p class="hero__sub" data-hero="sub">{HERO.subhead}</p>
@@ -258,42 +320,61 @@ const FAQS = [
               {HERO.secondaryLabel}{' '}<span aria-hidden="true">→</span></a>
           </div>
           <p class="hero__micro" data-hero="micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
+          {HERO.riskReversal && <p class="hero__risk">{HERO.riskReversal}</p>}
         </div>
+
+        {/* The self-route. Someone who already knows what they need should not
+            have to take the free review to find the page about it — these are
+            the same services as the nav, one click closer, and they answer
+            "what do you actually do" in the place the question gets asked.
+
+            A labelled <nav>, not a decorative rack: it is a list of links to
+            elsewhere on the site, which is what makes it navigation. Quiet
+            enough not to compete with the one filled button above. */}
+        {SERVICE_CARDS.length > 0 && (
+          <nav
+            class="hero__cards"
+            data-hero="cards"
+            aria-label="Services"
+            style={`--hero-card-cols: ${CARD_COLUMNS}`}
+          >
+            {SERVICE_CARDS.map((item) => (
+              <a
+                class="hero__card"
+                href={item.href}
+                data-track="cta_click"
+                data-track-cta="service_card"
+                data-track-location="home_hero_services"
+              >
+                <span>{item.label}</span>
+                <span class="hero__card-arrow" aria-hidden="true">→</span>
+              </a>
+            ))}
+          </nav>
+        )}
+
+        {/* Names only, under a hairline. Proof belongs in the first screen; a
+            full testimonial does not fit in it alongside the cards, and the
+            one we have reads better beside its own case study. */}
+        {TRUSTED_BY_LINES.length > 0 && (
+          <div class="hero__proof" data-hero="proof">
+            <p class="hero__proof-clients">
+              <strong>{HERO.trustedByLabel}</strong>
+              {TRUSTED_BY_LINES.map((line, i) => (
+                <Fragment>{i > 0 && <br />}{line}</Fragment>
+              ))}
+            </p>
+          </div>
+        )}
       </div>
     </div>
   </section>
 
-  <!-- ===================== 1.1 services marquee ===================== -->
-  <!-- The service index, as a band rather than a column: it is the answer to
-       "what do you actually do" and it now sits directly under the claim, which
-       is where that question gets asked. Labelled rather than decorative, so it
-       gets a heading for screen readers and real links. The visible duplicate
-       that makes the loop seamless is aria-hidden and untabbable, so the list is
-       announced and tabbed through exactly once. -->
-  <section class="svc-band" data-section="services_marquee" aria-labelledby="svc-band-h">
-    <h2 class="svc-band__sr" id="svc-band-h">What we do</h2>
-    <div class="svc-band__viewport">
-      <div class="svc-band__track">
-        {[0, 1].map((copy) => (
-          <ul class="svc-band__list" aria-hidden={copy === 1 ? 'true' : undefined}>
-            {MARQUEE.map((item) => (
-              <li class="svc-band__item">
-                <a
-                  class="svc-band__link"
-                  href={item.href}
-                  tabindex={copy === 1 ? -1 : undefined}
-                  data-track="cta_click"
-                  data-track-cta="services_marquee"
-                  data-track-location="home_services_band"
-                >{item.label}</a>
-                <span class="svc-band__dot" aria-hidden="true">◦</span>
-              </li>
-            ))}
-          </ul>
-        ))}
-      </div>
-    </div>
-  </section>
+  {/* §1.1, the scrolling services band, stood here. It is now the card grid
+      inside the hero above — same services, same source, same links, one
+      screen earlier and clickable without waiting for a loop to bring the
+      label round. Keeping both would have printed the list twice inside a
+      single screen. */}
 
   <!-- ===================== 2. featured case study ===================== -->
   <!-- Was §4.6, four screens down, behind the pillars and the process. It came
@@ -584,7 +665,7 @@ const FAQS = [
             data-track="cta_click"
             data-track-cta="pulse_check"
             data-track-location="home_pillars"
-          >Book a free 30-minute review</a>
+          >Get a free website review</a>
           <a href={BOOK} class="pillars__learn-more" data-track="cta_click" data-track-cta="learn_more_pulse_check" data-track-location="home_pillars_more">
             Learn more <span aria-hidden="true">→</span>
           </a>
@@ -809,13 +890,17 @@ const FAQS = [
      values — the light variant is not dead code, it is one block away.
      --hero-wash is a bare triple because it is consumed inside rgba(); a hex
      custom property cannot be given an alpha. */
-  .hero,
-  .svc-band {
+  .hero {
     --hero-surface: var(--charcoal);
     --hero-type: var(--cream);
     --hero-quiet: var(--sage); /* sage on charcoal = 7.9:1 */
     --hero-rule: rgba(245, 241, 231, 0.28);
     --hero-wash: 38, 37, 31;
+    /* The cards. A raised sliver of the surface rather than a border alone —
+       on cream the same two values become a tint and a hairline, which is what
+       keeps the light variant one override away. */
+    --hero-card-bg: rgba(245, 241, 231, 0.05);
+    --hero-card-line: rgba(245, 241, 231, 0.16);
     /* The mark's own colouring, not a decorative palette: RippleMark draws its
        two outer rings in currentColor and only the innermost one in bamboo. So
        the rings follow the surface's ink and the accent is bamboo either way,
@@ -824,11 +909,6 @@ const FAQS = [
     --hero-ring-alpha: 0.16;
     --hero-ring-accent: var(--bamboo);
     --hero-ring-accent-alpha: 0.7;
-    /* The band inverts with the hero — a charcoal strip under a charcoal hero
-       is not a band, it is a gap with links in it. */
-    --band-surface: var(--cream);
-    --band-type: var(--charcoal);
-    --band-accent: var(--bamboo-deep);
     /* PulseTerm's own hook. Its default, bamboo-deep, is 2.2:1 on charcoal —
        the term in the microcopy would read as a smudge without it. */
     --pulse-term-accent: var(--sage);
@@ -837,7 +917,10 @@ const FAQS = [
   .hero {
     position: relative;
     margin-top: calc(var(--header-h) * -1);
-    padding-block: calc(var(--header-h) + clamp(3rem, 9vw, 5.5rem)) clamp(2.5rem, 6vw, 4rem);
+    /* Tighter top and bottom than the slogan version carried: the section now
+       holds an eyebrow, a risk-reversal line and a proof strip, and the whole
+       arrangement is only worth anything if it lands on one screen. */
+    padding-block: calc(var(--header-h) + clamp(1.75rem, 5vw, 3rem)) clamp(1.75rem, 4vw, 2.5rem);
     background: var(--hero-surface);
     color: var(--hero-type);
     /* Two jobs: the word masks clip to the line box, so nothing may bleed
@@ -861,11 +944,25 @@ const FAQS = [
     align-items: start;
   }
 
+  /* Full width rather than shrink-to-fit, which is what `justify-items: center`
+     would otherwise give a lone grid item. Every block inside carries its own
+     measure and centres on it — and the two that don't want one (the eyebrow,
+     the proof strip) were being sized by whichever sibling happened to be
+     widest, which is not a layout rule, it is a coincidence. */
+  .hero__claim { width: 100%; }
+
+  /* Faded into the section's top edge. The mark is deliberately cropped by the
+     hero's own edges, but the top-right corner cut a ring off mid-arc against
+     the header, which read as a graphic that had been trimmed to fit rather
+     than one running past the frame. The right and bottom crops stay hard —
+     that is the "off the edge" the composition is built on. */
   .hero__bg {
     position: absolute;
     inset: 0;
     pointer-events: none;
     z-index: 0;
+    -webkit-mask-image: linear-gradient(to bottom, transparent 0, #000 20%);
+    mask-image: linear-gradient(to bottom, transparent 0, #000 20%);
   }
 
   /* Anchored by its CENTRE at 96% across, not by an edge offset: the fraction
@@ -899,31 +996,106 @@ const FAQS = [
     opacity: var(--hero-ring-accent-alpha);
   }
 
-  /* Baloo carries the hero — Panta's display face stays the loudest voice on
-     the page. The brief's other "voice" surfaces (problem framing, quotes,
-     Pulse masthead, founder note, final CTA) use Spectral, so the serif/sans
-     alternation below the fold is preserved. Centred type wants a wider measure
-     than the left-aligned original (16ch), or the ragged edges fight the axis. */
+  /* Spectral, not Baloo. The rounded display face read playful — fine for a
+     snack brand, wrong for a headline whose whole claim is that Panta makes a
+     therapist or a nonprofit look credible. The serif is also what the rest of
+     the system already speaks in: the problem framing, the quotes, the Pulse
+     masthead, the founder note and the final CTA are all Spectral, so the
+     headline now opens in the same voice the page continues in.
+     400, not a heavy weight: Spectral's authority is in its shapes, and
+     bolding it to match Baloo's mass would just make it shout in a lower
+     register. Centred type wants a wider measure than the left-aligned
+     original (16ch), or the ragged edges fight the axis. */
+  /* A slightly lower ceiling than the 3.6rem this carried when the hero held
+     only a claim and a button. The section now runs claim → CTA → six cards →
+     proof, and every rem the headline takes is a rem the cards spend below the
+     fold. */
   .hero__headline {
-    font-family: 'Baloo 2', var(--font-sans);
-    font-weight: 800;
-    font-size: clamp(2.1rem, 5vw, 3.6rem);
-    line-height: 1.08;
-    letter-spacing: 0.005em;
-    max-width: 19ch;
-    margin: 0 0 1.4rem;
-    text-wrap: balance;
+    font-family: var(--font-serif);
+    font-weight: 400;
+    font-size: clamp(2.15rem, 4.4vw, 3.25rem);
+    line-height: 1.12;
+    letter-spacing: -0.01em;
+    /* 24ch and `pretty`, not 21ch and `balance`. Balancing evens the line
+       lengths, which on this headline breaks after "the" and hangs an article
+       off the end of line one; filling to the measure breaks after "people"
+       and drops the accented phrase onto a line of its own. 24ch is the middle
+       of the 22–25ch band that produces that break, so a font-metric shift of
+       a character either way does not flip it. */
+    max-width: 24ch;
+    margin: 0 auto 0.9rem;
+    text-wrap: pretty;
+  }
+
+  /* The emotional anchor of the claim: colour plus italic, which is the pair
+     the mockup uses and which survives on its own if either one is missed —
+     sage on charcoal is 7.9:1, so the colour is never carrying meaning alone
+     for a reader who cannot see it. */
+  .hero__word-in--accent {
+    color: var(--sage);
+    font-style: italic;
+  }
+
+  /* ------------------------------------------------------- hero cards -- */
+  /* Column count comes from the markup as --hero-card-cols, because it is a
+     function of how many services exist and that is data (see CARD_COLUMNS).
+     Narrower viewports override it here — a two-word card in a 3-up grid on a
+     phone is four wrapped lines. */
+  .hero__cards {
+    display: grid;
+    grid-template-columns: repeat(var(--hero-card-cols, 3), minmax(0, 1fr));
+    gap: 0.6rem;
+    max-width: 46rem;
+    margin: 0 auto 1.25rem;
+  }
+
+  .hero__card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    text-align: left;
+    background: var(--hero-card-bg);
+    border: 1px solid var(--hero-card-line);
+    border-radius: 10px;
+    padding: 0.75rem 0.95rem;
+    font-size: 0.86rem;
+    font-weight: 500;
+    color: var(--hero-type);
+    text-decoration: none;
+    transition: border-color 0.15s ease, background 0.15s ease;
+  }
+
+  .hero__card:hover,
+  .hero__card:focus-visible {
+    border-color: var(--sage);
+    background: rgba(245, 241, 231, 0.09);
+    color: var(--hero-type);
+  }
+
+  .hero__card-arrow {
+    color: var(--hero-quiet);
+    flex-shrink: 0;
+    transition: transform 0.15s ease;
+  }
+
+  .hero__card:hover .hero__card-arrow { transform: translateX(2px); }
+
+  @media (max-width: 640px) {
+    .hero__cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   }
 
   /* The mask. Descenders would be clipped by overflow:hidden at the exact line
-     box, so the box is padded down and the padding pulled back out. */
+     box, and Spectral's italic leans past its glyph box on the right — so the
+     box is padded on those two sides and the padding pulled straight back out,
+     leaving the word spacing to margin-right alone. */
   .hero__word {
     display: inline-block;
     overflow: hidden;
     vertical-align: bottom;
-    padding-bottom: 0.14em;
-    margin-bottom: -0.14em;
-    margin-right: 0.26em;
+    padding: 0 0.06em 0.16em;
+    margin: 0 -0.06em -0.16em;
+    margin-right: 0.2em;
   }
 
   .hero__word-in { display: inline-block; }
@@ -933,7 +1105,7 @@ const FAQS = [
     line-height: 1.65;
     color: var(--hero-quiet);
     max-width: 52ch;
-    margin: 0 auto 1.5rem;
+    margin: 0 auto 1.15rem;
     padding: 0.5rem 1.25rem;
   }
 
@@ -946,7 +1118,9 @@ const FAQS = [
      else: the headline needs no help (it clears 8:1 over any ring) and the CTA
      is an opaque fill. */
   .hero__sub,
-  .hero__micro {
+  .hero__micro,
+  .hero__risk,
+  .hero__proof {
     background: radial-gradient(
       ellipse 118% 128% at 50% 50%,
       rgba(var(--hero-wash), 0.93) 0%,
@@ -955,12 +1129,15 @@ const FAQS = [
     );
   }
 
+  /* Its own rule colour rather than --hero-rule: at 0.28 the underline read
+     heavier than a secondary link earns, and --hero-rule is also the hairline
+     over the proof strip, which does want that weight. */
   .hero__quiet {
     font-size: 0.95rem;
     font-weight: 500;
     color: var(--hero-type);
     text-decoration: none;
-    border-bottom: 1px solid var(--hero-rule);
+    border-bottom: 1px solid rgba(245, 241, 231, 0.18);
     padding-bottom: 2px;
   }
 
@@ -970,7 +1147,7 @@ const FAQS = [
      fight this block used to arbitrate — index-then-button on desktop,
      button-first on mobile so the CTA cleared the fold on a 375px phone — no
      longer exists. It leads at every width. */
-  .hero__act { margin-block: 2rem 2.25rem; }
+  .hero__act { margin-block: 1.5rem 1.5rem; }
 
   .hero__buttons {
     display: flex;
@@ -996,13 +1173,68 @@ const FAQS = [
     color: var(--cream);
   }
 
+  /* `fit-content`, and it is doing real work. Both this and .hero__risk are
+     single display lines, but each was being measured as a paragraph — this one
+     by global.css's `p { max-width: var(--measure) }` (62ch → 405px), the one
+     below by a 46ch of its own (389px). Two blocks capped within 16px of each
+     other, each wrapping to two lines, stopped reading as a spec and a promise
+     and started reading as one four-line lump of small print.
+     Not `none`: both are in the radial-wash group below, and the wash is a
+     LOCAL darkening that keeps sage legible where it crosses the mark. A
+     full-width block stretches that gradient into a smear across the hero;
+     fit-content keeps it hugging the line it exists for. It also degrades on
+     its own — fit-content is min(max-content, available), so a phone wraps
+     these exactly as before. */
   .hero__micro {
     font-family: var(--font-mono);
     font-size: 0.68rem;
     letter-spacing: 0.04em;
     color: var(--hero-quiet);
-    margin: 0.7rem auto 0;
+    max-width: fit-content;
+    margin: 0.4rem auto 0;
     padding: 0.5rem 1.25rem;
+  }
+
+  /* Sans, not mono: the line above it is a spec and this is something someone
+     says. Dimmer than the subhead so it reads as a footnote to the button
+     rather than a second subhead — and shorter than the spec above it, so the
+     two taper instead of stacking as two bars of the same width. */
+  .hero__risk {
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--hero-quiet);
+    max-width: fit-content;
+    margin: 0.3rem auto 0;
+    padding: 0.35rem 1.25rem;
+  }
+
+  /* -------------------------------------------------------- hero proof -- */
+  /* A hairline and one line of names. The rule is what makes it read as
+     evidence appended to the claim rather than as another paragraph of it. */
+  .hero__proof {
+    max-width: 46rem;
+    margin: 0 auto;
+    padding: 0.95rem 1.25rem 0;
+    border-top: 1px solid var(--hero-rule);
+  }
+
+  /* The line breaks here are the editor's, entered in the Studio — so no
+     --measure cap, which would add breaks they did not ask for. */
+  .hero__proof-clients {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    line-height: 1.9;
+    letter-spacing: 0.03em;
+    color: var(--hero-quiet);
+    max-width: none;
+    margin: 0;
+  }
+
+  .hero__proof-clients strong {
+    display: block;
+    font-weight: 500;
+    color: var(--hero-type);
+    margin-bottom: 0.15rem;
   }
 
   /* ------------------------------------------------------ hero motion -- */
@@ -1025,113 +1257,9 @@ const FAQS = [
   html[data-hero-intro='pending'] [data-hero='sub'],
   html[data-hero-intro='pending'] [data-hero='act'],
   html[data-hero-intro='pending'] [data-hero='micro'],
-  html[data-hero-intro='pending'] .svc-band {
+  html[data-hero-intro='pending'] [data-hero='cards'],
+  html[data-hero-intro='pending'] [data-hero='proof'] {
     opacity: 0;
-  }
-
-  /* -------------------------------------------------- services band -- */
-
-  /* No site-wide sr-only utility exists yet. */
-  .svc-band__sr {
-    position: absolute;
-    width: 1px;
-    height: 1px;
-    margin: -1px;
-    padding: 0;
-    overflow: hidden;
-    clip-path: inset(50%);
-    white-space: nowrap;
-    border: 0;
-  }
-
-  .svc-band {
-    background: var(--band-surface);
-    color: var(--band-type);
-    /* The band is cream and so is the section under it; without a rule the
-       links read as floating over the page rather than sitting in a strip. */
-    border-bottom: 1px solid var(--line);
-    padding-block: 0.95rem;
-  }
-
-  .svc-band__viewport {
-    overflow: hidden;
-    /* Fades the band into its own edges so items enter and leave rather than
-       being cut off mid-word. */
-    -webkit-mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-    mask-image: linear-gradient(90deg, transparent, #000 6%, #000 94%, transparent);
-  }
-
-  /* Two identical copies inside the track, so translating exactly -50% lands
-     copy 2 where copy 1 started — a seamless loop with no JS measuring. */
-  .svc-band__track {
-    display: flex;
-    width: max-content;
-    animation: svc-scroll 34s linear infinite;
-  }
-
-  @keyframes svc-scroll {
-    from { transform: translate3d(0, 0, 0); }
-    to { transform: translate3d(-50%, 0, 0); }
-  }
-
-  /* A moving link is a hard target — stopping on hover or keyboard focus makes
-     the band clickable rather than decorative. */
-  .svc-band:hover .svc-band__track,
-  .svc-band:focus-within .svc-band__track {
-    animation-play-state: paused;
-  }
-
-  /* min-width is what keeps the loop gap-free, and it is not cosmetic: the
-     track translates by exactly one copy, so if a copy is narrower than the
-     viewport the tail of the second one runs out mid-screen and leaves dead
-     space at the right edge. Four services at their natural width are ~990px —
-     fine at 1280, blank at 1600. Forcing each copy to at least fill the screen
-     makes that true at every width and for any number of services, which
-     matters because the list is Sanity data. space-around then distributes the
-     slack instead of pooling it after the last item. */
-  .svc-band__list {
-    display: flex;
-    align-items: center;
-    justify-content: space-around;
-    flex: 0 0 auto;
-    min-width: 100vw;
-    list-style: none;
-    margin: 0;
-    padding: 0;
-  }
-
-  .svc-band__item {
-    display: flex;
-    align-items: center;
-    gap: clamp(1.1rem, 3vw, 2rem);
-    padding-right: clamp(1.1rem, 3vw, 2rem);
-  }
-
-  .svc-band__link {
-    font-family: var(--font-mono);
-    font-size: 0.74rem;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
-    white-space: nowrap;
-    color: var(--band-type);
-    text-decoration: none;
-    border-bottom: 1px solid transparent;
-    padding-bottom: 2px;
-    transition: color 0.15s ease, border-color 0.15s ease;
-  }
-
-  .svc-band__link:hover,
-  .svc-band__link:focus-visible {
-    color: var(--band-accent);
-    border-bottom-color: var(--band-accent);
-  }
-
-  /* bamboo-deep on cream is 4.6:1 — the separator stays legible rather than
-     dropping to a smudge. */
-  .svc-band__dot {
-    color: var(--band-accent);
-    font-size: 0.8rem;
-    line-height: 1;
   }
 
   /* ----------------------------------------------------------- problem -- */
@@ -1370,24 +1498,9 @@ const FAQS = [
        same query — so the hero renders static and fully visible. */
     .faq__item[open] .faq__panel { animation: none !important; }
 
-    /* Stopped, the services band becomes an ordinary horizontally scrollable
-       list, which is why the viewport gets a scrollbar back: every service must
-       stay reachable. The duplicate copy exists only to make a loop seamless;
-       with no loop it is a second reading of the same list. */
-    .svc-band__track { animation: none; }
-
-    .svc-band__viewport {
-      overflow-x: auto;
-      -webkit-mask-image: none;
-      mask-image: none;
-    }
-
-    .svc-band__list[aria-hidden='true'] { display: none; }
-
-    .svc-band__link { transition: none; }
-
     /* :hover transforms are a state, not a transition, so the backstop misses
        these too. */
+    .hero__card:hover .hero__card-arrow,
     .step:hover .step__n,
     .case__media:hover img { transform: none; }
   }
@@ -2297,6 +2410,12 @@ const FAQS = [
           { opacity: 0, scale: 0.88 },
           { opacity: 1, scale: 1, duration: 1.1, ease: 'power2.out' }
         )
+        // The audience line arrives just before the claim it qualifies.
+        .fromTo('[data-hero="eyebrow"]',
+          { opacity: 0, y: 8 },
+          { opacity: 1, y: 0, duration: 0.45 },
+          '-=0.55'
+        )
         // Each word rises out of its own mask, 0.055s apart — close enough to
         // read as one gesture on a ten-word line rather than as ten.
         //
@@ -2326,13 +2445,20 @@ const FAQS = [
           { opacity: 1, duration: 0.4 },
           '-=0.3'
         )
-        // The band lifts in last, already scrolling — its loop is a CSS
-        // animation on the track inside, so this transform on the section
-        // cannot collide with it.
-        .fromTo('.svc-band',
-          { opacity: 0, y: 18 },
-          { opacity: 1, y: 0, duration: 0.55 },
+        // The cards arrive as one block rather than staggered card by card:
+        // they are the alternative to the ask above them, and a six-step
+        // ripple across them would read as a second, competing event.
+        .fromTo('[data-hero="cards"]',
+          { opacity: 0, y: 16 },
+          { opacity: 1, y: 0, duration: 0.5 },
           '-=0.25'
+        )
+        // Proof last: it is the thing you read after you have already read the
+        // ask and seen the range.
+        .fromTo('[data-hero="proof"]',
+          { opacity: 0, y: 12 },
+          { opacity: 1, y: 0, duration: 0.5 },
+          '-=0.3'
         );
     }
 

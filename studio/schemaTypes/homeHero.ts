@@ -23,7 +23,7 @@ export default defineType({
       type: 'text',
       rows: 2,
       description:
-        'The claim. Deck alternates worth testing: "Meaningful work deserves to be found." · "You do the work that matters. We make sure it lands." · "Built for the organizations holding communities together."',
+        'The claim. Wrap a phrase in *asterisks* to set it in the accent colour. Deck alternates worth testing: "Meaningful work deserves to be found." · "You do the work that matters. We make sure it lands." · "Built for the organizations holding communities together."',
     }),
     defineField({
       name: 'subhead',
@@ -43,9 +43,25 @@ export default defineType({
       description: 'The line under the button, where the Pulse Check name lives.',
     }),
     defineField({
+      name: 'riskReversal',
+      type: 'string',
+      description: 'The one-line answer to "what does this cost me", directly under the button.',
+    }),
+    defineField({
       name: 'secondaryLabel',
       type: 'string',
-      description: 'The quiet text link in the left column.',
+      description: 'The quiet text link beside the button.',
+    }),
+    defineField({
+      name: 'trustedByLabel',
+      type: 'string',
+      description: 'The small label above the client line.',
+    }),
+    defineField({
+      name: 'trustedBy',
+      type: 'text',
+      rows: 2,
+      description: 'Client names. Each line break renders as a line break.',
     }),
   ],
   preview: {
