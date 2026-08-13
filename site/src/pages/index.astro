@@ -1648,8 +1648,16 @@ const FAQS = [
      neighbours": a grid item defaults to stretching to its row's height, so an
      open <details> in one card grew every card beside it. With start, each card
      is exactly as tall as its own content and nothing else in the row moves. */
+  /* minmax(0, 1fr) on the single-column case too, not just at the breakpoints
+     below. A grid item's default `min-width: auto` refuses to shrink past its
+     min-content, so an implicit `auto` track grows to fit whatever the widest
+     child wants to be — which is how one expanded card dragged the whole track
+     past the viewport on a phone. The zero floor makes that structurally
+     impossible at every width rather than only at the two where the template
+     happened to be declared. */
   .pkg-grid {
     display: grid;
+    grid-template-columns: minmax(0, 1fr);
     gap: 1.25rem;
     margin-top: 2rem;
     align-items: start;
@@ -1767,11 +1775,16 @@ const FAQS = [
      instead of expanding. width: max-content so only the pill is lifted: a
      full-width block here would take the rest of the line out of the card's
      hit area for no visible reason. */
+  /* No `width: max-content` here. It was meant to make the closed pill hug its
+     label, which .pkg-card__toggle already does on its own — it is inline-flex.
+     Open, though, max-content becomes the widest UNWRAPPED bullet, and
+     `max-width: 100%` cannot claw that back: it resolves against the card,
+     whose width is the grid track, which was itself being sized to fit this
+     element. On a 375px phone that expanded the card from 335px to 612px and
+     put 257px of the page off-screen. */
   .pkg-card__details {
     position: relative;
     z-index: 1;
-    width: max-content;
-    max-width: 100%;
     margin-top: 1.15rem;
   }
 
