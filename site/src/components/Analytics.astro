@@ -1,85 +1,94 @@
 ---
-// Consent-gated GA4 loader, ported from the panta.studio build.
-// The default measurement ID is shared with panta.studio by choice;
-// override with PUBLIC_GA4_MEASUREMENT_ID if that ever changes.
-const measurementId = import.meta.env.PUBLIC_GA4_MEASUREMENT_ID ?? 'G-N46J0CDDZF';
-const enabled = measurementId.length > 0;
+/**
+ * Plausible, via the official npm tracker.
+ *
+ * Replaced a consent-gated GA4 loader and, alongside it, Vercel Web Analytics
+ * and Speed Insights — three trackers counting the same pageviews. Plausible is
+ * cookieless and stores no personal data, which is why there is no consent
+ * banner in front of it any more: there is nothing to consent to.
+ *
+ * Excluding your own visits needs no code: the tracker checks
+ * `localStorage.plausible_ignore === 'true'` before every event and drops it.
+ * It also ignores localhost and file:// on its own, so `pnpm dev` never
+ * reaches the dashboard.
+ *
+ * No frontmatter variable for the domain, and no define:vars — that directive
+ * forces is:inline, inline scripts are not bundled, and a bare import
+ * specifier would then reach the browser unresolved. The bundled script below
+ * reads PUBLIC_PLAUSIBLE_DOMAIN, which Vite replaces at build time.
+ */
 ---
 
-{
-  enabled && (
-    <script is:inline define:vars={{ measurementId }}>
-      // No GA script is injected until the user accepts the consent banner.
-      (function () {
-        const STORAGE_KEY = 'panta:consent';
-        const SCRIPT_ID = 'ga4-script';
+{/* Parse-time and inline, ahead of the module below, because the rest of the
+    site calls window.pantaTrack from its own scripts — six components plus
+    sixty data-track attributes — and a bundled module resolves too late to
+    catch the first clicks. This defines the API immediately and queues; the
+    module swaps in the real sender and drains the queue.
 
-        window.dataLayer = window.dataLayer || [];
-        function gtag() {
-          window.dataLayer.push(arguments);
+    Kept as one global rather than an export: every existing caller already
+    reads it off window, and importing from here would make analytics a
+    build-time dependency of six unrelated components. */}
+<script is:inline>
+  (function () {
+    window.__pantaQ = window.__pantaQ || [];
+    window.pantaTrack = function (event, params) {
+      window.__pantaQ.push([event, params || {}]);
+    };
+
+    // Declarative click tracking, behaviour unchanged from the GA4 build: any
+    // element carrying data-track fires that event name on click, and its
+    // data-track-* attributes become properties (data-track-cta -> cta).
+    // Capture phase so a handler that stops propagation upstream cannot
+    // silently swallow the event.
+    document.addEventListener(
+      'click',
+      function (e) {
+        var el = e.target instanceof Element ? e.target.closest('[data-track]') : null;
+        if (!el) return;
+        var props = {};
+        for (var key in el.dataset) {
+          if (key === 'track' || key.indexOf('track') !== 0) continue;
+          var prop = key
+            .slice(5)
+            .replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); })
+            .replace(/^_/, '');
+          props[prop] = el.dataset[key];
         }
-        window.gtag = gtag;
+        window.pantaTrack(el.dataset.track, props);
+      },
+      true
+    );
+  })();
+</script>
 
-        function loadGa4() {
-          if (document.getElementById(SCRIPT_ID)) return;
-          const s = document.createElement('script');
-          s.id = SCRIPT_ID;
-          s.async = true;
-          s.src = 'https://www.googletagmanager.com/gtag/js?id=' + measurementId;
-          document.head.appendChild(s);
-          gtag('js', new Date());
-          gtag('config', measurementId, {
-            anonymize_ip: true,
-            send_page_view: true,
-          });
-        }
+{/* Bundled by Astro, so the tracker ships with the site instead of as a
+    third-party script tag. Same codebase as the hosted script per Plausible's
+    README — verified: this build carries the same v36 marker and the same
+    plausible_ignore check. */}
+<script>
+  import { init, track } from '@plausible-analytics/tracker';
 
-        function readConsent() {
-          try {
-            return localStorage.getItem(STORAGE_KEY);
-          } catch (_) {
-            return null;
-          }
-        }
+  // Plausible matches on the domain registered in its own settings, which is
+  // NOT `site` in astro.config.mjs — those disagree today (panta.llc vs
+  // allthingspanta.com), so this must not be derived from the canonical URL.
+  const domain = import.meta.env.PUBLIC_PLAUSIBLE_DOMAIN || 'allthingspanta.com';
 
-        // Tiny tracker helper, exposed globally. No-ops until consent is granted.
-        window.pantaTrack = function (event, params) {
-          if (readConsent() !== 'granted') return;
-          if (typeof window.gtag !== 'function') return;
-          window.gtag('event', event, params || {});
-        };
+  init({
+    domain,
+    // The three the hosted script for this site had switched on.
+    outboundLinks: true,
+    fileDownloads: true,
+    formSubmissions: true,
+  });
 
-        // Declarative click tracking: any element carrying data-track fires that
-        // event name on click, and its data-track-* attributes become event
-        // params (data-track-cta-label -> cta_label). Keeps pages to markup
-        // instead of a script per CTA. Capture phase so a handler that stops
-        // propagation upstream can't silently swallow the event.
-        document.addEventListener(
-          'click',
-          function (e) {
-            const el =
-              e.target instanceof Element ? e.target.closest('[data-track]') : null;
-            if (!el) return;
-            const params = {};
-            for (const key in el.dataset) {
-              if (key === 'track' || key.indexOf('track') !== 0) continue;
-              const param = key
-                .slice(5)
-                .replace(/[A-Z]/g, (m) => '_' + m.toLowerCase())
-                .replace(/^_/, '');
-              params[param] = el.dataset[key];
-            }
-            window.pantaTrack(el.dataset.track, params);
-          },
-          true
-        );
+  // Plausible takes properties under `props`; callers pass a flat object,
+  // exactly as GA4 wanted, so the shape is adapted here rather than at sixty
+  // call sites.
+  window.pantaTrack = function (event, params) {
+    track(event, { props: params || {} });
+  };
 
-        if (readConsent() === 'granted') {
-          loadGa4();
-        }
-
-        document.addEventListener('panta:consent-granted', loadGa4);
-      })();
-    </script>
-  )
-}
+  const queued = window.__pantaQ || [];
+  window.__pantaQ = [];
+  queued.forEach(([event, params]) => window.pantaTrack(event, params));
+</script>

@@ -7,10 +7,13 @@ export default defineConfig({
   // Static site + one server endpoint (/api/contact, SMTP send).
   // Deploying now requires Vercel functions: git-connected builds or
   // `vercel deploy --prebuilt` — a plain static-file upload won't run the API.
-  // Web Analytics is cookieless, so it sits outside the consent banner and
-  // still counts the visitors who decline GA4. Also needs turning on in the
-  // Vercel project dashboard (Analytics tab) before data shows up.
-  adapter: vercel({ webAnalytics: { enabled: true } }),
+  //
+  // No webAnalytics option: analytics is Plausible now (src/components/
+  // Analytics.astro), and leaving this on would have shipped a second tracker
+  // collecting the same pageviews. Turn Web Analytics off in the Vercel project
+  // dashboard too — this flag only stops the adapter injecting the loader, and
+  // Vercel can also inject it at the edge when the dashboard toggle is on.
+  adapter: vercel(),
   // The contact endpoint does its own Origin/Host check (see api/contact.ts);
   // Astro's built-in one rejects valid posts behind Vercel's proxy.
   security: { checkOrigin: false },

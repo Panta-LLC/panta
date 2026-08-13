@@ -3,7 +3,7 @@ import Base from '../layouts/Base.astro';
 ---
 <Base
   title="Privacy — Panta"
-  description="What panta.llc collects and why: anonymized Google Analytics with your consent, cookieless page counts and speed measurements, contact details you choose to send us, and nothing else."
+  description="What panta.llc collects and why: cookieless page counts through Plausible, contact details you choose to send us, and nothing else."
 >
   <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
     <div class="container">
@@ -16,18 +16,16 @@ import Base from '../layouts/Base.astro';
     <div class="container" style="max-width: 46rem;">
       <h2>What we collect</h2>
       <p>
-        With your consent, we use Google Analytics to understand how visitors
-        use this site — pages viewed, rough location (IP addresses are
-        anonymized), and how you found us. If you decline, Google Analytics
-        never loads.
+        We use <a href="https://plausible.io/privacy" rel="noopener">Plausible</a>
+        to count visits. It sets no cookies, stores nothing on your device, and
+        never identifies you or follows you to other sites. It tells us which
+        pages were viewed, roughly where in the world from, and which site sent
+        you — not who you are. That's why there's no cookie banner here: there
+        is nothing to ask permission for.
       </p>
       <p>
-        Separately, our host Vercel counts page views for us and measures how
-        quickly pages load for you. It sets no cookies, stores nothing on your
-        device, and never identifies you or follows you to other sites — so it
-        runs for everyone and isn't part of the consent choice above. It tells
-        us how many people visited a page and how fast it was, not who they
-        were.
+        We previously used Google Analytics behind a consent banner, along with
+        our host's own page counts and speed measurements. All three are gone.
       </p>
       <p>
         If you contact us or book a consultation, we receive what you send:
@@ -44,11 +42,14 @@ import Base from '../layouts/Base.astro';
         one-click unsubscribe link, and unsubscribing removes you for good. We
         use the address to send Pulse and nothing else, and we never sell it.
       </p>
-      <h2 style="margin-top: 2rem;">Change your mind</h2>
+      <h2 style="margin-top: 2rem;">Opt out anyway</h2>
       <p>
-        You can change your analytics choice anytime:
-        <button type="button" class="btn btn--ghost" style="margin-left: 0.5rem;" id="reopen-consent">Update consent</button>
+        Counting is anonymous, but if you'd rather not be counted at all, this
+        turns it off for this browser and stays off until you clear your site
+        data:
+        <button type="button" class="btn btn--ghost" style="margin-left: 0.5rem;" id="analytics-opt-out">Don't count my visits</button>
       </p>
+      <p class="small" data-opt-out-state role="status" aria-live="polite"></p>
       <p class="small" style="margin-top: 2rem;">
         Questions? <a href="mailto:hello@panta.llc">hello@panta.llc</a> — we
         reply within one business day.
@@ -58,12 +59,41 @@ import Base from '../layouts/Base.astro';
 </Base>
 
 <script>
-  document.getElementById('reopen-consent')?.addEventListener('click', () => {
+  // `plausible_ignore` is the tracker's own hook, not something implemented
+  // here: it reads this key before every event and drops the event when it is
+  // the string "true". Which is also how Damon excludes himself — same switch,
+  // just reachable without a devtools console.
+  const KEY = 'plausible_ignore';
+  const btn = document.getElementById('analytics-opt-out') as HTMLButtonElement | null;
+  const state = document.querySelector<HTMLElement>('[data-opt-out-state]');
+
+  const ignored = () => {
     try {
-      localStorage.removeItem('panta:consent');
+      return localStorage.getItem(KEY) === 'true';
     } catch (_) {
-      /* swallow */
+      return false;
     }
-    document.dispatchEvent(new CustomEvent('panta:consent-reopen'));
+  };
+
+  const render = () => {
+    if (!btn || !state) return;
+    const off = ignored();
+    btn.textContent = off ? 'Start counting my visits' : "Don't count my visits";
+    state.textContent = off
+      ? 'Your visits are not being counted in this browser.'
+      : '';
+  };
+
+  btn?.addEventListener('click', () => {
+    try {
+      if (ignored()) localStorage.removeItem(KEY);
+      else localStorage.setItem(KEY, 'true');
+    } catch (_) {
+      if (state) state.textContent = 'This browser is blocking storage, so the setting could not be saved.';
+      return;
+    }
+    render();
   });
+
+  render();
 </script>

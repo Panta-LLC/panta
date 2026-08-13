@@ -4,68 +4,27 @@
 // /about/ — both pages now report through this one component instead of the
 // homepage owning a private copy.
 //
-// The event name stays `home_section_view` even off the homepage: the GA4
-// build/connect/create series has already changed shape twice (scroll → slide →
-// scroll), and renaming the event would orphan it entirely. The sections that
-// moved to /about/ keep their series; annotate the deploy in GA4.
+// The event name stays `home_section_view` even off the homepage: the series
+// has already changed shape twice (scroll → slide → scroll), and renaming the
+// event would orphan it. Annotate the switch to Plausible in the dashboard.
 ---
 <script>
-  // One event with a `section` dimension, not N event names: it makes drop-off
-  // a single funnel exploration in GA4. Register `section` and `via` as custom
-  // dimensions or the params are collected but invisible.
+  // One event with a `section` property, not N event names: it keeps drop-off
+  // readable as a single funnel. In Plausible, `section` and `via` are custom
+  // properties — add them under the site's Properties settings or they are
+  // collected and never displayed.
   const seen = new Set<string>();
-  // The consent banner appears 600ms in, so early sections — the denominator of
-  // the funnel — are almost always seen BEFORE the visitor decides. Sending
-  // straight to pantaTrack would silently drop those, so buffer until consent.
-  const pending: Array<[string, string]> = [];
 
-  const consented = () => {
-    try {
-      return localStorage.getItem('panta:consent') === 'granted';
-    } catch (_) {
-      return false;
-    }
-  };
-
-  // pantaTrack silently no-ops when gtag hasn't finished loading, so "ready"
-  // means consent AND gtag, and anything earlier waits in the queue.
-  const ready = () => {
-    const w = window as any;
-    return typeof w.pantaTrack === 'function' && typeof w.gtag === 'function' && consented();
-  };
-
-  let flushTimer = 0;
-
-  const flush = () => {
-    if (!pending.length) return;
-    if (!ready()) {
-      schedule();
-      return;
-    }
-    const track = (window as any).pantaTrack;
-    pending.splice(0).forEach(([section, via]) => track('home_section_view', { section, via }));
-  };
-
-  function schedule() {
-    if (flushTimer) return;
-    flushTimer = window.setTimeout(() => {
-      flushTimer = 0;
-      flush();
-    }, 400);
-  }
-
+  // The buffering that used to live here is gone with GA4. It existed because
+  // the consent banner appeared 600ms in, so the early sections — the
+  // denominator of the funnel — were usually observed before the visitor had
+  // decided, and pantaTrack dropped anything sent before gtag loaded.
+  // Plausible needs no consent, and Analytics.astro defines pantaTrack inline
+  // at parse time and queues until the tracker module resolves, so a call made
+  // this early is held rather than lost.
   const send = (section: string, via = 'scroll') => {
-    if (!ready()) {
-      pending.push([section, via]);
-      schedule();
-      return;
-    }
-    (window as any).pantaTrack('home_section_view', { section, via });
+    (window as any).pantaTrack?.('home_section_view', { section, via });
   };
-
-  // Registered after Analytics.astro's own listener, so gtag is configured by
-  // the time this runs.
-  document.addEventListener('panta:consent-granted', flush);
 
   const io = new IntersectionObserver(
     (entries) => {
