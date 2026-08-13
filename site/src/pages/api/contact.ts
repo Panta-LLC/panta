@@ -194,7 +194,7 @@ function confirmationText({ name, message }: { name: string; message: string }) 
       : []),
     'If you would rather just put something in the calendar now, you can pick a',
     'time here:',
-    'https://panta.llc/consultation/#book',
+    'https://www.allthingspanta.com/consultation/#book',
     '',
     'It is a free 30-minute review, and you get a one-page written readout within',
     '48 hours afterward — three observations and one recommendation, yours to keep',

@@ -10,7 +10,7 @@
 export const ORG = {
   '@type': 'ProfessionalService',
   name: 'Panta LLC',
-  url: 'https://panta.llc',
+  url: 'https://www.allthingspanta.com',
 };
 
 export const serviceSchema = ({name, serviceType, description, url, areaServed}) => ({

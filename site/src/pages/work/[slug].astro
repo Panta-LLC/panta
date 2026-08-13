@@ -16,7 +16,7 @@ const schema = [
     '@type': 'CreativeWork',
     name: `${p.name} — case study`,
     about: p.name,
-    creator: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://panta.llc' },
+    creator: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://www.allthingspanta.com' },
     description: p.summary,
     ...(p.url ? { subjectOf: { '@type': 'WebSite', url: p.url } } : {}),
   },

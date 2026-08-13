@@ -3,7 +3,11 @@ import sitemap from '@astrojs/sitemap';
 import vercel from '@astrojs/vercel';
 
 export default defineConfig({
-  site: 'https://panta.llc',
+  // The host that actually serves a 200. The apex allthingspanta.com 308s to
+  // www, so naming the apex here would point every canonical, og:url and
+  // sitemap entry at a redirect. panta.llc still resolves to this same
+  // project — see the note in robots.txt.
+  site: 'https://www.allthingspanta.com',
   // Static site + one server endpoint (/api/contact, SMTP send).
   // Deploying now requires Vercel functions: git-connected builds or
   // `vercel deploy --prebuilt` — a plain static-file upload won't run the API.

@@ -69,8 +69,9 @@
   import { init, track } from '@plausible-analytics/tracker';
 
   // Plausible matches on the domain registered in its own settings, which is
-  // NOT `site` in astro.config.mjs — those disagree today (panta.llc vs
-  // allthingspanta.com), so this must not be derived from the canonical URL.
+  // the bare host — no scheme, no www — where `site` in astro.config.mjs is a
+  // full origin including www. They agree on the domain now and still must not
+  // be derived from one another.
   const domain = import.meta.env.PUBLIC_PLAUSIBLE_DOMAIN || 'allthingspanta.com';
 
   init({

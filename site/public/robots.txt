@@ -1,4 +1,4 @@
 User-agent: *
 Allow: /
 
-Sitemap: https://panta.llc/sitemap-index.xml
+Sitemap: https://www.allthingspanta.com/sitemap-index.xml
