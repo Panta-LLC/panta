@@ -5,7 +5,7 @@
  *   node scripts/apply-cta-label-unify.mjs --apply    # writes
  *
  * The review note: the nav said "Book a free review", the hero said "Get a
- * free website review", and deep pages said "Book a free 30-minute review" —
+ * free review", and deep pages said "Book a free 30-minute review" —
  * one action under three names, with the nav version following the visitor
  * onto every page where they had just read a different one.
  *
@@ -27,15 +27,15 @@ await run({
   name: 'CTA labels — one name for the review offer',
 
   sets: [
-    ['contactPage', 'heroCtaLabel', 'Book a free review', 'Get a free website review'],
+    ['contactPage', 'heroCtaLabel', 'Book a free review', 'Get a free review'],
     // Keeps its arrow: this one scrolls down the page it is already on rather
     // than navigating, and the glyph is what says so.
     [
       'consultationPage',
       'bookCtaLabel',
       'Book a free 30-minute review ↓',
-      'Get a free website review ↓',
+      'Get a free review ↓',
     ],
-    ['workPage', 'ctaPrimaryLabel', 'Book a free 30-minute review', 'Get a free website review'],
+    ['workPage', 'ctaPrimaryLabel', 'Book a free 30-minute review', 'Get a free review'],
   ],
 });

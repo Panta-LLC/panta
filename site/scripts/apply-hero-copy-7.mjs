@@ -15,7 +15,7 @@
  *    will pick them up on their own.
  *
  * 2. headerCtaLabel — the nav said "Book a free review" while the hero said
- *    "Get a free website review": one offer, two names, and the nav button is
+ *    "Get a free review": one offer, two names, and the nav button is
  *    the one a visitor sees on every other page. Standardised on the hero's,
  *    which names the deliverable. The in-page asks (homepage pillars, the lead
  *    form, the mega-menu and footer quick links, the compact mobile header
@@ -37,7 +37,7 @@ await run({
       'siteSettings',
       'headerCtaLabel',
       'Book a free review',
-      'Get a free website review',
+      'Get a free review',
     ],
   ],
 });

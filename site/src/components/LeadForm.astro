@@ -111,19 +111,19 @@ const id = (field: string) => `lead-${field}-${source}`;
 
   {!compact && (
     <div class="lead__field">
-      <label for={id('org')}>Website or organization <span class="lead__opt">(optional)</span></label>
+      <label for={id('org')}>Website, Social Account, or Business Profile URL <span class="lead__opt">(optional)</span></label>
       <input type="text" id={id('org')} name="org" autocomplete="organization" />
     </div>
   )}
 
   {!compact && (
     <div class="lead__field">
-      <label for={id('message')}>What&rsquo;s getting in the way?</label>
+      <label for={id('message')}>What brings you to us?</label>
       <textarea
         id={id('message')}
         name="message"
         rows="3"
-        placeholder="A site nobody finds, a process that eats your week, a story that isn&rsquo;t landing…"
+        placeholder="A quick description of your biggest challenge or concern"
       ></textarea>
     </div>
   )}
@@ -135,7 +135,7 @@ const id = (field: string) => `lead-${field}-${source}`;
       data-track="cta_click"
       data-track-cta={compact ? 'lead_form_compact' : 'lead_form'}
       data-track-location={source}
-    >Get my free website review</button>
+    >Get my free review</button>
     <slot name="aside" />
   </div>
 
@@ -151,7 +151,7 @@ const id = (field: string) => `lead-${field}-${source}`;
   <p class="lead__done-body">
     Rather just pick a time?
     <a href={bookHref} data-track="cta_click" data-track-cta="pulse_check" data-track-location={`${source}_after_send`}>
-      Get a free website review <span aria-hidden="true">&rarr;</span>
+      Get a free review <span aria-hidden="true">&rarr;</span>
     </a>
   </p>
 </div>

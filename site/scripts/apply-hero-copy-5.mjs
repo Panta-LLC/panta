@@ -58,7 +58,7 @@ await run({
       'homeHero',
       'ctaLabel',
       'Book a free 30-minute review',
-      'Get a free website review',
+      'Get a free review',
     ],
     [
       'homeHero',
