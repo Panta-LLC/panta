@@ -127,12 +127,82 @@ const consultSchema = [
   </section>
 
   <!-- BOOKING -->
+  <!-- Everything above this point answers "what is this?" — and until now a
+       visitor arriving from any CTA on the site skipped all of it, because every
+       button deep-linked to #book and landed them on a bare calendar. The links
+       now point at the top of the page (Base.astro, index.astro), but this
+       section still has to stand on its own for anyone who jumps here anyway:
+       the steps below restate what the call is and what it leaves behind, and
+       the chooser puts the no-calendar path in view at the moment the calendar
+       is what makes someone hesitate.
+
+       This copy is deliberately hardcoded rather than pulled from Sanity, same
+       as the #ask section below — it will want iteration, and a Studio schema
+       change plus a patch script per wording tweak is the wrong loop for that.
+       Lift it into `consultationPage` once it settles. -->
   <section class="section booking" id="book">
     <div class="container" style="text-align: center;">
       <p class="label">{c.bookingLabel}</p>
       <h2 style="max-width: 20ch; margin-inline: auto;">{c.bookingTitle}</h2>
       <p style="max-width: 48ch; margin: 0 auto 1.5rem;">{c.bookingBody}</p>
-      <div class="book-embed">
+
+      <!-- What actually happens, at the point where someone decides. Wording
+           tracks the canonical promise at the top of this file and the timeboxed
+           structure in pulse-check-questionnaire.md — if the call changes, this
+           changes with it. -->
+      <ol class="how">
+        {[
+          {
+            when: 'Before',
+            // Not "nothing to prepare" — c.bookingBody two lines above already
+            // says exactly that, and the trust row below says it again.
+            body: 'We look at what you have ahead of time, so the call opens with what we found rather than with questions you could have answered by email.',
+          },
+          {
+            when: 'On the call',
+            body: 'Thirty minutes on the three questions that decide whether a presence works: can they find you, trust you, choose you.',
+          },
+          {
+            when: 'After',
+            body: 'A one-page written readout within 48 hours — three observations and one recommendation. Yours to keep whether or not we ever work together.',
+          },
+        ].map((step) => (
+          <li class="how__step">
+            <span class="how__when">{step.when}</span>
+            <span class="how__body">{step.body}</span>
+          </li>
+        ))}
+      </ol>
+
+      <!-- Two ways to make the same request. Both are real links rather than
+           one link and one label: on mobile the calendar is off-screen from
+           here, so "Pick a time" has somewhere useful to go. Cards, not
+           buttons — check-launch.mjs rule 3d caps the page at two .btn--filled
+           outside the header and the LeadForm submit spends one. -->
+      <div class="choose">
+        <a
+          class="choose__card"
+          href="#calendar"
+          data-track="cta_click"
+          data-track-cta="choose_calendar"
+          data-track-location="consultation_choose"
+        >
+          <span class="choose__head">Pick a time <span aria-hidden="true">&darr;</span></span>
+          <span class="choose__body">See open times and book in about a minute.</span>
+        </a>
+        <a
+          class="choose__card"
+          href="#ask"
+          data-track="cta_click"
+          data-track-cta="choose_note"
+          data-track-location="consultation_choose"
+        >
+          <span class="choose__head">Send a note instead <span aria-hidden="true">&darr;</span></span>
+          <span class="choose__body">Tell us what&rsquo;s going on. We reply within one business day.</span>
+        </a>
+      </div>
+
+      <div class="book-embed" id="calendar">
         <iframe
           src={CAL_EMBED_URL}
           title="Book your free consultation with Panta"
@@ -169,11 +239,16 @@ const consultSchema = [
        way to act was to pick a slot in the embed above. Someone who wants to
        talk but won't commit to a time had no way to say so — the one escape
        was a link to more reading. This catches them on the page they already
-       reached, instead of asking them to go find /contact/. -->
+       reached, instead of asking them to go find /contact/.
+       It also used to sit below the calendar with nothing pointing at it, which
+       meant the visitor put off by the calendar had to scroll past the calendar
+       to find the alternative. The chooser above now sends them here — and the
+       label matches that card word for word, so landing here reads as arriving
+       rather than as having overshot. -->
   <section class="section section--dark" id="ask" data-section="consultation_ask">
     <div class="container ask__grid">
       <div class="ask__copy">
-        <p class="label">No calendar required</p>
+        <p class="label">Send a note instead</p>
         <h2 class="ask__head">Rather just tell us what&rsquo;s going on?</h2>
         <p class="ask__body">
           Send a short note and we&rsquo;ll reply within one business day — with a time to talk
@@ -426,6 +501,88 @@ const consultSchema = [
 
   .booking p { margin-inline: auto; }
 
+  /* how it goes — before / on the call / after */
+  .how {
+    list-style: none;
+    margin: 2rem auto 0;
+    padding: 0;
+    max-width: 62rem;
+    display: grid;
+    gap: 1rem;
+    text-align: left;
+  }
+
+  @media (min-width: 780px) {
+    .how { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .how__step {
+    padding-top: 0.9rem;
+    border-top: 2px solid var(--sage);
+  }
+
+  .how__when {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+    margin-bottom: 0.45rem;
+  }
+
+  .how__body {
+    display: block;
+    font-size: 0.9rem;
+    line-height: 1.6;
+    color: var(--charcoal);
+  }
+
+  /* the chooser — two ways to make the same request */
+  .choose {
+    margin: 2.25rem auto 0;
+    max-width: 46rem;
+    display: grid;
+    gap: 1rem;
+    text-align: left;
+  }
+
+  @media (min-width: 640px) {
+    .choose { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .choose__card {
+    display: block;
+    padding: 1.1rem 1.25rem;
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: #fffdf7;
+    text-decoration: none;
+    color: inherit;
+    transition: border-color 0.15s ease, transform 0.15s ease;
+  }
+
+  .choose__card:hover,
+  .choose__card:focus-visible {
+    border-color: var(--bamboo-deep);
+    transform: translateY(-1px);
+  }
+
+  .choose__head {
+    display: block;
+    font-weight: 600;
+    font-size: 1rem;
+    color: var(--bamboo-deep);
+    margin-bottom: 0.3rem;
+  }
+
+  .choose__body {
+    display: block;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--stone-deep);
+  }
+
   .book-embed {
     margin: 1.5rem auto 0;
     max-width: 720px;
@@ -433,6 +590,10 @@ const consultSchema = [
     border: 1px solid var(--line);
     border-radius: 10px;
     overflow: hidden;
+    /* The chooser's first card targets this as #calendar. html carries
+       scroll-padding-top for the sticky header (global.css:88); this is the
+       breathing room on top of it, matching .booking's own margin. */
+    scroll-margin-top: 2rem;
   }
 
   .book-embed iframe {

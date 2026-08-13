@@ -92,10 +92,13 @@ const megaNext = [
 ];
 
 const megaQuickLinks = [
-  // #book, not the page top: the label asks for the review itself, and the
-  // scheduler that starts one sits at 49% of /consultation/ — a plain link
-  // costs an extra click and a scroll.
-  { href: '/consultation/#book', label: 'Get a free website review', cta: 'consultation' },
+  // The page top, not #book. This label names the offer; it does not promise a
+  // calendar. Deep-linking it to the scheduler dropped the visitor onto a bare
+  // Google Calendar embed with the entire explanation of what the review is —
+  // and what they walk away with — scrolled off above them. See the rule in
+  // index.astro. Buttons that do promise a slot ("or pick a time now") still
+  // deep-link.
+  { href: '/consultation/', label: 'Get a free website review', cta: 'consultation' },
   // Web design & development was here; it is now in the enumerated list above,
   // and a "Start here" row repeating a link one row up is not a shortcut.
   { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
@@ -104,10 +107,8 @@ const megaQuickLinks = [
 ];
 
 const footerLinks = [
-  // #book, not the page top: the label asks for the review itself, and the
-  // scheduler that starts one sits at 49% of /consultation/ — a plain link
-  // costs an extra click and a scroll.
-  { href: '/consultation/#book', label: 'Get a free website review', cta: 'consultation' },
+  // The page top, not #book — same reason as megaQuickLinks above.
+  { href: '/consultation/', label: 'Get a free website review', cta: 'consultation' },
   { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
   { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
@@ -138,7 +139,7 @@ const footerNextLinks = [
  */
 const mobileReachable = new Set([
   '/services/',
-  '/consultation/#book',
+  '/consultation/',
   ...services.map((s) => serviceHref(s)),
   ...megaNext.map((p) => p.href),
   ...flatNavItems.map((i) => i.href),
@@ -146,6 +147,17 @@ const mobileReachable = new Set([
 const mobileQuickLinks = megaQuickLinks.filter((l) => !mobileReachable.has(l.href));
 
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
+
+/**
+ * Where the persistent header CTA goes.
+ *
+ * Off /consultation/ it is a plain link to the page, so the visitor meets the
+ * explanation before the calendar. On /consultation/ itself that link would be
+ * a no-op — the button is on every page, including the one it points at — so it
+ * falls back to #book, which is now the chooser (what the call is, then pick a
+ * time / send a note) rather than the bare scheduler it used to be.
+ */
+const reviewHref = currentPath === '/consultation/' ? '#book' : '/consultation/';
 
 // Every /services/* page lights the "What we do" branch. Web design used to be
 // excluded because it was its own top-level header item; it stopped being one,
@@ -288,7 +300,7 @@ const workActive =
             </a>
           ))}
           <a
-            href="/consultation/#book"
+            href={reviewHref}
             class="btn btn--primary"
             data-track="cta_click"
             data-track-cta="consultation"
@@ -301,7 +313,7 @@ const workActive =
             inside <header>, which check-launch.mjs strips before counting
             filled buttons, so it costs nothing against the §7.3 cap. */}
         <a
-          href="/consultation/#book"
+          href={reviewHref}
           class="btn btn--primary header-cta-sm"
           data-track="cta_click"
           data-track-cta="consultation"
@@ -388,7 +400,7 @@ const workActive =
             ))}
           </ul>
           <a
-            href="/consultation/#book"
+            href={reviewHref}
             class="btn btn--primary mobile-nav__cta"
             data-track="cta_click"
             data-track-cta="consultation"

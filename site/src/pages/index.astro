@@ -120,16 +120,20 @@ const CARD_COLUMNS = SERVICE_CARDS.length % 3 === 0 ? 3 : 2;
 const caseStudy = await getFeaturedCaseStudy();
 const posts = await getPosts(3);
 
-// The Pulse Check page. Use this only where the label promises READING —
-// "Learn more", the Pulse Check definition tooltip. It lands at the top of the
-// page, ~3.3 screens above the scheduler.
+// The Pulse Check page. Both the "Learn more" links and the review CTAs use
+// this now — they used to split, with anything whose label said "review"
+// deep-linking to /consultation/#book on the theory that a decided visitor
+// should not have to scroll. The theory was wrong in one direction: it also
+// caught everyone who had NOT decided, and dropped them onto a bare Google
+// Calendar embed with the answer to "what is this and what do I get" scrolled
+// off above them. Naming the offer is an invitation, not a commitment — so the
+// link goes to the top of the page and lets the page do its job.
+//
+// Only a label that promises a slot outright ("or pick a time now →", the
+// recovery link in LeadForm after a send) still deep-links to #book — and #book
+// now opens with the chooser rather than the scheduler.
 const BOOK = '/consultation/';
-// Deep link straight to the scheduler embed, for buttons whose label promises
-// BOOKING. #book is the booking section on /consultation/, at 49% of that
-// page — so a "Book…" button pointed at BOOK instead of this one costs the
-// visitor an extra click and a three-screen scroll after they had already
-// decided. html has scroll-padding-top so the anchor clears the sticky header.
-const BOOK_FORM = '/consultation/#book';
+const BOOK_SLOT = '/consultation/#book';
 
 const PILLARS = await getPillars();
 
@@ -307,7 +311,7 @@ const FAQS = [
           <div class="hero__buttons">
             <a
               class="btn btn--filled hero__cta"
-              href={BOOK_FORM}
+              href={BOOK}
               data-track="cta_click"
               data-track-cta="pulse_check"
               data-track-location="home_hero"
@@ -669,7 +673,7 @@ const FAQS = [
             competing rather than earning. */}
         <div class="pillars__actions">
           <a
-            href={BOOK_FORM}
+            href={BOOK}
             class="btn btn--primary"
             data-track="cta_click"
             data-track-cta="pulse_check"
@@ -882,7 +886,7 @@ const FAQS = [
           <a
             slot="aside"
             class="final__book"
-            href={BOOK_FORM}
+            href={BOOK_SLOT}
             data-track="cta_click"
             data-track-cta="pulse_check"
             data-track-location="home_final"

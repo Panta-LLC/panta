@@ -27,8 +27,15 @@ interface Props {
   /** Reported to analytics so leads can be attributed per surface. */
   source: string;
   /**
-   * "full" — name, email, organization and the open question. For a surface
-   * where asking IS the purpose of the section.
+   * "full" — name, email, website-or-organization and the open question. For a
+   * surface where asking IS the purpose of the section.
+   *
+   * That third field asks for a URL first and a name second because the Pulse
+   * Check assumes name, email and website-or-org are in hand before the call
+   * (pulse-check-questionnaire.md) — and the Google Calendar embed collects
+   * none of the URL, so this form is the only place it can arrive. The field
+   * still posts as `org`: a relabel, not a new field, so /api/contact is
+   * untouched and the visitor is not asked for one more thing.
    *
    * "compact" — name and email only, on one row. For a mid-page catch, where
    * the form is interrupting something else the visitor was reading and every
@@ -90,7 +97,7 @@ const id = (field: string) => `lead-${field}-${source}`;
 
   {!compact && (
     <div class="lead__field">
-      <label for={id('org')}>Organization <span class="lead__opt">(optional)</span></label>
+      <label for={id('org')}>Website or organization <span class="lead__opt">(optional)</span></label>
       <input type="text" id={id('org')} name="org" autocomplete="organization" />
     </div>
   )}

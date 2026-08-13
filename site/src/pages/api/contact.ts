@@ -132,7 +132,9 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       subject: `New ${source === 'contact_page' ? 'contact' : 'lead'} from ${name}${org ? ` (${org})` : ''}`,
       text: [
         `Name: ${name}`,
-        `Organization: ${org || '—'}`,
+        // Labelled "Website or organization" on the form (LeadForm.astro) —
+        // the field name stayed `org` so this route did not have to change.
+        `Website / org: ${org || '—'}`,
         `Email: ${email}`,
         `Source: ${source}`,
         '',
