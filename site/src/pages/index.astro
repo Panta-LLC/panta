@@ -923,6 +923,16 @@ const FAQS = [
     /* PulseTerm's own hook. Its default, bamboo-deep, is 2.2:1 on charcoal —
        the term in the microcopy would read as a smudge without it. */
     --pulse-term-accent: var(--sage);
+    /* And the tip itself inverts. Its default is a charcoal panel, which is
+       correct everywhere else it appears (cream sections, the bamboo closing
+       CTA) and invisible here — a charcoal box on a charcoal hero, so the
+       sentence read as loose text lying across the service cards it opens
+       over. Cream on charcoal is the relationship the filled button in this
+       same section already uses, so the tip reads as raised rather than as a
+       second thing to click. */
+    --pulse-tip-surface: var(--cream);
+    --pulse-tip-ink: var(--charcoal);
+    --pulse-tip-cue: var(--bamboo-deep); /* 4.6:1 on cream */
   }
 
   .hero {

@@ -114,8 +114,15 @@ const tipId = `pulse-tip-${location}`;
     max-width: min(20rem, calc(100vw - 2rem));
     padding: 0.75rem 0.85rem;
 
-    background: var(--charcoal);
-    color: var(--cream);
+    /* Tokens, not literals, for the same reason --pulse-term-accent exists: a
+       tip is an OVERLAY, so it has to invert against whatever it is floating
+       over, and only the caller knows what that is. The defaults are the
+       charcoal panel this always had, which is correct on cream and on
+       section--bamboo. On a charcoal surface it was a charcoal panel over
+       charcoal — the box vanished and the sentence appeared to be printed
+       loose across whatever sat behind it. */
+    background: var(--pulse-tip-surface, var(--charcoal));
+    color: var(--pulse-tip-ink, var(--cream));
     border-radius: var(--radius);
     box-shadow: 0 8px 24px rgba(38, 37, 31, 0.22);
 
@@ -149,24 +156,27 @@ const tipId = `pulse-tip-${location}`;
     left: calc(50% - var(--shift, 0px));
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-bottom-color: var(--charcoal);
+    border-bottom-color: var(--pulse-tip-surface, var(--charcoal));
   }
 
   .pulse-term__tip.is-above::after {
     bottom: auto;
     top: 100%;
     border-bottom-color: transparent;
-    border-top-color: var(--charcoal);
+    border-top-color: var(--pulse-tip-surface, var(--charcoal));
   }
 
   .pulse-term__tip-body {
     display: block;
   }
 
+  /* Its own token rather than reusing --pulse-term-accent: that one colours the
+     trigger against the PAGE, this one colours the cue against the TIP, and on
+     an inverted tip those two are opposite colours. */
   .pulse-term__tip-cue {
     display: block;
     margin-top: 0.5rem;
-    color: var(--sage);
+    color: var(--pulse-tip-cue, var(--sage));
     font-weight: 500;
   }
 
