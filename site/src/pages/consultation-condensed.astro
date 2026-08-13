@@ -25,7 +25,7 @@
    scrolled instead of booking rather than delaying the one who would have.
 
    Both paths survive the condensing, and neither is the consolation prize:
-   the panel is a two-state widget with "Pick a time" and "Send a note" as
+   the panel is a two-state widget with "Pick a time" and "Send a Message" as
    equal halves of a switch, swapping the pane in place. Nobody who wants the
    form has to scroll past the calendar to reach it, and there is no second
    copy of the form further down the page.
@@ -87,7 +87,7 @@ const HOW = [
 
       </div>
 
-      {/* The panel holds both paths and shows one at a time. "Send a note" was
+      {/* The panel holds both paths and shows one at a time. "Send a Message" was
           a text link under the copy, which made the calendar the offer and the
           form a consolation; as an equal half of a switch it is the same size
           ask, and choosing it swaps the pane in place rather than scrolling
@@ -122,7 +122,7 @@ const HOW = [
             data-track="cta_click"
             data-track-cta="choose_note"
             data-track-location="condensed_panel"
-          >Send a note</label>
+          >Send a Message</label>
         </div>
 
         <div class="panel__body">
@@ -199,7 +199,7 @@ const HOW = [
     </div>
   </section>
 
-  {/* No standalone send-a-note section: the form is a pane of the hero panel
+  {/* No standalone message section: the form is a pane of the hero panel
       now, and a second copy further down would be the same request asked
       twice, with two sets of field ids and two sources muddying the split. */}
 </Base>
@@ -227,7 +227,7 @@ const HOW = [
     observer.observe(embed);
   }
 
-  // "Rather just pick a time?" in the send-a-note success panel. Its href is
+  // "Rather just pick a time?" in the message pane success panel. Its href is
   // the radio's id, which a fragment jump cannot check on its own.
   const calendarView = document.querySelector<HTMLInputElement>('#view-calendar');
   document.querySelector('.panel')?.addEventListener('click', (e) => {
@@ -389,12 +389,12 @@ const HOW = [
     margin: 0 0 1.1rem;
   }
 
-  /* The form is shorter than the calendar; without a floor the whole hero
-     jumps when the panes swap. Only above the breakpoint where the panel
-     shares a row with the copy and the reflow would be visible. */
-  @media (min-width: 941px) {
-    .panel__body { min-height: 690px; }
-  }
+  /* No min-height on .panel__body. Pinning it to the calendar's 674px stopped
+     the swap reflowing, but left 238px of blank cream under the submit button,
+     which reads as a broken pane rather than a stable one. The panes size to
+     their own content instead: on desktop the hero's height is set by the copy
+     column anyway, so the section barely moves, and a card resizing in
+     response to a tab the visitor just clicked is expected behaviour. */
 
   .book-embed {
     background: #fffdf7;
@@ -477,6 +477,53 @@ const HOW = [
     margin-bottom: 0.9rem;
   }
 
-  /* The form sits on the cream panel, not on the dark section, so it takes the
-     default light input styling from global.css and needs nothing here. */
+  /* --- the form on a light island inside a dark section --------------------
+     The panel is cream but it lives inside .section--dark, so the dark-surface
+     rules in LeadForm.astro and global.css both fire on it: fields became
+     cream text in a 8%-cream box, and .btn--filled inverted to a cream button.
+     All of it cream on cream — the fields were invisible.
+
+     The inner half is :global because .lead and .btn--filled belong to
+     LeadForm's scope and global.css, not this page's.
+
+     Two ancestors, not one, and that is load-bearing. Astro stamps its scope
+     attribute on every non-global element in a selector, so LeadForm's own
+     rule compiles to `.section--dark .lead[cid] input[cid]` — 0,4,1, one class
+     MORE than the obvious `.pane--note :global(.lead input)` at 0,3,1, which
+     is why the first attempt at this changed nothing. Prefixing .panel__body
+     brings it to 0,5,1 and it wins outright rather than by source order. */
+  .panel__body .pane--note :global(.lead input),
+  .panel__body .pane--note :global(.lead textarea) {
+    background: #fffdf7;
+    border-color: var(--line);
+    color: var(--charcoal);
+  }
+
+  .panel__body .pane--note :global(.lead input::placeholder),
+  .panel__body .pane--note :global(.lead textarea::placeholder) {
+    color: var(--stone-deep);
+  }
+
+  .panel__body .pane--note :global(.lead input:focus),
+  .panel__body .pane--note :global(.lead textarea:focus) {
+    outline-color: var(--bamboo-deep);
+    border-color: var(--bamboo-deep);
+  }
+
+  .panel__body .pane--note :global(.lead__msg[data-state='ok']) { color: var(--bamboo-deep); }
+  .panel__body .pane--note :global(.lead__msg[data-state='error']) { color: #8a4a2f; }
+
+  /* Back to the base .btn--filled: charcoal fill, bamboo on hover. This one is
+     unscoped in global.css, so it needs less reach than the rules above. */
+  .panel__body .pane--note :global(.btn--filled) {
+    background: var(--charcoal);
+    color: var(--cream);
+    border-color: var(--charcoal);
+  }
+
+  .panel__body .pane--note :global(.btn--filled:hover) {
+    background: var(--bamboo-deep);
+    border-color: var(--bamboo-deep);
+    color: var(--cream);
+  }
 </style>
