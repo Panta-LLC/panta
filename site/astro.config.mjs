@@ -27,8 +27,10 @@ export default defineConfig({
   // slashed variants 404'd in production.
   integrations: [
     sitemap({
-      // noindex prototype pages stay out of the sitemap until incorporated
-      filter: (page) => !page.includes('/journey'),
+      // noindex prototype pages stay out of the sitemap until incorporated —
+      // listing a page we also tell crawlers not to index is a contradiction,
+      // and an avoidable one on a site that sells being findable.
+      filter: (page) => !['/journey', '/consultation-condensed'].some((p) => page.includes(p)),
     }),
   ],
 });

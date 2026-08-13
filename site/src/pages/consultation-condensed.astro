@@ -1,0 +1,443 @@
+---
+/* -----------------------------------------------------------------------------
+   PROTOTYPE — condensed consultation page, booking in the hero.
+
+   A variant of /consultation/, not a replacement: nothing links here and the
+   page is noindex, so the two can be reviewed side by side. Fold it into
+   consultation.astro (or delete it) once a direction is picked.
+
+   The shipped page answers "what is this?" thoroughly and then asks — hero,
+   proof, three deliverable cards, the marketing panel, and only then the
+   scheduler at roughly half the page. That ordering is why every CTA used to
+   deep-link past it. This variant tests the opposite bet: put the calendar in
+   the hero, next to the headline, and let the explanation ride alongside it in
+   three lines rather than three screens.
+
+   What comes out to make room:
+   - the diagnostic panel (website / social / content) — the calendar takes its
+     column
+   - the "reach is an amplifier" marketing panel — the longest block between
+     landing and booking, and it argues a point nobody has asked yet
+   - the standalone booking section and its trust row — folded into the hero as
+     chips
+   What stays, in this order: hero+calendar, proof, what you walk away with,
+   send-a-note. The deliverable cards move BELOW the ask, where they catch the
+   person who scrolled instead of booking rather than delaying the one who
+   would have.
+
+   Both paths survive the condensing. The chooser cards from the shipped page
+   would be redundant here — the calendar is already on screen — so the
+   no-calendar path is a text link under the hero copy instead.
+
+   Analytics locations all carry a `_condensed` suffix so this page and the
+   shipped one are separable in Plausible; that comparison is the entire point
+   of keeping both alive.
+--------------------------------------------------------------------------- */
+import Base from '../layouts/Base.astro';
+import LeadForm from '../components/LeadForm.astro';
+import { getDoc, getProjects } from '../lib/sanity.js';
+
+const c = await getDoc('consultationPage');
+const settings = await getDoc('siteSettings');
+const projects = await getProjects();
+
+const SCHEDULE_URL = settings.scheduleUrl;
+const CAL_EMBED_URL = settings.calEmbedUrl;
+
+const description =
+  'The Pulse Check: a free 30-minute review for organizations at any stage. Walk away with an honest read on where you stand and a one-page written readout within 48 hours.';
+
+// Condensed to three lines from the strip on /consultation/. Same promises,
+// same source of truth (pulse-check-questionnaire.md) — this is the version
+// that has to sit beside a calendar without becoming a wall of text.
+const HOW = [
+  { when: 'Before', body: 'Nothing to prepare. We look at what you have first.' },
+  { when: '30 minutes', body: 'Can they find you, trust you, choose you.' },
+  { when: 'After', body: 'A one-page readout within 48 hours. Yours to keep.' },
+];
+---
+<Base
+  title="Free 30-Minute Consultation (condensed) — Panta"
+  description={description}
+  noindex
+>
+  <!-- HERO + BOOKING -->
+  <section class="section section--dark hero" id="book" data-section="condensed_hero">
+    <div class="container hero__grid">
+      {/* Three blocks, not two, so the calendar can sit between them on narrow
+          screens: headline → calendar → detail. Stacking the whole left column
+          first pushed the embed to ~850px on a 375 viewport, a full screen
+          below the fold, which is the thing this variant exists to avoid. */}
+      <div class="hero__intro">
+        <p class="label">{c.heroLabel}</p>
+        <h1 class="hero__title">{c.heroTitle}</h1>
+        <p class="lede hero__lede">{c.heroLede}</p>
+      </div>
+
+      <div class="hero__detail">
+        <ul class="how">
+          {HOW.map((step) => (
+            <li class="how__step">
+              <span class="how__when">{step.when}</span>
+              <span class="how__body">{step.body}</span>
+            </li>
+          ))}
+        </ul>
+
+        {/* The no-calendar path. On the shipped page this is a pair of chooser
+            cards above the embed; here the embed is already in view, so a card
+            offering to show it would be pointing at itself. */}
+        <p class="hero__ask">
+          Not ready to put a time down?
+          <a
+            href="#ask"
+            data-track="cta_click"
+            data-track-cta="choose_note"
+            data-track-location="condensed_hero"
+          >Send a note instead <span aria-hidden="true">&rarr;</span></a>
+        </p>
+      </div>
+
+
+      {/* The calendar takes the column the diagnostic panel used to hold. Not
+          loading="lazy": it is above the fold here, so deferring it would only
+          delay the one thing this variant exists to reach sooner. It is a
+          third-party iframe in the hero and it does cost LCP — that trade is
+          the hypothesis under test, not an oversight. */}
+      <div class="panel">
+        <div class="panel__head">
+          <span class="panel__label">Pick a time</span>
+          <span class="panel__note">Free · 30 minutes</span>
+        </div>
+        <div class="book-embed">
+          <iframe
+            src={CAL_EMBED_URL}
+            title="Book your free consultation with Panta"
+            width="100%"
+            height="640"></iframe>
+        </div>
+        <p class="panel__fallback">
+          Calendar not loading?
+          <a
+            href={SCHEDULE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            data-track="cta_click"
+            data-track-cta="booking_new_tab"
+            data-track-location="condensed_booking"
+          >Open it in a new tab &rarr;</a>
+        </p>
+      </div>
+    </div>
+
+    <div class="container">
+      <div class="trust-row">
+        {c.trustRow.map((item) => (
+          <span><span class="ck">&#10003;</span> {item}</span>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- PROOF -->
+  <div class="proof">
+    <div class="container proof__inner">
+      <span class="proof__q">{c.proofLabel}</span>
+      {projects.map((p) => <span class="client">{p.name}</span>)}
+    </div>
+  </div>
+
+  <!-- WHAT YOU WALK AWAY WITH — reinforcement, not preamble -->
+  <section class="section" data-section="condensed_deliver">
+    <div class="container">
+      <p class="label">{c.deliverLabel}</p>
+      <h2>{c.deliverTitle}</h2>
+      <p>{c.deliverIntro}</p>
+      <div class="grid grid--3" style="margin-top: 2.5rem;">
+        {c.deliverCards.map((card) => (
+          <div class="card">
+            <p class="card__num">{card.kicker}</p>
+            <h3>{card.title}</h3>
+            <p>{card.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- SEND A NOTE INSTEAD -->
+  <section class="section section--dark" id="ask" data-section="condensed_ask">
+    <div class="container ask__grid">
+      <div>
+        <p class="label">Send a note instead</p>
+        <h2 class="ask__head">Rather just tell us what&rsquo;s going on?</h2>
+        <p class="ask__body">
+          Send a short note and we&rsquo;ll reply within one business day — with a time to talk
+          if that makes sense, or an answer if it doesn&rsquo;t need a call at all.
+        </p>
+      </div>
+      <LeadForm source="condensed_ask">
+        <a
+          slot="aside"
+          class="ask__book"
+          href="#book"
+          data-track="cta_click"
+          data-track-cta="pulse_check"
+          data-track-location="condensed_ask"
+        >or pick a time above <span aria-hidden="true">&uarr;</span></a>
+      </LeadForm>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // Same caveat as consultation.astro: the Google Calendar embed is
+  // cross-origin and reports no completion event, so a booking is not
+  // observable from here. What IS newly worth measuring on this variant is
+  // that the calendar starts in view — `booking_viewed` firing on load rather
+  // than after a scroll is the difference between the two pages.
+  const track = (window as any).pantaTrack ?? (() => {});
+  const embed = document.querySelector<HTMLElement>('.book-embed');
+
+  if (embed) {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          track('booking_viewed', { variant: 'condensed' });
+          observer.disconnect();
+        }
+      },
+      { threshold: 0.4 }
+    );
+    observer.observe(embed);
+  }
+</script>
+
+<style>
+  .hero { padding-block: clamp(2.5rem, 5vw, 3.5rem); }
+
+  .hero__grid {
+    display: grid;
+    /* The calendar gets the wider column: Google's appointment embed goes
+       cramped much under ~520px. Measured at 1280 this split puts the iframe
+       itself (inside .panel's padding) at ~530. */
+    grid-template-columns: minmax(0, 0.72fr) minmax(0, 1fr);
+    grid-template-areas:
+      'intro panel'
+      'detail panel';
+    gap: 0 clamp(2rem, 4vw, 3.5rem);
+    align-items: start;
+  }
+
+  .hero__intro { grid-area: intro; }
+  .panel { grid-area: panel; }
+  .hero__detail { grid-area: detail; }
+
+  /* One column, and the calendar jumps the queue: headline, then book, then
+     the detail for anyone still reading. */
+  @media (max-width: 940px) {
+    .hero__grid {
+      grid-template-columns: 1fr;
+      grid-template-areas:
+        'intro'
+        'panel'
+        'detail';
+      gap: 1.75rem 0;
+    }
+  }
+
+  .hero__title {
+    font-size: clamp(2rem, 4vw, 3rem);
+    margin-bottom: 0.75rem;
+  }
+
+  .hero__lede { margin-bottom: 1.5rem; }
+
+  /* how it goes — three lines, not three screens */
+  .how {
+    list-style: none;
+    margin: 0 0 1.5rem;
+    padding: 0;
+    display: grid;
+    gap: 0.7rem;
+  }
+
+  .how__step {
+    display: grid;
+    grid-template-columns: 6.5rem minmax(0, 1fr);
+    gap: 0.9rem;
+    align-items: baseline;
+    padding-top: 0.7rem;
+    border-top: 1px solid rgba(245, 241, 231, 0.18);
+  }
+
+  @media (max-width: 460px) {
+    .how__step { grid-template-columns: 1fr; gap: 0.2rem; }
+  }
+
+  .how__when {
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--sage);
+  }
+
+  .how__body {
+    font-size: 0.92rem;
+    line-height: 1.5;
+    color: var(--cream);
+  }
+
+  .hero__ask {
+    font-size: 0.9rem;
+    color: var(--cream);
+    margin: 0;
+    opacity: 0.9;
+  }
+
+  /* calendar panel — the cream readout the diagnostic panel used to be */
+  .panel {
+    background: var(--cream);
+    color: var(--charcoal);
+    border-radius: 10px;
+    padding: 0.85rem;
+    box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.55);
+  }
+
+  .panel__head {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .panel__label {
+    font-size: 0.7rem;
+    font-weight: 600;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+  }
+
+  .panel__note {
+    font-size: 0.75rem;
+    color: var(--stone-deep);
+  }
+
+  .book-embed {
+    background: #fffdf7;
+    border: 1px solid var(--line);
+    border-radius: 8px;
+    overflow: hidden;
+    scroll-margin-top: 2rem;
+  }
+
+  .book-embed iframe {
+    display: block;
+    width: 100%;
+    min-height: 640px;
+    border: 0;
+  }
+
+  .panel__fallback {
+    font-size: 0.8rem;
+    color: var(--stone-deep);
+    margin: 0.7rem 0 0;
+  }
+
+  .trust-row {
+    display: flex;
+    gap: clamp(1rem, 3vw, 1.75rem);
+    flex-wrap: wrap;
+    margin-top: 2rem;
+    padding-top: 1.5rem;
+    border-top: 1px solid rgba(245, 241, 231, 0.18);
+  }
+
+  .trust-row span {
+    font-size: 0.85rem;
+    color: var(--cream);
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+  }
+
+  .trust-row .ck {
+    color: var(--sage);
+    font-weight: 700;
+  }
+
+  /* proof strip */
+  .proof {
+    border-bottom: 1px solid var(--line);
+    background: var(--cream-soft);
+  }
+
+  .proof__inner {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: clamp(1.25rem, 4vw, 2.5rem);
+    flex-wrap: wrap;
+    padding-block: 1.25rem;
+  }
+
+  .proof__q {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+
+  .client {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: var(--charcoal);
+    opacity: 0.85;
+  }
+
+  .card__num {
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.14em;
+    color: var(--bamboo-deep);
+    margin-bottom: 0.9rem;
+  }
+
+  /* send a note */
+  .ask__grid {
+    display: grid;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .ask__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  }
+
+  .ask__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    line-height: 1.25;
+    margin: 0.4rem 0 0.9rem;
+    color: var(--cream);
+  }
+
+  .ask__body {
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--cream);
+    margin: 0;
+    max-width: 46ch;
+  }
+
+  .ask__book {
+    font-size: 0.92rem;
+    color: var(--cream);
+    white-space: nowrap;
+  }
+</style>
