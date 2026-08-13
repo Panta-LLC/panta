@@ -52,8 +52,22 @@ interface Props {
    */
   variant?: 'full' | 'compact';
   class?: string;
+  /**
+   * Where the success panel's "rather just pick a time?" link goes.
+   *
+   * Defaults to the booking anchor on /consultation/, which is right for every
+   * surface that is not that page. A surface holding its own scheduler passes
+   * an in-page anchor instead, so a visitor who just sent a note is not
+   * bounced to another page to do the thing that was on screen a moment ago.
+   */
+  bookHref?: string;
 }
-const { source, variant = 'full', class: className } = Astro.props;
+const {
+  source,
+  variant = 'full',
+  class: className,
+  bookHref = '/consultation/#book',
+} = Astro.props;
 const compact = variant === 'compact';
 const id = (field: string) => `lead-${field}-${source}`;
 ---
@@ -136,7 +150,7 @@ const id = (field: string) => `lead-${field}-${source}`;
   <p class="lead__done-head">Got it — we&rsquo;ll reply within one business day.</p>
   <p class="lead__done-body">
     Rather just pick a time?
-    <a href="/consultation/#book" data-track="cta_click" data-track-cta="pulse_check" data-track-location={`${source}_after_send`}>
+    <a href={bookHref} data-track="cta_click" data-track-cta="pulse_check" data-track-location={`${source}_after_send`}>
       Get a free website review <span aria-hidden="true">&rarr;</span>
     </a>
   </p>

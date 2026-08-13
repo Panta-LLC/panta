@@ -20,14 +20,15 @@
      landing and booking, and it argues a point nobody has asked yet
    - the standalone booking section and its trust row — folded into the hero as
      chips
-   What stays, in this order: hero+calendar, proof, what you walk away with,
-   send-a-note. The deliverable cards move BELOW the ask, where they catch the
-   person who scrolled instead of booking rather than delaying the one who
-   would have.
+   What stays, in this order: hero+panel, proof, what you walk away with. The
+   deliverable cards move BELOW the ask, where they catch the person who
+   scrolled instead of booking rather than delaying the one who would have.
 
-   Both paths survive the condensing. The chooser cards from the shipped page
-   would be redundant here — the calendar is already on screen — so the
-   no-calendar path is a text link under the hero copy instead.
+   Both paths survive the condensing, and neither is the consolation prize:
+   the panel is a two-state widget with "Pick a time" and "Send a note" as
+   equal halves of a switch, swapping the pane in place. Nobody who wants the
+   form has to scroll past the calendar to reach it, and there is no second
+   copy of the form further down the page.
 
    Analytics locations all carry a `_condensed` suffix so this page and the
    shipped one are separable in Plausible; that comparison is the entire point
@@ -84,49 +85,82 @@ const HOW = [
           ))}
         </ul>
 
-        {/* The no-calendar path. On the shipped page this is a pair of chooser
-            cards above the embed; here the embed is already in view, so a card
-            offering to show it would be pointing at itself. */}
-        <p class="hero__ask">
-          Not ready to put a time down?
-          <a
-            href="#ask"
-            data-track="cta_click"
-            data-track-cta="choose_note"
-            data-track-location="condensed_hero"
-          >Send a note instead <span aria-hidden="true">&rarr;</span></a>
-        </p>
       </div>
 
+      {/* The panel holds both paths and shows one at a time. "Send a note" was
+          a text link under the copy, which made the calendar the offer and the
+          form a consolation; as an equal half of a switch it is the same size
+          ask, and choosing it swaps the pane in place rather than scrolling
+          somewhere else — the visitor who did not want the calendar never has
+          to travel past it.
 
-      {/* The calendar takes the column the diagnostic panel used to hold. Not
-          loading="lazy": it is above the fold here, so deferring it would only
-          delay the one thing this variant exists to reach sooner. It is a
-          third-party iframe in the hero and it does cost LCP — that trade is
-          the hypothesis under test, not an oversight. */}
+          The switch is two radios and two labels, no JavaScript: with a script
+          blocked or still loading it still works, which a button-and-JS tab
+          would not. Tracking rides on data-track attributes on the labels, so
+          the delegated listener in Analytics.astro reports the split without
+          this page owning any of it.
+
+          The iframe is not loading="lazy": it is above the fold and it is the
+          default pane, so deferring it would only delay the one thing this
+          variant exists to reach sooner. A third-party iframe in the hero does
+          cost LCP — that trade is the hypothesis under test. */}
       <div class="panel">
-        <div class="panel__head">
-          <span class="panel__label">Pick a time</span>
-          <span class="panel__note">Free · 30 minutes</span>
-        </div>
-        <div class="book-embed">
-          <iframe
-            src={CAL_EMBED_URL}
-            title="Book your free consultation with Panta"
-            width="100%"
-            height="640"></iframe>
-        </div>
-        <p class="panel__fallback">
-          Calendar not loading?
-          <a
-            href={SCHEDULE_URL}
-            target="_blank"
-            rel="noopener noreferrer"
+        <input class="panel__radio" type="radio" name="panel-view" id="view-calendar" checked />
+        <input class="panel__radio" type="radio" name="panel-view" id="view-note" />
+
+        <div class="panel__switch">
+          <label
+            class="panel__tab"
+            for="view-calendar"
             data-track="cta_click"
-            data-track-cta="booking_new_tab"
-            data-track-location="condensed_booking"
-          >Open it in a new tab &rarr;</a>
-        </p>
+            data-track-cta="choose_calendar"
+            data-track-location="condensed_panel"
+          >Pick a time</label>
+          <label
+            class="panel__tab"
+            for="view-note"
+            data-track="cta_click"
+            data-track-cta="choose_note"
+            data-track-location="condensed_panel"
+          >Send a note</label>
+        </div>
+
+        <div class="panel__body">
+          <div class="panel__pane pane--calendar">
+            <div class="book-embed">
+              <iframe
+                src={CAL_EMBED_URL}
+                title="Book your free consultation with Panta"
+                width="100%"
+                height="640"></iframe>
+            </div>
+            <p class="panel__fallback">
+              Calendar not loading?
+              <a
+                href={SCHEDULE_URL}
+                target="_blank"
+                rel="noopener noreferrer"
+                data-track="cta_click"
+                data-track-cta="booking_new_tab"
+                data-track-location="condensed_booking"
+              >Open it in a new tab &rarr;</a>
+            </p>
+          </div>
+
+          <div class="panel__pane pane--note">
+            <p class="panel__intro">
+              Tell us what&rsquo;s going on and we&rsquo;ll reply within one business day — with a
+              time to talk if that makes sense, or an answer if it doesn&rsquo;t need a call.
+            </p>
+            {/* bookHref is in-page: this panel holds the scheduler, so someone
+                who just sent a note should get the calendar back, not a trip to
+                /consultation/. A fragment cannot check a radio on its own, so
+                the script below does it — which is always available here,
+                because without JS the form posts and /api/contact redirects to
+                /contact/?sent=1 and this success panel never renders at all. */}
+            <LeadForm source="condensed_panel" bookHref="#view-calendar" />
+          </div>
+        </div>
       </div>
     </div>
 
@@ -165,29 +199,9 @@ const HOW = [
     </div>
   </section>
 
-  <!-- SEND A NOTE INSTEAD -->
-  <section class="section section--dark" id="ask" data-section="condensed_ask">
-    <div class="container ask__grid">
-      <div>
-        <p class="label">Send a note instead</p>
-        <h2 class="ask__head">Rather just tell us what&rsquo;s going on?</h2>
-        <p class="ask__body">
-          Send a short note and we&rsquo;ll reply within one business day — with a time to talk
-          if that makes sense, or an answer if it doesn&rsquo;t need a call at all.
-        </p>
-      </div>
-      <LeadForm source="condensed_ask">
-        <a
-          slot="aside"
-          class="ask__book"
-          href="#book"
-          data-track="cta_click"
-          data-track-cta="pulse_check"
-          data-track-location="condensed_ask"
-        >or pick a time above <span aria-hidden="true">&uarr;</span></a>
-      </LeadForm>
-    </div>
-  </section>
+  {/* No standalone send-a-note section: the form is a pane of the hero panel
+      now, and a second copy further down would be the same request asked
+      twice, with two sets of field ids and two sources muddying the split. */}
 </Base>
 
 <script>
@@ -212,6 +226,17 @@ const HOW = [
     );
     observer.observe(embed);
   }
+
+  // "Rather just pick a time?" in the send-a-note success panel. Its href is
+  // the radio's id, which a fragment jump cannot check on its own.
+  const calendarView = document.querySelector<HTMLInputElement>('#view-calendar');
+  document.querySelector('.panel')?.addEventListener('click', (e) => {
+    const link = (e.target as Element)?.closest?.('a[href="#view-calendar"]');
+    if (!link || !calendarView) return;
+    e.preventDefault();
+    calendarView.checked = true;
+    track('cta_click', { cta: 'choose_calendar', location: 'condensed_panel_after_send' });
+  });
 </script>
 
 <style>
@@ -290,14 +315,8 @@ const HOW = [
     color: var(--cream);
   }
 
-  .hero__ask {
-    font-size: 0.9rem;
-    color: var(--cream);
-    margin: 0;
-    opacity: 0.9;
-  }
-
-  /* calendar panel — the cream readout the diagnostic panel used to be */
+  /* the panel — the cream readout the diagnostic panel used to be, now
+     holding both paths behind a switch */
   .panel {
     background: var(--cream);
     color: var(--charcoal);
@@ -306,25 +325,75 @@ const HOW = [
     box-shadow: 0 24px 60px -30px rgba(0, 0, 0, 0.55);
   }
 
-  .panel__head {
+  /* Visually hidden, not display:none — the radios stay focusable and stay in
+     the tab order, which is the whole accessibility story for this switch. */
+  .panel__radio {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip: rect(0 0 0 0);
+    white-space: nowrap;
+  }
+
+  .panel__switch {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 4px;
+    padding: 4px;
+    margin-bottom: 0.85rem;
+    background: var(--cream-soft);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+  }
+
+  .panel__tab {
     display: flex;
-    align-items: baseline;
-    justify-content: space-between;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
-  }
-
-  .panel__label {
-    font-size: 0.7rem;
+    align-items: center;
+    justify-content: center;
+    padding: 0.6rem 0.75rem;
+    border-radius: 999px;
+    font-size: 0.85rem;
     font-weight: 600;
-    letter-spacing: 0.16em;
-    text-transform: uppercase;
-    color: var(--bamboo-deep);
+    color: var(--stone-deep);
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, color 0.15s ease;
   }
 
-  .panel__note {
-    font-size: 0.75rem;
+  .panel__tab:hover { color: var(--charcoal); }
+
+  #view-calendar:checked ~ .panel__switch label[for='view-calendar'],
+  #view-note:checked ~ .panel__switch label[for='view-note'] {
+    background: var(--charcoal);
+    color: var(--cream);
+  }
+
+  #view-calendar:focus-visible ~ .panel__switch label[for='view-calendar'],
+  #view-note:focus-visible ~ .panel__switch label[for='view-note'] {
+    outline: 2px solid var(--bamboo-deep);
+    outline-offset: 2px;
+  }
+
+  .panel__pane { display: none; }
+
+  #view-calendar:checked ~ .panel__body .pane--calendar,
+  #view-note:checked ~ .panel__body .pane--note {
+    display: block;
+  }
+
+  .panel__intro {
+    font-size: 0.87rem;
+    line-height: 1.6;
     color: var(--stone-deep);
+    margin: 0 0 1.1rem;
+  }
+
+  /* The form is shorter than the calendar; without a floor the whole hero
+     jumps when the panes swap. Only above the breakpoint where the panel
+     shares a row with the copy and the reflow would be visible. */
+  @media (min-width: 941px) {
+    .panel__body { min-height: 690px; }
   }
 
   .book-embed {
@@ -408,36 +477,6 @@ const HOW = [
     margin-bottom: 0.9rem;
   }
 
-  /* send a note */
-  .ask__grid {
-    display: grid;
-    gap: clamp(2rem, 5vw, 3.5rem);
-    align-items: start;
-  }
-
-  @media (min-width: 900px) {
-    .ask__grid { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
-  }
-
-  .ask__head {
-    font-family: var(--font-serif);
-    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
-    line-height: 1.25;
-    margin: 0.4rem 0 0.9rem;
-    color: var(--cream);
-  }
-
-  .ask__body {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: var(--cream);
-    margin: 0;
-    max-width: 46ch;
-  }
-
-  .ask__book {
-    font-size: 0.92rem;
-    color: var(--cream);
-    white-space: nowrap;
-  }
+  /* The form sits on the cream panel, not on the dark section, so it takes the
+     default light input styling from global.css and needs nothing here. */
 </style>
