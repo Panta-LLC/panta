@@ -1,6 +1,7 @@
 ---
 import Base from '../layouts/Base.astro';
 import LeadForm from '../components/LeadForm.astro';
+import SectionViews from '../components/SectionViews.astro';
 import { getDoc, getProjects } from '../lib/sanity.js';
 
 const c = await getDoc('consultationPage');
@@ -103,6 +104,158 @@ const consultSchema = [
             <p>{card.body}</p>
           </div>
         ))}
+      </div>
+    </div>
+  </section>
+
+  <!-- THE READOUT, SHOWN -->
+  <!-- The section above promises "a one-page written readout within 48 hours."
+       This is that page, rendered. It exists because the readout is the only
+       part of the offer a competitor can't copy by also offering a free call —
+       and a promise nobody has seen is worth less than a document they have.
+
+       Two hard constraints on anything edited here:
+
+       1. NO SCORECARD, NO GRADES. Scoring, grading and the 90-day roadmap are
+          the paid Digital Presence Plan's deliverables (see the header comment
+          at the top of this file, and `pulse-check-questionnaire.md` §"What it
+          must not become"). Show a graded scorecard here and the Plan has
+          nothing left to sell. The free readout is exactly three observations
+          and one recommendation — this facsimile must stay that shape.
+       2. IT STAYS LABELLED AS A SAMPLE. Cedar & Stone is the fictional client
+          used across `sample-audit-report.md`; keeping the same invented name
+          means neither sample can be mistaken for a real client's document.
+          Swap in a real anonymized readout only with that client's written
+          say-so, and keep the "sample" chip either way.
+
+       Rendered as markup rather than a screenshot on purpose: it stays legible
+       on a phone, it's readable by screen readers and by search, and it costs
+       nothing to revise when the readout format moves. -->
+  <section class="section readout" id="readout" data-section="consultation_readout">
+    <div class="container">
+      <div class="readout__intro">
+        <p class="label">What you walk away with</p>
+        <h2>This is the page that arrives 48 hours later.</h2>
+        <p>
+          Three observations and the one thing we&rsquo;d do first — written after the call,
+          in plain language, short enough to actually read. It&rsquo;s yours to keep, act on,
+          or hand to whoever builds your site. No grades, no 40-page assessment, no invoice.
+        </p>
+      </div>
+
+      <figure class="sheet">
+        <figcaption class="sheet__chip">Sample readout · fictional client</figcaption>
+
+        <div class="sheet__head">
+          <div>
+            <p class="sheet__kicker">Pulse Check — Readout</p>
+            <p class="sheet__client">Cedar &amp; Stone Landscaping</p>
+          </div>
+          <p class="sheet__meta">Sent 2 days after the call<br />1 page · no attachments</p>
+        </div>
+
+        <p class="sheet__lede">
+          Thanks for the half hour. Here&rsquo;s what I noticed, in the order I&rsquo;d worry
+          about it. Nothing here needs an agency to fix — the first two you can do yourself
+          this week.
+        </p>
+
+        <ol class="sheet__obs">
+          <li>
+            <span class="sheet__n">Observation 1</span>
+            <p class="sheet__t">People find you. They just can&rsquo;t reach you.</p>
+            <p class="sheet__b">
+              You rank well locally and your Google profile is in good shape — the top of your
+              funnel is working. But your contact form&rsquo;s submit button sits under the
+              cookie banner on an iPhone, and roughly seven in ten of your visitors are on one.
+              I couldn&rsquo;t send you a message from my own phone while we were talking.
+            </p>
+          </li>
+          <li>
+            <span class="sheet__n">Observation 2</span>
+            <p class="sheet__t">Your homepage doesn&rsquo;t say what you do.</p>
+            <p class="sheet__b">
+              Before our call I read your homepage for five seconds and looked away. What I
+              wrote down was &ldquo;a landscaping company, somewhere.&rdquo; Not the design-build
+              work you described, not the neighborhoods you actually serve. The headline
+              (&ldquo;Welcome to Cedar &amp; Stone&rdquo;) is spending your most valuable line
+              of text on a greeting.
+            </p>
+          </li>
+          <li>
+            <span class="sheet__n">Observation 3</span>
+            <p class="sheet__t">Your best proof is somewhere you can&rsquo;t see it.</p>
+            <p class="sheet__b">
+              Forty-seven reviews at 4.7 stars, and photographs of your work that are genuinely
+              good — none of which appear on your website. Meanwhile there&rsquo;s an unclaimed
+              Houzz profile carrying six photos a customer uploaded, and that&rsquo;s the version
+              of you a high-budget homeowner is most likely to meet first.
+            </p>
+          </li>
+        </ol>
+
+        <div class="sheet__rec">
+          <span class="sheet__n">What I&rsquo;d do first</span>
+          <p class="sheet__t">Fix the mobile form. This week. Before anything else.</p>
+          <p class="sheet__b">
+            Everything else on this page is an improvement. This one is a leak — you are paying
+            for visibility that arrives at a door that doesn&rsquo;t open. Your web person can
+            likely fix it in an afternoon; the theme&rsquo;s native form block would sidestep it
+            entirely. Do that, then the headline, then claim Houzz. The reviews and the
+            photography are worth a real conversation, but they&rsquo;re worth more once
+            somebody can contact you.
+          </p>
+        </div>
+
+        <p class="sheet__sign">
+          — Damon, Panta<br />
+          <span class="sheet__ps">
+            No obligation attached to any of this. If you want the full picture — every channel,
+            scored, with a 90-day sequence — that&rsquo;s the Digital Presence Plan, and we can
+            talk about it whenever you like.
+          </span>
+        </p>
+      </figure>
+    </div>
+  </section>
+
+  <!-- WHO IT'S FOR -->
+  <!-- A qualifier, not a sales section. The point is that the wrong-fit visitor
+       recognizes themselves and doesn't book — a no-show or a bad-fit call is
+       more expensive than a bounce, and the "not a fit" column is doing the
+       real work here. Keep it. Deleting it turns this into flattery. -->
+  <section class="section fit" data-section="consultation_fit">
+    <div class="container">
+      <p class="label">Who books this</p>
+      <h2 style="max-width: 24ch;">Two kinds of people get the most out of it.</h2>
+      <div class="fit__grid">
+        <div class="fit__card">
+          <p class="fit__who">The owner who built it themselves</p>
+          <p class="fit__body">
+            You run a small business, the website came together over a few weekends some years
+            ago, and you&rsquo;ve suspected for a while it isn&rsquo;t pulling its weight —
+            without knowing which part is the problem. You don&rsquo;t need a lecture on digital
+            marketing. You need someone to look at the actual thing and say the honest sentence
+            out loud.
+          </p>
+        </div>
+        <div class="fit__card">
+          <p class="fit__who">The director wearing six hats</p>
+          <p class="fit__body">
+            You lead a nonprofit or a community organization. Communications is a third of
+            somebody&rsquo;s job, the site was inherited from a volunteer who has since moved on,
+            and a funder or a board member has started asking about it. You need a clear-eyed
+            read you can forward to people who weren&rsquo;t on the call.
+          </p>
+        </div>
+        <div class="fit__card fit__card--not">
+          <p class="fit__who">Probably not a fit if&hellip;</p>
+          <ul class="fit__list">
+            <li>You already know exactly what you want built and just need a quote — <a href="/contact/">send us the brief instead</a>, it&rsquo;s faster.</li>
+            <li>You&rsquo;re looking for someone to run ads or post to social for you on retainer. That isn&rsquo;t what we do.</li>
+            <li>You want the full graded assessment now. That&rsquo;s the <a href="/digital-presence-plan/">Digital Presence Plan</a>, and it&rsquo;s paid work.</li>
+          </ul>
+        </div>
       </div>
     </div>
   </section>
@@ -268,6 +421,13 @@ const consultSchema = [
     </div>
   </section>
 </Base>
+
+<!-- This page carried data-section on #ask from the day that section was added,
+     but never imported the component that reads it, so the attribute did
+     nothing. It matters more now: the readout and the fit sections sit between
+     the visitor and the calendar, and whether they reach them is the only way
+     to tell a page that's too long from one that's doing its job. -->
+<SectionViews />
 
 <script>
   // Booking funnel, such as it can be measured. The scheduler is a cross-origin
@@ -466,6 +626,213 @@ const consultSchema = [
     letter-spacing: 0.14em;
     color: var(--bamboo-deep);
     margin-bottom: 0.9rem;
+  }
+
+  /* ---------------------------------------------------- the readout, shown -- */
+
+  .readout {
+    background: var(--cream-soft);
+    border-top: 1px solid var(--line);
+  }
+
+  .readout__intro {
+    max-width: 46rem;
+    margin-bottom: clamp(2rem, 5vw, 3rem);
+  }
+
+  /* The sheet reads as a document, not as another card on the page: paper-white
+     against the section's cream, a serif body, and a hairline rule instead of
+     the site's usual card border. If it looks like site furniture the visitor
+     reads it as marketing copy rather than as the thing they'd receive. */
+  .sheet {
+    position: relative;
+    margin: 0 auto;
+    max-width: 44rem;
+    padding: clamp(1.75rem, 4vw, 3rem);
+    background: #fffdf7;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 18px 46px -28px rgba(38, 37, 31, 0.4);
+  }
+
+  .sheet__chip {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eef0e0;
+    border: 1px solid var(--sage);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+  }
+
+  .sheet__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sheet__kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+
+  .sheet__client {
+    margin: 0.3rem 0 0;
+    font-family: var(--font-serif);
+    font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+    line-height: 1.2;
+    color: var(--charcoal);
+  }
+
+  .sheet__meta {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: right;
+    color: var(--stone-deep);
+  }
+
+  @media (max-width: 480px) {
+    .sheet__meta { text-align: left; }
+  }
+
+  .sheet__lede {
+    margin: 1.4rem 0 0;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.7;
+    color: var(--charcoal);
+    max-width: none;
+  }
+
+  .sheet__obs {
+    list-style: none;
+    margin: 1.75rem 0 0;
+    padding: 0;
+    display: grid;
+    gap: 1.5rem;
+  }
+
+  .sheet__n {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+    margin-bottom: 0.4rem;
+  }
+
+  .sheet__t {
+    margin: 0 0 0.4rem;
+    font-family: var(--font-serif);
+    font-weight: 600;
+    font-size: 1.02rem;
+    line-height: 1.35;
+    color: var(--charcoal);
+    max-width: none;
+  }
+
+  .sheet__b {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--stone-deep);
+    max-width: none;
+  }
+
+  /* The recommendation is the payload — the whole readout exists to deliver one
+     of these. It gets the only filled surface on the sheet. */
+  .sheet__rec {
+    margin-top: 1.75rem;
+    padding: 1.25rem 1.35rem;
+    border-radius: 6px;
+    background: var(--cream-soft);
+    border-left: 3px solid var(--bamboo-deep);
+  }
+
+  .sheet__rec .sheet__b { color: var(--charcoal); }
+
+  .sheet__sign {
+    margin: 1.75rem 0 0;
+    padding-top: 1.25rem;
+    border-top: 1px solid var(--line);
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--charcoal);
+    max-width: none;
+  }
+
+  .sheet__ps {
+    display: inline-block;
+    margin-top: 0.6rem;
+    font-size: 0.8rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+  }
+
+  /* ------------------------------------------------------------ who it's for -- */
+
+  .fit__grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 2.5rem;
+  }
+
+  @media (min-width: 860px) {
+    .fit__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  }
+
+  .fit__card {
+    padding: 1.5rem;
+    border-top: 2px solid var(--sage);
+  }
+
+  /* The disqualifier is set apart rather than styled to match — it is doing the
+     opposite job of the two beside it, and reading as a third selling point
+     would blunt it. */
+  .fit__card--not {
+    background: var(--cream-soft);
+    border-top-color: var(--stone);
+    border-radius: 0 0 6px 6px;
+  }
+
+  .fit__who {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-serif);
+    font-size: 1.08rem;
+    line-height: 1.3;
+    color: var(--charcoal);
+  }
+
+  .fit__body {
+    margin: 0;
+    font-size: 0.9rem;
+    line-height: 1.65;
+    color: var(--stone-deep);
+    max-width: none;
+  }
+
+  .fit__list {
+    margin: 0;
+    padding-left: 1.1rem;
+    display: grid;
+    gap: 0.6rem;
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
   }
 
   /* ads readiness */
