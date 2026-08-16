@@ -31,6 +31,13 @@ if (!p) {
   return Astro.redirect('/#packages');
 }
 
+// Analytics: the package reports under the service it packages, not under its
+// own slug. A package page and its service page are two doors into one line,
+// and giving them separate values would halve both numbers in every report the
+// funnel plan runs on. Left unset when the reference is empty — `(none)` is
+// better than a guess derived from the package slug.
+const serviceLine = p.service?.slug;
+
 // Rich text from here down: each of these is a list of HTML strings, one per
 // bullet or paragraph, with inline emphasis and links already rendered. The
 // helpers take a plain string too, so a package written before the fields
@@ -80,6 +87,7 @@ const gaps = [
   description={metaDescription}
   schema={schema}
   noindex={!p.pageReady}
+  serviceLine={serviceLine}
 >
   <!-- ===================== hero ===================== -->
   <section class="section section--dark pkg-hero" data-section="hero">

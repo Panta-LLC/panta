@@ -3,14 +3,17 @@ import Base from '../layouts/Base.astro';
 import LeadForm from '../components/LeadForm.astro';
 import SectionViews from '../components/SectionViews.astro';
 import { getDoc, getProjects } from '../lib/sanity.js';
+import { bookingEmbedUrl } from '../lib/booking.js';
 
 const c = await getDoc('consultationPage');
 const settings = await getDoc('siteSettings');
 const projects = await getProjects();
 
-// Booking URLs are managed in Sanity → Site Settings.
+// The Koalendar booking page, managed in Sanity → Site Settings. The embed URL
+// is derived from it (see lib/booking.js) rather than stored separately —
+// `calEmbedUrl` is the retired Google Calendar field and is no longer read.
 const SCHEDULE_URL = settings.scheduleUrl;
-const CAL_EMBED_URL = settings.calEmbedUrl;
+const CAL_EMBED_URL = bookingEmbedUrl(SCHEDULE_URL);
 
 // "Audit", "scorecard" and "graded" belong to the paid Digital Presence Plan.
 // This page sells the free call, so it says "consultation" throughout —
@@ -355,13 +358,19 @@ const consultSchema = [
         </a>
       </div>
 
+      {/* Rendered only when the setting parses. An iframe with src={undefined}
+          resolves to the current page and embeds /consultation/ inside itself,
+          which is a worse failure than no calendar at all — the fallback link
+          below is always there. */}
       <div class="book-embed" id="calendar">
-        <iframe
-          src={CAL_EMBED_URL}
-          title="Book your free consultation with Panta"
-          loading="lazy"
-          width="100%"
-          height="640"></iframe>
+        {CAL_EMBED_URL && (
+          <iframe
+            src={CAL_EMBED_URL}
+            title="Book your free consultation with Panta"
+            loading="lazy"
+            width="100%"
+            height="800"></iframe>
+        )}
       </div>
       <p class="small" style="margin: 0.9rem auto 0; max-width: none;">
         Calendar not loading?
@@ -430,12 +439,19 @@ const consultSchema = [
 <SectionViews />
 
 <script>
-  // Booking funnel, such as it can be measured. The scheduler is a cross-origin
-  // Google Calendar appointment embed: it exposes no completion event to the
-  // host page, so a booking is NOT observable from here. The last thing we can
-  // see is the visitor reaching the calendar; actual bookings are counted in
-  // Google Calendar itself. Don't add a "booking_completed" event unless the
-  // scheduler is swapped for one that genuinely reports back.
+  // Booking funnel. The scheduler is a cross-origin Koalendar embed, which
+  // still exposes no completion event to the host page — but unlike the Google
+  // Calendar embed it replaced, it can redirect the invitee on completion. So
+  // the booking IS observable now, just not from this page: it is counted on
+  // /thanks/, which Koalendar redirects to.
+  //
+  // That makes `booking_viewed` the step BEFORE the conversion rather than the
+  // end of the funnel. Keep it — reaching the calendar and completing a booking
+  // are different things, and the ratio between them is where a broken booking
+  // flow shows up.
+  //
+  // Still don't add a "booking_completed" here. This page cannot see one, and
+  // an event named for something it is guessing at is worse than no event.
   const track = (window as any).pantaTrack ?? (() => {});
   const embed = document.querySelector<HTMLElement>('.book-embed');
 
@@ -966,7 +982,11 @@ const consultSchema = [
   .book-embed iframe {
     display: block;
     width: 100%;
-    min-height: 640px;
+    /* Koalendar's own embed guidance is 800px. Its booking page is taller than
+       the Google Calendar one it replaced (a month grid plus a time column,
+       then the details form), and short-changing it gives the iframe its own
+       inner scrollbar inside a page that already scrolls. */
+    min-height: 800px;
     border: 0;
   }
 

@@ -1,0 +1,23 @@
+"# The UTM builder sheet — docs/FUNNEL-MEASUREMENT.md §2."
+"# One row per link that exists in the world. Build every social and GBP link"
+"# from here and nowhere else: utm_source=IG and utm_source=instagram are two"
+"# rows in every report forever, and Plausible will not merge them later."
+"#"
+"# Conventions, fixed: source is the platform, lowercase, no abbreviations."
+"# medium is 'social' for social posts, 'profile' for the link in a bio or"
+"# profile field, 'listing' for the Google Business Profile. campaign is the"
+"# content series, snake_case."
+"#"
+"# Destination is /pulse-check/ for anything selling the offer — it 301s to"
+"# /consultation/ and matches the name of the offer in the post. UTMs survive"
+"# the redirect. Do not link /pulse-check/ expecting it to show up in reports;"
+"# the pageview lands on /consultation/."
+"#"
+"# The rows below the header are seeds for the profile links that exist today."
+"# Add a row before you publish a link, not after."
+destination,utm_source,utm_medium,utm_campaign,full_url,where_it_lives,added
+/pulse-check/,instagram,profile,profile_link,https://www.allthingspanta.com/pulse-check/?utm_source=instagram&utm_medium=profile&utm_campaign=profile_link,Instagram bio,2026-08-13
+/pulse-check/,linkedin,profile,profile_link,https://www.allthingspanta.com/pulse-check/?utm_source=linkedin&utm_medium=profile&utm_campaign=profile_link,LinkedIn company page website field,2026-08-13
+/pulse-check/,facebook,profile,profile_link,https://www.allthingspanta.com/pulse-check/?utm_source=facebook&utm_medium=profile&utm_campaign=profile_link,Facebook page website field,2026-08-13
+/pulse-check/,google_business,listing,gbp_website,https://www.allthingspanta.com/pulse-check/?utm_source=google_business&utm_medium=listing&utm_campaign=gbp_website,Google Business Profile website button,2026-08-13
+/,instagram,social,mission_trilogy,https://www.allthingspanta.com/?utm_source=instagram&utm_medium=social&utm_campaign=mission_trilogy,Mission trilogy posts,2026-08-13

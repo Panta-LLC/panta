@@ -32,10 +32,17 @@ interface Props {
    *
    * That third field asks for a URL first and a name second because the Pulse
    * Check assumes name, email and website-or-org are in hand before the call
-   * (pulse-check-questionnaire.md) — and the Google Calendar embed collects
-   * none of the URL, so this form is the only place it can arrive. The field
-   * still posts as `org`: a relabel, not a new field, so /api/contact is
-   * untouched and the visitor is not asked for one more thing.
+   * (pulse-check-questionnaire.md) — and the booking embed collects none of the
+   * URL, so this form is the only place it can arrive. The field still posts as
+   * `org`: a relabel, not a new field, so /api/contact is untouched and the
+   * visitor is not asked for one more thing.
+   *
+   * Koalendar, unlike the Google Calendar embed this reasoning was written
+   * against, CAN ask a custom question on the booking form — so the website URL
+   * could be collected there instead and this form would stop being the only
+   * route. Worth doing, but it is a change to the booking flow rather than to
+   * this component, and it trades a field here for a field in front of the
+   * calendar. Not done on that basis alone.
    *
    * "compact" — name and email only, on one row. For a mid-page catch, where
    * the form is interrupting something else the visitor was reading and every

@@ -3,6 +3,7 @@ import '@fontsource/ibm-plex-mono/400.css';
 import Base from '../../layouts/Base.astro';
 import PortableText from '../../components/PortableText.astro';
 import NewsletterForm from '../../components/NewsletterForm.astro';
+import ReadDepth from '../../components/ReadDepth.astro';
 import { getDoc, getPost, getPostSlugs, getRelatedPosts, getCategories, getPosts } from '../../lib/sanity.js';
 import { postMeta } from '../../lib/format.js';
 
@@ -150,6 +151,16 @@ const description =
 
         <!-- Body. No sidebar, no popups, no mid-article CTAs of any kind (§5b). -->
         <PortableText value={post.body} />
+
+        <!-- Read-depth marker sits here, between the prose and the end
+             sequence, so the 75% line is 75% of the *article* — not of a
+             document that also contains the bridge, the newsletter card and
+             the keep-reading rail. §5b's strict end sequence is exactly why
+             this matters: those three blocks are tall. -->
+        <ReadDepth
+          event="pulse_article_read"
+          props={{ post: post.slug, category: post.category?.slug }}
+        />
 
         <!-- ===== end sequence — strict order (§5b) ===== -->
 

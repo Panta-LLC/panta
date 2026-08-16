@@ -8,6 +8,13 @@
       "when": 1786386333334,
       "tag": "0000_organic_gideon",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1786672339757,
+      "tag": "0001_crazy_purple_man",
+      "breakpoints": true
     }
   ]
 }

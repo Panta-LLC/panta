@@ -37,13 +37,14 @@
 import Base from '../layouts/Base.astro';
 import LeadForm from '../components/LeadForm.astro';
 import { getDoc, getProjects } from '../lib/sanity.js';
+import { bookingEmbedUrl } from '../lib/booking.js';
 
 const c = await getDoc('consultationPage');
 const settings = await getDoc('siteSettings');
 const projects = await getProjects();
 
 const SCHEDULE_URL = settings.scheduleUrl;
-const CAL_EMBED_URL = settings.calEmbedUrl;
+const CAL_EMBED_URL = bookingEmbedUrl(SCHEDULE_URL);
 
 const description =
   'The Pulse Check: a free 30-minute review for organizations at any stage. Walk away with an honest read on where you stand and a one-page written readout within 48 hours.';
@@ -128,11 +129,13 @@ const HOW = [
         <div class="panel__body">
           <div class="panel__pane pane--calendar">
             <div class="book-embed">
-              <iframe
-                src={CAL_EMBED_URL}
-                title="Book your free consultation with Panta"
-                width="100%"
-                height="640"></iframe>
+              {CAL_EMBED_URL && (
+                <iframe
+                  src={CAL_EMBED_URL}
+                  title="Book your free consultation with Panta"
+                  width="100%"
+                  height="640"></iframe>
+              )}
             </div>
             <p class="panel__fallback">
               Calendar not loading?
@@ -204,11 +207,15 @@ const HOW = [
 </Base>
 
 <script>
-  // Same caveat as consultation.astro: the Google Calendar embed is
-  // cross-origin and reports no completion event, so a booking is not
-  // observable from here. What IS newly worth measuring on this variant is
-  // that the calendar starts in view — `booking_viewed` firing on load rather
-  // than after a scroll is the difference between the two pages.
+  // Same as consultation.astro: the Koalendar embed is cross-origin and
+  // reports no completion event, so the booking itself is counted on /thanks/
+  // rather than here. What IS worth measuring on this variant is that the
+  // calendar starts in view — `booking_viewed` firing on load rather than
+  // after a scroll is the difference between the two pages.
+  //
+  // The `variant: 'condensed'` property is what makes the comparison possible
+  // once bookings are counted: filter the funnel on it to see whether putting
+  // the calendar in the hero converts better or just gets seen more.
   const track = (window as any).pantaTrack ?? (() => {});
   const embed = document.querySelector<HTMLElement>('.book-embed');
 

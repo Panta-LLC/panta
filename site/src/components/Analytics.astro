@@ -43,18 +43,56 @@
     document.addEventListener(
       'click',
       function (e) {
-        var el = e.target instanceof Element ? e.target.closest('[data-track]') : null;
-        if (!el) return;
-        var props = {};
-        for (var key in el.dataset) {
-          if (key === 'track' || key.indexOf('track') !== 0) continue;
-          var prop = key
-            .slice(5)
-            .replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); })
-            .replace(/^_/, '');
-          props[prop] = el.dataset[key];
+        var target = e.target instanceof Element ? e.target : null;
+        if (!target) return;
+
+        var el = target.closest('[data-track]');
+        if (el) {
+          var props = {};
+          for (var key in el.dataset) {
+            if (key === 'track' || key.indexOf('track') !== 0) continue;
+            var prop = key
+              .slice(5)
+              .replace(/[A-Z]/g, function (m) { return '_' + m.toLowerCase(); })
+              .replace(/^_/, '');
+            props[prop] = el.dataset[key];
+          }
+          window.pantaTrack(el.dataset.track, props);
         }
-        window.pantaTrack(el.dataset.track, props);
+
+        // ⚠ Nothing here may write to sessionStorage, localStorage or a cookie.
+        //
+        // An earlier draft of the funnel work stashed the last booking CTA
+        // click here so /thanks/ could report which placement produced the
+        // booking. It cannot: /privacy/ tells visitors in as many words that
+        // this site "sets no cookies, stores nothing on your device", and that
+        // it is why there is no cookie banner. A stashed attribution object is
+        // storage on the device, and quietly contradicting a published privacy
+        // promise costs more than the datapoint is worth.
+        //
+        // It is also unnecessary. Plausible stitches the session server-side:
+        // put `cta_click` and `pulse_check_booked` in one funnel and the
+        // placement breakdown falls out of the funnel report, with no state
+        // carried across the navigation by us. See docs/FUNNEL-MEASUREMENT.md.
+
+        // Plausible's own outboundLinks option only covers http(s) links to
+        // another host, so every mailto: on the site was invisible — including
+        // the footer address, which is the escape hatch for anyone who won't
+        // use a form. Handled here rather than at the link, because these are
+        // scattered and half of them are rendered from Sanity.
+        //
+        // Not exclusive with the data-track branch above: a mailto that also
+        // carries data-track is both a CTA click and an email click, and
+        // collapsing them would hide it from one report or the other.
+        var mail = target.closest('a[href^="mailto:"]');
+        if (mail) {
+          window.pantaTrack('outbound_email_click', {
+            // Address only — the subject/body query string on some of these
+            // carries prefilled copy that would bloat the property's cardinality
+            // for no analytical gain.
+            address: (mail.getAttribute('href') || '').slice(7).split('?')[0],
+          });
+        }
       },
       true
     );
@@ -82,13 +120,38 @@
     formSubmissions: true,
   });
 
+  // Every event carries the page it fired on and, where the page declares one,
+  // the service line it belongs to. Both are required on every event by the
+  // funnel measurement plan (docs/FUNNEL-MEASUREMENT.md) and both are added
+  // here rather than at the call sites: there are sixty-five of those, and any
+  // parameter that has to be remembered by hand is one that will be missing
+  // from the events that matter most.
+  //
+  // Plausible records the page for *pageviews* already, but a custom event's
+  // page is not queryable without this — which is precisely the breakdown the
+  // plan runs on ("which placements actually drive bookings").
+  //
+  // Read at send time, not at module load: `service_line` comes off <html>,
+  // which Base.astro sets per page.
+  const enrich = (params) => {
+    const props = { ...(params || {}) };
+    if (props.source_page == null) props.source_page = location.pathname;
+    const line = document.documentElement.dataset.serviceLine;
+    if (line && props.service_line == null) props.service_line = line;
+    return props;
+  };
+
   // Plausible takes properties under `props`; callers pass a flat object,
   // exactly as GA4 wanted, so the shape is adapted here rather than at sixty
   // call sites.
   window.pantaTrack = function (event, params) {
-    track(event, { props: params || {} });
+    track(event, { props: enrich(params) });
   };
 
+  // The queued events are enriched on drain rather than on push, so enrichment
+  // lives in exactly one place. Safe because the site is an MPA: the drain
+  // happens in the same page load that queued them, so location.pathname is
+  // still what it was at click time.
   const queued = window.__pantaQ || [];
   window.__pantaQ = [];
   queued.forEach(([event, params]) => window.pantaTrack(event, params));

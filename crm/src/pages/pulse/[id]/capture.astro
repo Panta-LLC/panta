@@ -15,6 +15,33 @@ if (!check) return Astro.redirect('/pulse', 302);
 const p = check.pulse;
 const due = p.readoutDueAt ? fmtCountdown(p.readoutDueAt) : null;
 
+// The funnel fields, §3 of docs/FUNNEL-MEASUREMENT.md. Kept out of `rows`
+// below on purpose: `rows` is the capture sheet, which prints in questionnaire
+// order and belongs to the pinned instrument. These are pipeline bookkeeping —
+// they are not asked as instrument questions, they are not versioned with it,
+// and folding them into that list would be the first step toward the
+// questionnaire quietly growing sales questions.
+const SOURCE_LABELS: Record<string, string> = {
+  referral: 'referral — someone told them',
+  search: 'search — Google, etc.',
+  google_business_profile: 'Google Business Profile',
+  social: 'social',
+  newsletter: 'newsletter',
+  pulse_article: 'a Pulse article',
+  outreach: 'our outreach',
+  repeat_client: 'worked with us before',
+  event: 'event or in person',
+  unknown: "asked, but it didn't resolve",
+};
+
+const OUTCOME_LABELS: Record<string, string> = {
+  no_show: 'no-show',
+  held_no_proposal: 'held — no proposal',
+  proposal_sent: 'proposal sent',
+  closed_won: 'closed won',
+  closed_lost: 'closed lost',
+};
+
 const CAPACITY_LABELS: Record<string, string> = {
   under_1h: 'under 1 hr',
   '1_3h': '1–3 hrs',
@@ -89,6 +116,67 @@ const rows: { key: string; label: string; value: string | number | null; long?: 
       </select>
     </div>
 
+    {/* Below the capture sheet and visibly separate from it, because it is a
+        different kind of record: the sheet is what they said, this is what the
+        conversation did. Same form and same submit, so it saves in one action
+        rather than becoming a second thing to remember. */}
+    <fieldset class="cap__funnel">
+      <legend>Funnel</legend>
+      <p class="muted cap__note">
+        Two questions, asked every time — the verbatim answers are the point,
+        the categories are just how they get counted. &ldquo;What made you
+        book?&rdquo; is the Trigger field above.
+      </p>
+
+      <div class="cap__row">
+        <label for="sourceVerbatim">&ldquo;How did you find me?&rdquo; — word for word</label>
+        <textarea id="sourceVerbatim" name="sourceVerbatim" rows="2">{p.sourceVerbatim ?? ''}</textarea>
+      </div>
+
+      <div class="cap__row">
+        <label for="sourceCategory">Source, categorized</label>
+        <select id="sourceCategory" name="sourceCategory">
+          <option value="">— not asked yet</option>
+          {
+            Object.entries(SOURCE_LABELS).map(([v, label]) => (
+              <option value={v} selected={p.sourceCategory === v}>{label}</option>
+            ))
+          }
+        </select>
+      </div>
+
+      <div class="cap__row">
+        <label for="serviceInterest">Closest service line</label>
+        <input
+          id="serviceInterest"
+          name="serviceInterest"
+          type="text"
+          value={p.serviceInterest ?? ''}
+          placeholder="web-design-development"
+        />
+        <p class="muted cap__hint">
+          The site&rsquo;s service slug, so it joins against the
+          <code>service_line</code> property on the analytics side.
+        </p>
+      </div>
+
+      <div class="cap__row">
+        <label for="salesOutcome">Outcome</label>
+        <select id="salesOutcome" name="salesOutcome">
+          <option value="">— not resolved yet</option>
+          {
+            Object.entries(OUTCOME_LABELS).map(([v, label]) => (
+              <option value={v} selected={p.salesOutcome === v}>{label}</option>
+            ))
+          }
+        </select>
+        <p class="muted cap__hint">
+          Come back and set this when it resolves. Engagement value isn&rsquo;t
+          here — it lives on the project this call produced.
+        </p>
+      </div>
+    </fieldset>
+
     <div class="cap__actions">
       <button class="btn btn--ghost" type="submit" name="action" value="save">Save</button>
       <button class="btn btn--primary" type="submit" name="action" value="readout">
@@ -144,6 +232,28 @@ const rows: { key: string; label: string; value: string | number | null; long?: 
     letter-spacing: 0.08em;
     text-transform: uppercase;
     color: var(--stone-deep);
+  }
+  .cap__funnel {
+    margin-top: 2rem;
+    padding: 1.25rem 1.25rem 0.25rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+  .cap__funnel legend {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    padding-inline: 0.4rem;
+  }
+  .cap__note {
+    margin: 0 0 1.25rem;
+    font-size: 0.85rem;
+  }
+  .cap__hint {
+    margin: 0.35rem 0 0;
+    font-size: 0.78rem;
   }
   .cap__actions {
     display: flex;

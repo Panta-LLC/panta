@@ -1,5 +1,6 @@
 ---
 import Base from '../../layouts/Base.astro';
+import ReadDepth from '../../components/ReadDepth.astro';
 import { getCaseStudies } from '../../lib/sanity.js';
 
 export async function getStaticPaths() {
@@ -111,6 +112,11 @@ const schema = [
       </div>
     </section>
   )}
+
+  {/* Before the closing CTA, not after: the CTA block is the thing a read is
+      supposed to lead to, so counting it as part of the story would mean
+      nobody reads a case study without also converting past it. */}
+  <ReadDepth event="case_study_read" props={{ study: p.slug }} />
 
   <section class="section section--bamboo">
     <div class="container">

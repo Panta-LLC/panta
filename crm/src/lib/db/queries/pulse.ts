@@ -1,7 +1,7 @@
 import { eq, and, desc, asc, sql, inArray, isNotNull } from 'drizzle-orm';
 
 import { db } from '../client.ts';
-import { clients, instruments, interactions, pulseChecks, readouts } from '../schema.ts';
+import { clients, instruments, interactions, projects, pulseChecks, readouts } from '../schema.ts';
 import type { InstrumentDefinition } from '../../instrument/types.ts';
 
 /** Start a Pulse Check against the current instrument version. */
@@ -132,6 +132,102 @@ export async function listUpcoming() {
     .innerJoin(clients, eq(pulseChecks.clientId, clients.id))
     .where(inArray(pulseChecks.status, ['scheduled', 'prepped', 'in_call']))
     .orderBy(asc(sql`coalesce(${pulseChecks.scheduledAt}, ${pulseChecks.createdAt})`));
+}
+
+/**
+ * The Sales row of the funnel dashboard — §4 of docs/FUNNEL-MEASUREMENT.md.
+ *
+ * The four rows above it (Awareness, Trust, Intent, Conversion) come from
+ * Plausible and are not reproduced here: this returns only what analytics
+ * physically cannot see, which is everything that happens after a booking.
+ *
+ * Quarterly, because the plan is explicit that monthly volume is too low to be
+ * signal, and a number reported monthly gets reacted to monthly.
+ *
+ * Bucketed by `bookedAt`, not by when the outcome landed, so every row of a
+ * quarter describes the same cohort of bookings. Bucketing by outcome date
+ * would make the close rate a ratio between two different populations —
+ * flattering in a slow quarter that finally closed last quarter's proposals.
+ */
+export async function getFunnelSummary(from: Date, to: Date) {
+  const inQuarter = and(
+    eq(pulseChecks.isRehearsal, false),
+    sql`${pulseChecks.bookedAt} >= ${from}`,
+    sql`${pulseChecks.bookedAt} < ${to}`,
+  );
+
+  const [totals] = await db
+    .select({
+      booked: sql<number>`count(*)::int`,
+      // Held means the call actually ran. `endedAt` rather than `startedAt`:
+      // a call opened and abandoned in the first minute is not a held call.
+      held: sql<number>`count(*) filter (where ${pulseChecks.endedAt} is not null)::int`,
+      noShow: sql<number>`count(*) filter (where ${pulseChecks.salesOutcome} = 'no_show')::int`,
+      proposals: sql<number>`count(*) filter (where ${pulseChecks.salesOutcome} in ('proposal_sent', 'closed_won', 'closed_lost'))::int`,
+      won: sql<number>`count(*) filter (where ${pulseChecks.salesOutcome} = 'closed_won')::int`,
+      // Outcome still open. Watch this one: a quarter where most bookings sit
+      // unresolved has ratios built on a handful of rows, and every number
+      // below is noise until it drains.
+      unresolved: sql<number>`count(*) filter (where ${pulseChecks.salesOutcome} is null and ${pulseChecks.endedAt} is not null)::int`,
+    })
+    .from(pulseChecks)
+    .where(inQuarter);
+
+  // Engagement value comes from the project, never from a copy of its price on
+  // the pulse check — see the note in the schema. Joined through
+  // originatingPulseCheckId so only work this quarter's calls produced counts.
+  const [value] = await db
+    .select({
+      cents: sql<number>`coalesce(sum(${projects.priceCents}), 0)::int`,
+      projectCount: sql<number>`count(${projects.id})::int`,
+    })
+    .from(pulseChecks)
+    .innerJoin(projects, eq(projects.originatingPulseCheckId, pulseChecks.id))
+    .where(inQuarter);
+
+  // The verbatim answers. The plan calls this column the best marketing input
+  // there is, and it is the reason the whole quarter is worth reading rather
+  // than glancing at — so it is returned with the numbers, not behind a click.
+  const answers = await db
+    .select({
+      id: pulseChecks.id,
+      clientName: clients.name,
+      bookedAt: pulseChecks.bookedAt,
+      sourceVerbatim: pulseChecks.sourceVerbatim,
+      sourceCategory: pulseChecks.sourceCategory,
+      triggerText: pulseChecks.triggerText,
+      serviceInterest: pulseChecks.serviceInterest,
+      salesOutcome: pulseChecks.salesOutcome,
+    })
+    .from(pulseChecks)
+    .innerJoin(clients, eq(pulseChecks.clientId, clients.id))
+    .where(inQuarter)
+    .orderBy(desc(pulseChecks.bookedAt));
+
+  const bySource = await db
+    .select({
+      category: sql<string>`coalesce(${pulseChecks.sourceCategory}, '(not asked)')`,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(pulseChecks)
+    .where(inQuarter)
+    .groupBy(sql`coalesce(${pulseChecks.sourceCategory}, '(not asked)')`)
+    .orderBy(desc(sql`count(*)`));
+
+  return {
+    from,
+    to,
+    booked: totals?.booked ?? 0,
+    held: totals?.held ?? 0,
+    noShow: totals?.noShow ?? 0,
+    proposals: totals?.proposals ?? 0,
+    won: totals?.won ?? 0,
+    unresolved: totals?.unresolved ?? 0,
+    valueCents: value?.cents ?? 0,
+    projectCount: value?.projectCount ?? 0,
+    bySource,
+    answers,
+  };
 }
 
 /**

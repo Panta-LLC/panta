@@ -30,7 +30,13 @@ export default defineConfig({
       // noindex prototype pages stay out of the sitemap until incorporated —
       // listing a page we also tell crawlers not to index is a contradiction,
       // and an avoidable one on a site that sells being findable.
-      filter: (page) => !['/journey', '/consultation-condensed'].some((p) => page.includes(p)),
+      //
+      // /thanks is not a prototype but is excluded for a stronger reason: it
+      // fires the pulse_check_booked conversion on load, so a crawler or a
+      // curious visitor arriving from search would each be counted as a
+      // booking. It is reachable only by a scheduler redirect.
+      filter: (page) =>
+        !['/journey', '/consultation-condensed', '/thanks'].some((p) => page.includes(p)),
     }),
   ],
 });

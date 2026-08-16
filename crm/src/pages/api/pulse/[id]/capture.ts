@@ -6,7 +6,7 @@ import { eq } from 'drizzle-orm';
 import { requireUser } from '../../../../lib/auth/guard.ts';
 import { db } from '../../../../lib/db/client.ts';
 import { pulseChecks, readouts } from '../../../../lib/db/schema.ts';
-import { CAPACITIES } from '../../../../lib/db/schema.ts';
+import { CAPACITIES, SALES_OUTCOMES, SOURCE_CATEGORIES } from '../../../../lib/db/schema.ts';
 
 /** Text columns editable from the capture sheet. */
 const TEXT_FIELDS = [
@@ -22,6 +22,11 @@ const TEXT_FIELDS = [
   'decisionMaker',
   'oneThingSaidOutLoud',
   'planShapedNotAnswered',
+  // Funnel fields — free text, same handling. Listed apart from the capture
+  // sheet above because they are pipeline bookkeeping rather than instrument
+  // answers; see the fieldset in pulse/[id]/capture.astro.
+  'sourceVerbatim',
+  'serviceInterest',
 ] as const;
 
 export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
@@ -45,6 +50,33 @@ export const POST: APIRoute = async ({ request, params, redirect, locals }) => {
   // be able to put an unknown string into a column the readout reasons over.
   const capacity = String(form.get('capacity') ?? '');
   values.capacity = (CAPACITIES as readonly string[]).includes(capacity) ? capacity : null;
+
+  const sourceCategory = String(form.get('sourceCategory') ?? '');
+  values.sourceCategory = (SOURCE_CATEGORIES as readonly string[]).includes(sourceCategory)
+    ? sourceCategory
+    : null;
+
+  const salesOutcome = String(form.get('salesOutcome') ?? '');
+  const nextOutcome = (SALES_OUTCOMES as readonly string[]).includes(salesOutcome)
+    ? salesOutcome
+    : null;
+  values.salesOutcome = nextOutcome;
+
+  // salesOutcomeAt is the date the outcome BECAME what it is, so it moves only
+  // when the value moves — resaving the sheet to fix a typo must not restamp a
+  // proposal as having been sent today. Costs one read on a form submitted a
+  // dozen times a quarter.
+  const [current] = await db
+    .select({ salesOutcome: pulseChecks.salesOutcome })
+    .from(pulseChecks)
+    .where(eq(pulseChecks.id, id))
+    .limit(1);
+
+  if (!current) return new Response('not found', { status: 404 });
+
+  if (nextOutcome !== current.salesOutcome) {
+    values.salesOutcomeAt = nextOutcome ? new Date() : null;
+  }
 
   values.updatedAt = new Date();
 

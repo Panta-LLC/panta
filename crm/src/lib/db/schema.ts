@@ -208,6 +208,59 @@ export const PULSE_STATUSES = [
 
 export const CAPACITIES = ['under_1h', '1_3h', '3_plus', 'none_done_for_us'] as const;
 
+// ── funnel: the sales side ────────────────────────────────────────────────
+// Analytics stops at the booking. Everything past it is asked on the call and
+// typed in here, per §3 of docs/FUNNEL-MEASUREMENT.md.
+
+/**
+ * Where the booking came from, normalized. The verbatim answer is kept
+ * alongside in `sourceVerbatim` and is the more valuable of the two — this
+ * column exists only so the dashboard's Awareness row can be counted, and
+ * categorizing is a lossy act done afterward, never instead.
+ *
+ * `unknown` is a real, expected value, not a failure: it means the question
+ * was asked and the answer didn't resolve. It is distinct from NULL, which
+ * means it wasn't asked.
+ */
+export const SOURCE_CATEGORIES = [
+  'referral',
+  'search',
+  'google_business_profile',
+  'social',
+  'newsletter',
+  'pulse_article',
+  'outreach',
+  'repeat_client',
+  'event',
+  'unknown',
+] as const;
+
+/**
+ * Where the Pulse Check ended up commercially.
+ *
+ * NOT a grade and not an ordering — it is the state of one conversation, and
+ * `closed_lost` is a fact about fit and timing rather than a mark against the
+ * client. Read the note at the bottom of this table before adding anything
+ * that summarizes these into a number.
+ *
+ * NULL means the call hasn't happened or hasn't resolved yet. `no_show` is
+ * separate from an abandoned pulse check (`status`) because the funnel's show
+ * rate needs a booking that was never held to still be a booking.
+ *
+ * These are terminal states, and the boundary that matters is whether a
+ * proposal went out: a call that ended without one is `held_no_proposal` even
+ * if it is plainly never happening, and `closed_lost` means a proposal was
+ * sent and not taken. Blur that and the proposal→close ratio — the one that
+ * says whether the pricing is wrong — stops meaning anything.
+ */
+export const SALES_OUTCOMES = [
+  'no_show',
+  'held_no_proposal',
+  'proposal_sent',
+  'closed_won',
+  'closed_lost',
+] as const;
+
 export const pulseChecks = pgTable(
   'pulse_checks',
   {
@@ -283,6 +336,58 @@ export const pulseChecks = pgTable(
     oneThingSaidOutLoud: text('one_thing_said_out_loud'),
     planShapedNotAnswered: text('plan_shaped_not_answered'),
 
+    // ── funnel: the sales side ─────────────────────────────────────────────
+    // §3 of docs/FUNNEL-MEASUREMENT.md. These close the loop that Plausible
+    // cannot: the site can see a booking CTA get clicked, and nothing after.
+    //
+    // They live on the pulse check rather than on the client because the unit
+    // of the funnel is one booking. A client who books twice a year apart came
+    // from two different places for two different reasons, and `clients.source`
+    // — which records how the *relationship* started — would flatten that into
+    // whichever answer was given first.
+
+    /**
+     * When the booking was made, as against `scheduledAt`, which is when the
+     * call happens. The gap between them is booking lead time; without it,
+     * "12 Pulse Checks this quarter" silently means whichever of the two you
+     * assumed. Defaults to now() so a row created the moment someone books is
+     * right without anyone remembering to set it.
+     */
+    bookedAt: timestamp('booked_at', { withTimezone: true }).notNull().defaultNow(),
+
+    /**
+     * "How did you find me?" — logged word for word, before categorizing.
+     *
+     * The plan calls this column the qualitative gold and it means it: at this
+     * volume the sentence someone uses to describe finding you is worth more
+     * than the count of which bucket it fell into, and it is the only field
+     * here that can tell you something you didn't already have a category for.
+     */
+    sourceVerbatim: text('source_verbatim'),
+    /** One of SOURCE_CATEGORIES. Assigned after the fact, from the verbatim. */
+    sourceCategory: text('source_category'),
+
+    /**
+     * Which service line they're closest to, by the slug used on the site
+     * (`/services/:slug/`) so it joins against the `service_line` property on
+     * every analytics event. A guess made at booking time and revised on the
+     * call — the point is to see which lines actually pull, not to route them.
+     */
+    serviceInterest: text('service_interest'),
+
+    /** One of SALES_OUTCOMES. NULL until the call is held and resolves. */
+    salesOutcome: text('sales_outcome'),
+    /**
+     * Set alongside `salesOutcome`. Proposal→close rate needs a date on both
+     * ends, and `updatedAt` moves for every autosave so it cannot serve.
+     */
+    salesOutcomeAt: timestamp('sales_outcome_at', { withTimezone: true }),
+
+    // Engagement value is deliberately NOT a column here: it lives on
+    // `projects.priceCents`, reached via `projects.originatingPulseCheckId`.
+    // A closed engagement is a project; duplicating its price onto the call
+    // that produced it gives two numbers that will disagree within a quarter.
+
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
 
@@ -292,12 +397,25 @@ export const pulseChecks = pgTable(
     // readout), and a number in this table will find its way into a
     // client-facing document within a year. If you want an ordering for the
     // dashboard, order by readoutDueAt.
+    //
+    // This applies to the sales-side columns above too, and they are the more
+    // likely breach: `salesOutcome` is one short step from a "lead quality"
+    // or "fit score" that ranks organizations by how likely they are to pay.
+    // Aggregate these across the quarter, never per client.
   },
   (t) => [
     index('pulse_checks_client_idx').on(t.clientId, t.createdAt.desc()),
     index('pulse_checks_due_idx')
       .on(t.readoutDueAt)
       .where(sql`${t.status} in ('captured', 'readout_drafted')`),
+    /**
+     * The funnel dashboard is read one quarter at a time, and rehearsals are
+     * excluded from every count it reports — so the partial index matches the
+     * query rather than the column.
+     */
+    index('pulse_checks_booked_idx')
+      .on(t.bookedAt.desc())
+      .where(sql`not ${t.isRehearsal}`),
   ],
 );
 

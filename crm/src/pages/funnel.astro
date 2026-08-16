@@ -1,0 +1,406 @@
+---
+export const prerender = false;
+
+/**
+ * The Sales half of the funnel dashboard — §4 of docs/FUNNEL-MEASUREMENT.md.
+ *
+ * Deliberately NOT the whole dashboard. The Awareness, Trust and Intent rows
+ * live in Plausible and are not copied here: a second place showing the same
+ * four numbers is a second place for them to be stale, and Plausible's version
+ * is the one with the breakdowns that make them actionable. This page owns the
+ * rows analytics physically cannot see — what happened after the booking — and
+ * links out for the rest.
+ *
+ * One quarter at a time, because the plan is explicit that monthly volume at
+ * this stage is noise, and a number put in front of you monthly gets reacted
+ * to monthly.
+ */
+import App from '../layouts/App.astro';
+import { requireUser } from '../lib/auth/guard.ts';
+import { getFunnelSummary } from '../lib/db/queries/pulse.ts';
+import {
+  fmtDate,
+  parseQuarter,
+  quarterLabel,
+  quarterOf,
+  quarterRange,
+} from '../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const now = quarterOf();
+const requested = parseQuarter(Astro.url.searchParams.get('q')) ?? now;
+const { from, to } = quarterRange(requested.year, requested.q);
+const summary = await getFunnelSummary(from, to);
+
+/** The previous four quarters plus this one, newest first. */
+const quarters = Array.from({ length: 5 }, (_, i) => {
+  const total = now.year * 4 + (now.q - 1) - i;
+  return { year: Math.floor(total / 4), q: (total % 4) + 1 };
+});
+
+// A ratio out of a handful of rows is a story, not a measurement. Below this
+// the number is still shown — hiding it invites the assumption that it's fine —
+// but it is marked, so nobody plans a quarter around 1-of-2.
+const THIN = 5;
+
+const ratio = (num: number, den: number) =>
+  den === 0 ? null : { pct: Math.round((num / den) * 100), thin: den < THIN, num, den };
+
+const rows = [
+  {
+    label: 'CTA click → booking',
+    value: null,
+    note: 'Plausible owns both ends of this one — see the funnel report there.',
+  },
+  {
+    label: 'Booking → show',
+    value: ratio(summary.held, summary.booked),
+    note: 'Low means the bookings are the wrong people, or the reminder is failing.',
+  },
+  {
+    label: 'Show → proposal',
+    value: ratio(summary.proposals, summary.held),
+    note: 'Low means the Pulse Check readout is not landing.',
+  },
+  {
+    label: 'Proposal → close',
+    value: ratio(summary.won, summary.proposals),
+    note: 'Low means pricing or scoping fit, not marketing.',
+  },
+];
+
+const money = (cents: number) =>
+  new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0,
+  }).format(cents / 100);
+
+const OUTCOME_LABELS: Record<string, string> = {
+  no_show: 'no-show',
+  held_no_proposal: 'held — no proposal',
+  proposal_sent: 'proposal sent',
+  closed_won: 'closed won',
+  closed_lost: 'closed lost',
+};
+---
+
+<App title={`Funnel · ${quarterLabel(requested.year, requested.q)}`}>
+  <p class="kicker">Funnel</p>
+
+  <div class="head">
+    <div>
+      <h1>{quarterLabel(requested.year, requested.q)}</h1>
+      <p class="muted" style="margin:0">
+        {fmtDate(from)} &ndash; {fmtDate(new Date(to.getTime() - 1))}. Bookings, and
+        what became of them. Rehearsals excluded.
+      </p>
+    </div>
+    <nav class="quarters" aria-label="Quarter">
+      {
+        quarters.map((qq) => {
+          const label = quarterLabel(qq.year, qq.q);
+          const current = qq.year === requested.year && qq.q === requested.q;
+          return (
+            <a href={`/funnel?q=${label}`} aria-current={current ? 'page' : undefined}>
+              {label}
+            </a>
+          );
+        })
+      }
+    </nav>
+  </div>
+
+  <ul class="nums">
+    <li>
+      <span class="nums__n">{summary.booked}</span>
+      <span class="kicker">booked</span>
+    </li>
+    <li>
+      <span class="nums__n">{summary.held}</span>
+      <span class="kicker">held</span>
+    </li>
+    <li>
+      <span class="nums__n">{summary.proposals}</span>
+      <span class="kicker">proposals sent</span>
+    </li>
+    <li>
+      <span class="nums__n">{summary.won}</span>
+      <span class="kicker">closed won</span>
+    </li>
+    <li>
+      <span class="nums__n">{summary.projectCount === 0 ? '—' : money(summary.valueCents)}</span>
+      <span class="kicker">
+        engagement value{summary.projectCount > 0 ? ` · ${summary.projectCount} project${summary.projectCount === 1 ? '' : 's'}` : ''}
+      </span>
+    </li>
+  </ul>
+
+  {
+    summary.unresolved > 0 && (
+      <p class="pending">
+        {summary.unresolved} held call{summary.unresolved === 1 ? '' : 's'} with no
+        outcome recorded yet. Every ratio below is computed without
+        {summary.unresolved === 1 ? ' it' : ' them'}.
+      </p>
+    )
+  }
+
+  <section>
+    <h2>Ratios</h2>
+    <p class="muted lead">
+      If bookings are short of target, look one row up: whichever ratio collapsed
+      is where the quarter&rsquo;s work goes. If they all hold and volume is
+      still low, the problem is top-of-funnel and the answer is more content and
+      outreach, not site tweaks.
+    </p>
+    <ul class="ratios">
+      {
+        rows.map((r) => (
+          <li>
+            <span class="ratios__label">{r.label}</span>
+            <span class="ratios__val">
+              {r.value === null ? (
+                <span class="muted">—</span>
+              ) : (
+                <>
+                  {r.value.pct}%
+                  <span class="ratios__of">
+                    {r.value.num} of {r.value.den}
+                  </span>
+                  {r.value.thin && <span class="thin">thin</span>}
+                </>
+              )}
+            </span>
+            <span class="muted ratios__note">{r.note}</span>
+          </li>
+        ))
+      }
+    </ul>
+  </section>
+
+  <section>
+    <h2>Where they came from</h2>
+    {
+      summary.bySource.length === 0 ? (
+        <p class="muted">No bookings this quarter.</p>
+      ) : (
+        <ul class="src">
+          {summary.bySource.map((s) => (
+            <li>
+              <span>{s.category}</span>
+              <span class="src__n">{s.count}</span>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+
+  {/*
+    The verbatim answers, in full and not behind a click.
+
+    These are the reason the quarterly review is worth ninety minutes rather
+    than nine: the numbers above tell you which stage to work on, and only this
+    column tells you what to say when you get there.
+  */}
+  <section>
+    <h2>In their words</h2>
+    {
+      summary.answers.length === 0 ? (
+        <p class="muted">Nothing to read yet.</p>
+      ) : (
+        <ul class="said">
+          {summary.answers.map((a) => (
+            <li>
+              <p class="said__head">
+                <a href={`/pulse/${a.id}/capture`}>{a.clientName}</a>
+                <span class="kicker">{fmtDate(a.bookedAt)}</span>
+                {a.salesOutcome && (
+                  <span class="kicker">{OUTCOME_LABELS[a.salesOutcome] ?? a.salesOutcome}</span>
+                )}
+                {a.serviceInterest && <span class="kicker">{a.serviceInterest}</span>}
+              </p>
+              <dl>
+                <dt>How did you find me?</dt>
+                <dd class={a.sourceVerbatim ? '' : 'muted'}>
+                  {a.sourceVerbatim ?? 'not recorded'}
+                  {a.sourceCategory && <span class="said__cat">{a.sourceCategory}</span>}
+                </dd>
+                <dt>What made you book?</dt>
+                <dd class={a.triggerText ? '' : 'muted'}>{a.triggerText ?? 'not recorded'}</dd>
+              </dl>
+            </li>
+          ))}
+        </ul>
+      )
+    }
+  </section>
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+  }
+  .head h1 {
+    margin-bottom: 0.25rem;
+  }
+  .quarters {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
+  }
+  .quarters a {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    padding: 0.35rem 0.6rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    text-decoration: none;
+    color: var(--stone-deep);
+  }
+  .quarters a[aria-current='page'] {
+    border-color: var(--bamboo);
+    color: var(--bamboo-deep);
+    background: var(--cream-soft);
+  }
+
+  .nums {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 1.5rem;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 2.5rem;
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    padding-block: 1.25rem;
+  }
+  .nums li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+  }
+  .nums__n {
+    font-family: var(--font-serif);
+    font-size: 2rem;
+    line-height: 1;
+  }
+
+  .pending {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 0.5rem 0.85rem;
+    font-size: 0.9rem;
+    max-width: 34rem;
+  }
+
+  section h2 {
+    padding-bottom: 0.4rem;
+    border-bottom: 1px solid var(--line);
+    margin-top: 2.5rem;
+  }
+  .lead {
+    max-width: 52rem;
+  }
+
+  .ratios,
+  .src,
+  .said {
+    list-style: none;
+    padding: 0;
+    margin: 1rem 0 0;
+  }
+  .ratios li {
+    display: grid;
+    grid-template-columns: 14rem 9rem 1fr;
+    gap: 1rem;
+    align-items: baseline;
+    padding: 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  @media (max-width: 760px) {
+    .ratios li {
+      grid-template-columns: 1fr;
+      gap: 0.2rem;
+    }
+  }
+  .ratios__label {
+    font-weight: 500;
+  }
+  .ratios__val {
+    font-family: var(--font-serif);
+    font-size: 1.2rem;
+  }
+  .ratios__of {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--stone-deep);
+    margin-left: 0.5rem;
+  }
+  .thin {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--amber);
+    margin-left: 0.5rem;
+  }
+  .ratios__note {
+    font-size: 0.85rem;
+  }
+
+  .src li {
+    display: flex;
+    justify-content: space-between;
+    max-width: 26rem;
+    padding: 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .src__n {
+    font-family: var(--font-mono);
+  }
+
+  .said li {
+    padding: 1rem 0;
+    border-bottom: 1px solid var(--line);
+    max-width: 52rem;
+  }
+  .said__head {
+    display: flex;
+    gap: 0.75rem;
+    align-items: baseline;
+    flex-wrap: wrap;
+    margin: 0 0 0.5rem;
+  }
+  .said__head a {
+    font-weight: 500;
+    color: var(--charcoal);
+  }
+  .said dl {
+    margin: 0;
+  }
+  .said dt {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    margin-top: 0.6rem;
+  }
+  .said dd {
+    margin: 0.15rem 0 0;
+  }
+  .said__cat {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--stone-deep);
+    margin-left: 0.5rem;
+  }
+</style>

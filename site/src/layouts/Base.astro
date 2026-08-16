@@ -14,9 +14,26 @@ interface Props {
   schema?: object[];
   /** Keep prototype pages out of search until they're incorporated. */
   noindex?: boolean;
+  /**
+   * Which service line this page belongs to, if any. Declared once here and
+   * attached to every analytics event fired from the page — see the `enrich`
+   * helper in Analytics.astro. Use the service slug, so the property joins
+   * cleanly against the `/services/:slug/` pageview report.
+   *
+   * Pages that sell nothing in particular (home, about, Pulse index, privacy)
+   * leave it unset and report as `(none)`, which is the honest answer: their
+   * traffic belongs to no line.
+   *
+   * Emitted as `data-service-line` on <html> rather than on <body> because
+   * Analytics.astro renders inside <head>, and at the moment its inline script
+   * parses there is no <body> yet. Nothing may precede the <html> tag below,
+   * not even a comment — the compiler stops treating the file as a document
+   * and silently drops the html/head/body wrappers from every page.
+   */
+  serviceLine?: string;
 }
 
-const { title, description, schema = [], noindex = false } = Astro.props;
+const { title, description, schema = [], noindex = false, serviceLine } = Astro.props;
 const canonical = new URL(Astro.url.pathname, Astro.site);
 const year = new Date().getFullYear();
 
@@ -94,7 +111,7 @@ const megaNext = [
 const megaQuickLinks = [
   // The page top, not #book. This label names the offer; it does not promise a
   // calendar. Deep-linking it to the scheduler dropped the visitor onto a bare
-  // Google Calendar embed with the entire explanation of what the review is —
+  // booking embed with the entire explanation of what the review is —
   // and what they walk away with — scrolled off above them. See the rule in
   // index.astro. Buttons that do promise a slot ("or pick a time now") still
   // deep-link.
@@ -171,7 +188,7 @@ const workActive =
   currentPath === '/digital-presence-plan/';
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-service-line={serviceLine}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />

@@ -1,4 +1,9 @@
 User-agent: *
 Allow: /
 
+# The booking confirmation page fires the pulse_check_booked conversion on
+# load, so every crawl of it would register as a booking. It is reached only by
+# a redirect from the scheduler; nothing links to it.
+Disallow: /thanks/
+
 Sitemap: https://www.allthingspanta.com/sitemap-index.xml

@@ -1,0 +1,225 @@
+---
+import Base from '../layouts/Base.astro';
+
+/**
+ * Booking confirmation — and the site's only macro conversion.
+ *
+ * The receiving end of `pulse_check_booked` (docs/FUNNEL-MEASUREMENT.md §1).
+ * Koalendar sends invitees here via its **After booking → "Redirect invitee
+ * after booking (URL)"** setting, which is what the switch away from the Google
+ * Calendar embed bought: that one reported nothing back and could not redirect,
+ * so a booking was not observable by any means.
+ *
+ * ⚠ Two things about this page are load-bearing and not obvious:
+ *
+ * 1. **Koalendar redirects the frame that submitted the booking**, and on
+ *    /consultation/ that frame is the embedded iframe. So this page first loads
+ *    inside somebody else's layout, 800px tall, with the site header above it
+ *    and the whole consultation page around it. The inline script at the top of
+ *    the body promotes it to the top window before anything else runs.
+ *
+ * 2. **Koalendar's "Pass event details to your redirected page" appends the
+ *    invitee's name and email to this URL**, which would otherwise put personal
+ *    data into browser history, into the referrer, and into Plausible — which
+ *    is sent the full URL, not just the path. The inline script discards every
+ *    parameter it does not recognise, so the leak is closed regardless.
+ *
+ *    Not hypothetical: the setting was found ON when the switch was made
+ *    (`includeInviteeInRedirect: true` in the event's public config), which
+ *    makes that script load-bearing rather than belt-and-braces. Turning the
+ *    setting off is still the real fix — check it with the curl one-liner in
+ *    docs/FUNNEL-MEASUREMENT.md §5 — but do not remove the scrubbing on the
+ *    strength of having done so.
+ *
+ * Deliberately noindex, robots-disallowed, out of the sitemap, and linked from
+ * nothing. Its only visitors should be people who just booked, because every
+ * visitor counts as a booking.
+ */
+const description =
+  'Your Pulse Check is booked. Here is what happens next.';
+---
+<Base
+  title="You're booked — Panta"
+  description={description}
+  noindex={true}
+>
+  {/* Parse-time and inline, and first thing in the body, because both jobs
+      below have to happen before the deferred module scripts run — Plausible's
+      init among them, which sends the full URL. A bundled <script> is
+      type="module" and therefore deferred until after parsing, which is far
+      too late for either. */}
+  <script is:inline>
+    (function () {
+      // Everything Koalendar might append is dropped. `loc` and `type` are the
+      // only parameters this page understands, and they come from whatever is
+      // typed into Koalendar's redirect URL field — static, chosen by us, and
+      // never personal. Anything else is either the invitee's name and email
+      // (if "Pass event details" got switched on) or noise; both are removed
+      // the same way, so no allowlist maintenance is needed when Koalendar
+      // adds a parameter.
+      var ALLOWED = ['loc', 'type'];
+      var incoming = new URLSearchParams(location.search);
+      var kept = new URLSearchParams();
+      for (var i = 0; i < ALLOWED.length; i++) {
+        var value = incoming.get(ALLOWED[i]);
+        if (value) kept.set(ALLOWED[i], value);
+      }
+      var query = kept.toString();
+      var clean = location.pathname + (query ? '?' + query : '');
+
+      // 1. Climb out of the booking iframe.
+      //
+      // Koalendar redirects the frame that submitted the booking. On
+      // /consultation/ that is the embed, so without this the visitor sees this
+      // page rendered inside an 800px box in the middle of the page they were
+      // just on — header, footer and all, twice over.
+      //
+      // Allowed because by this point the framed document is ours: the iframe
+      // started on koalendar.com and has navigated to allthingspanta.com, which
+      // is same-origin with the top document. The try/catch covers the other
+      // case — a third party framing this page, where touching top throws and
+      // the right move is to do nothing.
+      try {
+        if (window.top && window.top !== window.self) {
+          // Flag first: the top-level load is what counts the booking, and
+          // without this the module below can still fire in this doomed
+          // document before the navigation tears it down.
+          window.__pantaPromoted = true;
+          window.top.location.replace(clean);
+          return;
+        }
+      } catch (err) {
+        return;
+      }
+
+      // 2. Scrub the address bar, so nothing personal survives in history,
+      //    in the referrer, or in what Plausible is about to send.
+      if (location.search !== (query ? '?' + query : '')) {
+        history.replaceState(null, '', clean);
+      }
+    })();
+  </script>
+
+  <section class="section section--dark" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
+    <div class="container narrow">
+      <p class="label">Confirmed</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">Your Pulse Check is booked.</h1>
+      <p class="lede">
+        A confirmation and a calendar invite are on their way to the address you
+        booked with. If they haven&rsquo;t arrived in a few minutes, check your
+        spam folder &mdash; and if they aren&rsquo;t there either, email us at
+        the address below and we&rsquo;ll sort it out.
+      </p>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="container narrow">
+      <h2>What happens next</h2>
+      <ol class="steps">
+        <li>
+          <strong>Before the call, we look.</strong> We spend time with your
+          website and the places people find you, so the 30 minutes are spent on
+          your situation rather than on us catching up.
+        </li>
+        <li>
+          <strong>On the call, we ask.</strong> Thirty minutes, mostly questions.
+          Nothing to prepare and no deck &mdash; come as you are.
+        </li>
+        <li>
+          <strong>Within 48 hours, you get it in writing.</strong> A one-page
+          readout: what we noticed, the one thing worth doing first, and what we
+          didn&rsquo;t get to. Yours to keep and to act on without us.
+        </li>
+      </ol>
+
+      <p class="small" style="margin-top: 2rem;">
+        Need to move it? Use the reschedule link in your confirmation email, or
+        email <a href="mailto:hello@panta.llc">hello@panta.llc</a>.
+      </p>
+    </div>
+  </section>
+
+  <section class="section section--bamboo">
+    <div class="container narrow">
+      <h2>While you wait</h2>
+      <p class="lede" style="max-width: 54ch;">
+        Pulse is where we write down what we keep running into. None of it is
+        required reading before the call.
+      </p>
+      <div class="btn-row" style="margin-top: 1.5rem;">
+        <a
+          href="/pulse/"
+          class="btn btn--primary"
+          data-track="cta_click"
+          data-track-cta="pulse"
+          data-track-location="thanks"
+        >Read Pulse</a>
+        <a
+          href="/work/"
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="work"
+          data-track-location="thanks"
+        >See client work</a>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<script>
+  // The macro conversion. Everything else the site measures is a step toward
+  // this one event.
+  //
+  // Fired on page load rather than on a click, because the visitor's last
+  // action happened inside Koalendar, which reports nothing back. Arriving here
+  // IS the completion signal — which is exactly why this page must stay
+  // unlinked, noindex and robots-disallowed.
+  //
+  // Which CTA produced the booking is NOT carried here from the click. It is
+  // read out of Plausible's funnel report instead, where the same visitor's
+  // earlier `cta_click` is already on record — see the note in Analytics.astro
+  // about why this page may not stash anything on the device.
+
+  // Set by the inline script at the top of the body when this document is the
+  // one inside the booking iframe, moments from being torn down by the
+  // promotion to the top window. That top-level load is what counts the
+  // booking; firing here too would count it twice.
+  if (!(window as any).__pantaPromoted) {
+    // Read from whatever is typed into Koalendar's redirect URL field. The
+    // inline script has already discarded everything else, so nothing here can
+    // be an invitee's name or email even if "Pass event details" is on.
+    const params = new URLSearchParams(location.search);
+
+    (window as any).pantaTrack?.('pulse_check_booked', {
+      // Named cta_location, not location, to match the funnel plan's parameter
+      // for the macro conversion. Elsewhere the property is `location` because
+      // sixty-five call sites already use that name; here there is no incumbent.
+      cta_location: params.get('loc') || '(from funnel)',
+      // Which booking page, if more than one ever points here — set it as a
+      // literal in each redirect URL. Kept low-cardinality on purpose: an
+      // appointment id here would give Plausible one property value per
+      // booking and make the breakdown useless.
+      booking_type: params.get('type') || '(none)',
+    });
+  }
+
+  // No refresh guard, deliberately. The obvious one is a sessionStorage flag,
+  // which this page may not set. Plausible's funnels and goal conversions count
+  // unique visitors rather than events, so a refresh inflates the raw event
+  // count and changes none of the numbers the dashboard actually reads.
+</script>
+
+<style>
+  .narrow { max-width: 46rem; }
+
+  .steps {
+    margin: 1.5rem 0 0;
+    padding-left: 1.2rem;
+    display: grid;
+    gap: 1rem;
+    max-width: 58ch;
+  }
+
+  .steps li { line-height: 1.6; }
+</style>

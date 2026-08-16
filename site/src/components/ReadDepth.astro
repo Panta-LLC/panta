@@ -1,0 +1,154 @@
+---
+/**
+ * "Did they actually read it" — the `case_study_read` and `pulse_article_read`
+ * micro conversions in docs/FUNNEL-MEASUREMENT.md, which are the Trust row of
+ * the funnel dashboard.
+ *
+ * The component renders an empty marker and measures from the top of its
+ * enclosing article to its own position, so **where you place it is the
+ * measurement**. Put it immediately after the prose and before the end
+ * sequence (bridge CTA, newsletter, keep-reading). Measuring against the whole
+ * document instead would fold the footer and the CTA block into the
+ * denominator, and on a short case study the 75% line would land somewhere in
+ * the newsletter card — an article you'd have to scroll past the end of to be
+ * counted as having read.
+ *
+ * Fires once per page load. Never fires on a page whose event already fired,
+ * and there is no matching "started reading" event: the pageview is that.
+ */
+interface Props {
+  /** Event name. One per template, not per post — `post` is a property. */
+  event: string;
+  /**
+   * Extra properties. `source_page` and `service_line` are attached centrally
+   * by Analytics.astro and must not be passed here.
+   */
+  props?: Record<string, string | undefined>;
+  /** Fraction of the article that must be scrolled past. */
+  threshold?: number;
+  /**
+   * Minimum time on page before the event may fire, in milliseconds.
+   *
+   * Without this, any article shorter than the viewport is "read" the instant
+   * it loads, because the 75% line is already above the fold — which would
+   * quietly turn the Trust row of the dashboard into a second pageview count,
+   * and the read-to-booking ratio into noise. 20s is well under a genuine read
+   * of even the shortest Pulse post and well over a bounce.
+   */
+  dwellMs?: number;
+}
+
+const { event, props = {}, threshold = 0.75, dwellMs = 20000 } = Astro.props;
+
+// Undefined values dropped so an absent property is absent rather than the
+// string "undefined" — Plausible would happily record that as a value.
+const extra = Object.fromEntries(
+  Object.entries(props).filter(([, v]) => v != null && v !== ''),
+);
+---
+
+<div
+  data-read-depth
+  data-read-depth-event={event}
+  data-read-depth-threshold={String(threshold)}
+  data-read-depth-dwell={String(dwellMs)}
+  data-read-depth-props={JSON.stringify(extra)}
+  aria-hidden="true"
+></div>
+
+<script>
+  // Astro bundles this once no matter how many times the component renders,
+  // and the query below picks up every marker on the page.
+  const markers = document.querySelectorAll<HTMLElement>('[data-read-depth]');
+  if (markers.length) {
+    const loadedAt = performance.now();
+
+    const watchers = Array.from(markers).map((marker) => {
+      // The article is the nearest sectioning ancestor. `main` is the fallback
+      // because a case study is a sequence of sibling <section>s rather than
+      // one <article>, and Base.astro wraps the whole page body in <main>.
+      const scope =
+        marker.closest<HTMLElement>('[data-read-depth-scope], article') ??
+        document.querySelector<HTMLElement>('main');
+
+      return {
+        marker,
+        scope,
+        event: marker.dataset.readDepthEvent ?? 'read',
+        threshold: Number(marker.dataset.readDepthThreshold) || 0.75,
+        dwell: Number(marker.dataset.readDepthDwell) || 0,
+        props: JSON.parse(marker.dataset.readDepthProps || '{}'),
+        // A marker with no article around it can never be measured, so it is
+        // retired up front. Left un-retired it would hold the teardown check
+        // open and leave the interval running for the life of the page.
+        done: !scope,
+      };
+    });
+
+    // Geometry is recomputed on every check rather than cached at load: images
+    // in a Pulse article are unsized and land late, and a cached article height
+    // would be the pre-image one — too short, so the event would fire early.
+    const check = () => {
+      const viewportBottom = window.scrollY + window.innerHeight;
+      const elapsed = performance.now() - loadedAt;
+      let remaining = 0;
+
+      for (const w of watchers) {
+        if (w.done || !w.scope) continue;
+        remaining++;
+        if (elapsed < w.dwell) continue;
+
+        const top = w.scope.getBoundingClientRect().top + window.scrollY;
+        const end = w.marker.getBoundingClientRect().top + window.scrollY;
+        if (end <= top) continue;
+
+        if (viewportBottom >= top + (end - top) * w.threshold) {
+          w.done = true;
+          remaining--;
+          (window as any).pantaTrack?.(w.event, w.props);
+        }
+      }
+
+      if (remaining === 0) teardown();
+    };
+
+    // rAF-coalesced: scroll fires far more often than layout changes, and
+    // getBoundingClientRect in a raw scroll handler is the classic way to make
+    // a long article stutter on a phone.
+    let queued = false;
+    const onScroll = () => {
+      if (queued) return;
+      queued = true;
+      requestAnimationFrame(() => {
+        queued = false;
+        check();
+      });
+    };
+
+    // The dwell means the first qualifying moment is usually a timer expiring
+    // rather than a scroll, so time has to poke it too — a visitor who scrolls
+    // to the end in 8s and then stops would otherwise never be counted.
+    const timer = window.setInterval(check, 2000);
+
+    function teardown() {
+      window.clearInterval(timer);
+      window.removeEventListener('scroll', onScroll);
+      window.removeEventListener('resize', onScroll);
+    }
+
+    window.addEventListener('scroll', onScroll, { passive: true });
+    window.addEventListener('resize', onScroll, { passive: true });
+    check();
+  }
+</script>
+
+<style>
+  [data-read-depth] {
+    /* A zero-height marker, not display:none — a hidden element has no box, so
+       getBoundingClientRect would return zeros and the article would have no
+       measurable end. */
+    height: 0;
+    margin: 0;
+    padding: 0;
+  }
+</style>
