@@ -5,19 +5,22 @@ import RippleMark from '../components/RippleMark.astro';
 import SectionViews from '../components/SectionViews.astro';
 import NewsletterForm from '../components/NewsletterForm.astro';
 import Placeholder from '../components/Placeholder.astro';
-import PulseTerm from '../components/PulseTerm.astro';
+import OfferTerm from '../components/OfferTerm.astro';
 import LeadForm from '../components/LeadForm.astro';
+import DoorChooser from '../components/DoorChooser.astro';
 /* Package copy is rich text now. Rendered here rather than through a component
    because Astro scopes `.pkg-card__list li` to this file — an <li> emitted by a
    child component carries that component's scope id and none of these rules. */
 import { listItems, paragraphs } from '../lib/portable.js';
-import { getDoc, getFeaturedCaseStudy, getPackages, getPillars, getPosts, getProjects, getServices } from '../lib/sanity.js';
+import { getDoc, getFeaturedCaseStudy, getPackages, getPosts, getProjects, getServices, getTestimonial } from '../lib/sanity.js';
 import { packageHref } from '../lib/packages.js';
 import { serviceHref } from '../lib/pillars.js';
 import { faqSchema } from '../lib/schema.js';
+import { STEPS } from '../lib/process.js';
+import { PLAN, ROUTES } from '../lib/offer.js';
 
 // Homepage per PULSE-HOME-BUILD.md §4 and panta-homepage-copy.md. Nine
-// sections, every CTA routing to the Pulse Check except the editorial strip.
+// sections, every CTA routing to the Review except the editorial strip.
 //
 // Copy lives in this file rather than Sanity by design: the brief's schema (§6)
 // puts only the DYNAMIC slots in the CMS — trust bar logos, featured case
@@ -49,21 +52,21 @@ const HERO = {
     hero.subhead ||
     'A full-service partner for private practices, community organizations, and local businesses — websites, brand, content, and operations, under one roof.',
   ctaLabel: hero.ctaLabel || 'Get a free review',
-  // The deliverable, in the line the button owns. The Pulse Check name stays
-  // here because PulseTerm needs it to hang the definition on, and because the
-  // button itself must pass the no-context test without it.
+  // The deliverable, in the line under the chooser. The offer's name stays here
+  // because OfferTerm needs it to hang the definition on, and because no button
+  // may carry it (§7.1).
   ctaMicrocopy:
-    hero.ctaMicrocopy || 'We call it the Pulse Check · 30 minutes + a written action plan in 48 hours',
+    hero.ctaMicrocopy || 'We call it the Review · 30 minutes + a written action plan in 48 hours',
   // Directly under the ask, where the objection is actually forming. Says the
-  // same thing as PulseTerm's tooltip, out loud, for the reader who never
+  // same thing as OfferTerm's tooltip, out loud, for the reader who never
   // hovers anything.
   //
   // A fragment, not a sentence, and deliberately missing its subject: the line
   // directly above already named the action plan, and saying the noun twice in
   // twenty-four words made this read as a restatement of the spec rather than a
   // promise added to it. Without it, the two lines are one thought — what you
-  // get, then what it costs you. PulseTerm's tooltip still carries the whole
-  // sentence for anyone who wants it (PulseTerm.astro's `tip` default).
+  // get, then what it costs you. OfferTerm's tooltip still carries the whole
+  // sentence for anyone who wants it (OfferTerm.astro's `tip` default).
   riskReversal: hero.riskReversal || 'Yours to keep, whether we work together or not.',
   secondaryLabel: hero.secondaryLabel || 'See client work',
   // Names only, one line. The section carried a testimonial for exactly one
@@ -120,7 +123,7 @@ const CARD_COLUMNS = SERVICE_CARDS.length % 3 === 0 ? 3 : 2;
 const caseStudy = await getFeaturedCaseStudy();
 const posts = await getPosts(3);
 
-// The Pulse Check page. Both the "Learn more" links and the review CTAs use
+// The Review page. Both the "Learn more" links and the review CTAs use
 // this now — they used to split, with anything whose label said "review"
 // deep-linking to /consultation/#book on the theory that a decided visitor
 // should not have to scroll. The theory was wrong in one direction: it also
@@ -132,10 +135,21 @@ const posts = await getPosts(3);
 // Only a label that promises a slot outright ("or pick a time now →", the
 // recovery link in LeadForm after a send) still deep-links to #book — and #book
 // now opens with the chooser rather than the scheduler.
-const BOOK = '/consultation/';
-const BOOK_SLOT = '/consultation/#book';
+const BOOK = ROUTES.review;
+const BOOK_SLOT = ROUTES.reviewSlot;
 
-const PILLARS = await getPillars();
+// The testimonial, pulled up from /work/ (journey-redesign.md §5.1 step 2).
+// It is testimony about the REVIEW — "found in 30 minutes what two other people
+// missed for months" — so the homepage, where the review is the primary door,
+// is the page it argues for. It sat two clicks away on a page a visitor reaches
+// after they are already interested.
+const testimonial = await getTestimonial();
+
+// PILLARS is gone with the "Three ways we help" section (§5.1 step 3): it
+// restated the package cards under different labels, one screen below them, and
+// cost a full scroll to say the same thing in weaker words. The `pillar`
+// documents still drive /services/ and every service page's breadcrumb — only
+// this page stopped rendering them.
 
 // §1.5 — the packages grid, and now the page's first answer to "what does
 // Panta sell". It replaced the hero's "What we do" service index rather than
@@ -163,27 +177,6 @@ const PKGS = {
   expandLabel: pkgSection.expandLabel || 'What’s included',
 };
 
-
-const STEPS = [
-  {
-    n: '1',
-    title: 'Pulse Check.',
-    // Deliberately does NOT restate the offer: §4.4 pitches it in full about a
-    // screen above this, and the two ran word-for-word identical. A process
-    // step should say what happens, not re-sell what was already sold.
-    body: 'In 30 minutes, we discuss where things stand today and explore the best path forward. You tell us your top priorities and we share our recommendations on what the best first step might be. We follow up with a written summary, which you can use to make a decision or hand off to someone else.',
-  },
-  {
-    n: '2',
-    title: 'Plan together.',
-    body: 'We follow up on the Pulse Check with a detailed plan of action, agree on a scope of work, set a timeline, and get started. The path forward is always in your hands.'
-  },
-  {
-    n: '3',
-    title: 'Build and support.',
-    body: 'We execute on the plan, review progress on an agreed-upon cadence, and make adjustments as needed. We stay reachable and responsive to your feedback and questions. Upon delivery, we hand over the project, answer any final questions, and offer ongoing support as agreed upon.',
-  },
-];
 
 // The §4.2 trust bar is gone: the case study now occupies that slot, and a row
 // of two logos under "trusted by" was doing less work than the work itself.
@@ -307,30 +300,19 @@ const FAQS = [
         </h1>
         <p class="hero__sub" data-hero="sub">{HERO.subhead}</p>
 
+        {/* The chooser replaces the filled button and the quiet work link
+            (journey-redesign.md §5.1). Those two committed every arrival to the
+            review before they knew whether it fit; this sorts the three
+            visitors who actually turn up inside the first screen — and the work
+            link survives inside it as the "just looking" door.
+
+            The hero no longer spends a `.btn--filled`. That is not a saving to
+            reinvest: the closing form keeps the page's one filled button, and a
+            second one anywhere above it would compete with the chooser it is
+            standing in for. */}
         <div class="hero__act" data-hero="act">
-          <div class="hero__buttons">
-            <a
-              class="btn btn--filled hero__cta"
-              href={BOOK}
-              data-track="cta_click"
-              data-track-cta="pulse_check"
-              data-track-location="home_hero"
-            >{HERO.ctaLabel}</a>
-            {/* Quiet by design: §7.3 allows one filled button in this section,
-                and a second button here would split the click. */}
-            <a
-              class="hero__quiet"
-              href="/work/"
-              data-track="cta_click"
-              data-track-cta="work"
-              data-track-location="home_hero"
-            >{/* Explicit {' '}: the compiler trims a literal space sitting
-                  between an expression and an element, and the arrow ends up
-                  welded to the last word. */}
-              {HERO.secondaryLabel}{' '}<span aria-hidden="true">→</span></a>
-          </div>
-          <p class="hero__micro" data-hero="micro"><PulseTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
-          <!-- {HERO.riskReversal && <p class="hero__risk">{HERO.riskReversal}</p>} -->
+          <DoorChooser location="home_hero" class="hero__chooser" />
+          <p class="hero__micro" data-hero="micro"><OfferTerm text={HERO.ctaMicrocopy} location="home_hero" /></p>
         </div>
 
         {/* The self-route. Someone who already knows what they need should not
@@ -465,7 +447,19 @@ const FAQS = [
                 </article>
               ))}
             </div>
-          <div class="case__view-all" style="margin-top:4rem;">
+          {/* Testimony about the REVIEW, next to the evidence of the work —
+              §5.1 step 2 brings it up from /work/, where it sat on a page a
+              visitor only reaches once they are already interested. */}
+          {testimonial && (
+            <figure class="case__quote">
+              <blockquote>“{testimonial.quote}”</blockquote>
+              <figcaption>
+                <strong>{testimonial.author}</strong>{testimonial.role ? ` — ${testimonial.role}` : ''}
+              </figcaption>
+            </figure>
+          )}
+
+          <div class="case__view-all" style="margin-top:2.5rem;">
             <a
               class="case__link case__link--all"
               href="/work/"
@@ -595,116 +589,60 @@ const FAQS = [
     </div>
   </section> -->
 
-  <!-- ===================== 4. service pillars ===================== -->
-  <!-- Structure surface: sans. Green appears here as the pillar icons only. -->
-  <section class="section section--dark" id="services" data-section="pillars">
+  <!-- ================ 1.6 the Digital Presence Plan ================ -->
+  <!-- journey-redesign.md §5.1 step 4: the flagship paid engagement was not on
+       the homepage at all. It sits directly under the packages because it is
+       the answer to the question those cards raise — "which of these do I
+       need?" — and because it is the only offer here that grades everything
+       rather than building one thing. One card, not a section: it is the
+       exception to the five, and giving it a full band would make it the sixth. -->
+  <section class="section plan-strip" data-section="plan">
     <div class="container">
-      <h2 class="pillars__head">Three ways we help.</h2>
-      {PILLARS.length === 0 && (
-        <Placeholder note="the three pillar documents (Studio → Pillars)" />
-      )}
-      <div class="pillars">
-        {/* The mark is chosen by pillar id, not position: pillars are content
-            now, and reordering them in the Studio must not hand Creative the
-            magnifying glass. The numeral IS positional — it counts columns. */}
-        {PILLARS.map((p, i) => (
-          <article class="pillar">
-            <div class="pillar__rule">
-              <span class="pillar__icon" aria-hidden="true">
-                {p.id === 'digital' && (
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <circle cx="11" cy="11" r="7" />
-                    <path d="M16.5 16.5L21 21" />
-                  </svg>
-                )}
-                {p.id === 'strategic' && (
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M4 7h10M4 12h16M4 17h7" />
-                    <circle cx="18" cy="7" r="2.2" />
-                    <circle cx="14" cy="17" r="2.2" />
-                  </svg>
-                )}
-                {p.id === 'creative' && (
-                  <svg width="30" height="30" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-                    <path d="M12 3l2.4 5.4 5.6.6-4.2 3.9 1.2 5.6L12 15.8 6.9 18.5l1.2-5.6L4 9l5.6-.6z" />
-                  </svg>
-                )}
-              </span>
-              <span class="pillar__n" aria-hidden="true">{`0${i + 1}`}</span>
-            </div>
-            <p class="pillar__kicker">{p.kicker}</p>
-            <h3 class="pillar__head">{p.head}</h3>
-            <p class="pillar__lede">{p.lede}</p>
-            <ul class="pillar__list">
-              {(p.bullets ?? []).map((item) => <li>{item}</li>)}
-            </ul>
-          </article>
-        ))}
-      </div>
-      <div class="pillars__close">
-        {/* The offer and its escape hatch are one column, the actions are the
-            other. They were three loose children of a two-column grid, which
-            put the button in column two and stranded the escape line back in
-            column one under the paragraph, a row down and a long way from the
-            thing it is an alternative to. */}
-        <div class="pillars__offer">
-          <p class="pillars__cta">
-            Are you looking for ways to improve your website or online presence? Let's start with a free 30-minute review to understand your current needs and goals. No strings attached.
+      <div class="plan-card">
+        <div class="plan-card__copy">
+          <p class="kicker">The whole picture</p>
+          <h2 class="plan-card__head">{PLAN.Name}</h2>
+          <p class="plan-card__body">
+            Every channel people find you through — website, search, social, directories,
+            reviews — read against one standard, with your biggest leaks named and costed,
+            and a 90-day roadmap that separates what you can fix yourself this week from
+            what is worth hiring out.
           </p>
-          {/* Escape hatch: a calendar is a commitment, and some visitors want to
-              ask a question first. Kept quiet and text-only so it never competes
-              with the booking button — it catches the people who'd otherwise
-              leave, not the ones already reaching for a time slot.
-              Points at the compact form one section below (#ask), not the full
-              one in the close (#start) — the nearest place to act, ~10% of the
-              page away instead of 40%. */}
-          <p class="pillars__escape">
-            Not ready to put a time on the calendar?
-            <a href="#ask" data-track="cta_click" data-track-cta="message_instead" data-track-location="home_pillars">
-              Have us reach out instead <span aria-hidden="true">→</span>
-            </a>
-          </p>
-        </div>
-
-        {/* Ghost, not filled. §7.3 caps the page at two filled buttons and they
-            are now spent on the hero (first ask) and the form in the close (the
-            on-page conversion). This is the third ask inside two screens,
-            sitting beside two text links and a testimonial, so it was the one
-            competing rather than earning. */}
-        <div class="pillars__actions">
+          <p class="plan-card__strip">{PLAN.strip}</p>
           <a
-            href={BOOK}
-            class="btn btn--primary"
+            class="plan-card__link"
+            href={PLAN.href}
             data-track="cta_click"
-            data-track-cta="pulse_check"
-            data-track-location="home_pillars"
-          >Get a free review</a>
-          <a href={BOOK} class="pillars__learn-more" data-track="cta_click" data-track-cta="learn_more_pulse_check" data-track-location="home_pillars_more">
-            Learn more <span aria-hidden="true">→</span>
-          </a>
+            data-track-cta="plan"
+            data-track-location="home_plan"
+          >See what the plan covers <span aria-hidden="true">→</span></a>
         </div>
-
-        {/* The featured quote is testimony about the Pulse Check itself — "found
-            in 30 minutes what two other people missed for months" — so it earns
-            the booking button, not the case study four screens down where it
-            used to sit describing a website rebuild it isn't about. Same
-            `caseStudy` document; §4.6 keeps the image, summary and story link. */}
-        <!-- {caseStudy?.quote && (
-          <figure class="pillars__proof">
-            <blockquote>“{caseStudy.quote}”</blockquote>
-            {caseStudy.quoteAuthor && (
-              <figcaption>
-                — {caseStudy.quoteAuthor}{caseStudy.quoteRole ? `, ${caseStudy.quoteRole}` : ''}
-              </figcaption>
-            )}
-          </figure>
-        )} -->
+        <ul class="plan-card__list">
+          <li>A graded read on every channel</li>
+          <li>Your bottleneck, named in one sentence</li>
+          <li>A prioritized 90-day roadmap</li>
+          <li>DIY and hire-it-out split out</li>
+          <li>Delivered in 10 business days</li>
+          <li>A free re-score at 90 days</li>
+        </ul>
       </div>
     </div>
   </section>
 
+  {/* ============ 4. "Three ways we help" — REMOVED ============ */}
+  {/* journey-redesign.md §5.1 step 3. Three pillar columns restating the five
+      package cards one screen above them, under different labels, plus a third
+      copy of the review CTA and a link to a mid-page form that is also gone.
+      It cost a full screen of scroll to say what the section above it had just
+      said in the words a buyer uses.
+
+      Nothing was lost that is not still reachable: the pillars are the
+      taxonomy on /services/ and the breadcrumb on every service page, the
+      services are named in the hero cards and the packages grid, and the CTA
+      it carried is now one of the three doors in the hero. */}
+
   <!-- ===================== 5. how it works ===================== -->
-  <section class="section" data-section="process">
+  <section class="section" id="process" data-section="process">
     <div class="container">
       <h2 class="steps__head">A clear path to growth and impact.</h2>
       <ol class="steps">
@@ -718,35 +656,34 @@ const FAQS = [
           </li>
         ))}
       </ol>
+      {/* The steps are shared with /process/ (lib/process.js), which adds what
+          each one LEAVES BEHIND — the half this section has no room for, and
+          the half the two broken "see how it works" links were being clicked to
+          find. §3. */}
+      <p class="steps__more">
+        <a
+          href={ROUTES.process}
+          data-track="cta_click"
+          data-track-cta="process"
+          data-track-location="home_process"
+        >See how a project runs, start to finish <span aria-hidden="true">→</span></a>
+      </p>
     </div>
   </section>
 
-  <!-- ================ 6. mid-page catch ================ -->
-  <!-- The closing form sits at ~82% of the page. This is the same ask at the
-       point the visitor has just read how the work runs — the moment the
-       process makes sense is the moment to act on it, and waiting three more
-       sections to offer that costs the ones who don't scroll.
-       Two fields, ghost button: it is a catch, not the main event. The hero and
-       the closing form keep the page's two .btn--filled slots (§7.3). -->
-  <section class="mid-ask" id="ask" data-section="mid_ask">
-    <div class="container mid-ask__grid">
-      <div>
-        {/* Deliberately NOT "not ready to put a time on the calendar?" — the
-            escape link ten percent above says exactly that, and the two read as
-            a stutter. This one also promises only what the two fields can
-            deliver: compact has no message box, so it says we'll reach out,
-            not "tell us what's going on". */}
-        <h2 class="mid-ask__head">Would you rather we reached out?</h2>
-        <p class="mid-ask__body">
-          Leave your name and email and we’ll get in touch within one business day to understand what you need and how we can help.
-        </p>
-      </div>
-      <LeadForm source="home_mid" variant="compact" />
-    </div>
-  </section>
+  {/* ============ 6. mid-page catch — REMOVED ============ */}
+  {/* journey-redesign.md §5.1 step 8: "one form, not two". This page carried a
+      compact name-and-email form here and the full review form in the close —
+      the same request, made twice, ~40% of the page apart. Two forms for one
+      thing is how a visitor decides neither is the real one.
+
+      The full form in the close survives, and the hero chooser now offers all
+      three doors in the first screen, so nobody has to scroll to the bottom to
+      find an ask. `#ask` was linked only from the pillars section, which went
+      with it. */}
 
   <!-- ===================== 7. Pulse strip ===================== -->
-  <!-- The one section that does NOT route to the Pulse Check (§7.2): it routes
+  <!-- The one section that does NOT route to the Review (§7.2): it routes
        to Pulse and to subscribe. -->
   <section class="section section--dark pulse-strip" data-section="pulse">
     <div class="container">
@@ -875,7 +812,7 @@ const FAQS = [
     <div class="container final__grid">
       <div class="final__inner">
         <RippleMark size={48} class="ripple-mark" />
-        <h2 class="final__head">Start with a Pulse Check — a free 30-minute review.</h2>
+        <h2 class="final__head">Start with the Review — free, and yours to keep.</h2>
         <p class="final__body">
           A short conversation about where things stand. We'll discuss your current priorities and goals, and explore options to serve your most important needs. We'll follow up with a written summary, recommendations for next steps, and an invitation to continue the conversation. No strings attached, whether we work together or not.
         </p>
@@ -924,9 +861,9 @@ const FAQS = [
     --hero-ring-alpha: 0.16;
     --hero-ring-accent: var(--bamboo);
     --hero-ring-accent-alpha: 0.7;
-    /* PulseTerm's own hook. Its default, bamboo-deep, is 2.2:1 on charcoal —
+    /* OfferTerm's own hook. Its default, bamboo-deep, is 2.2:1 on charcoal —
        the term in the microcopy would read as a smudge without it. */
-    --pulse-term-accent: var(--sage);
+    --offer-term-accent: var(--sage);
     /* And the tip itself inverts. Its default is a charcoal panel, which is
        correct everywhere else it appears (cream sections, the bamboo closing
        CTA) and invisible here — a charcoal box on a charcoal hero, so the
@@ -934,9 +871,9 @@ const FAQS = [
        over. Cream on charcoal is the relationship the filled button in this
        same section already uses, so the tip reads as raised rather than as a
        second thing to click. */
-    --pulse-tip-surface: var(--cream);
-    --pulse-tip-ink: var(--charcoal);
-    --pulse-tip-cue: var(--bamboo-deep); /* 4.6:1 on cream */
+    --offer-tip-surface: var(--cream);
+    --offer-tip-ink: var(--charcoal);
+    --offer-tip-cue: var(--bamboo-deep); /* 4.6:1 on cream */
   }
 
   .hero {
@@ -1154,48 +1091,41 @@ const FAQS = [
     );
   }
 
-  /* Its own rule colour rather than --hero-rule: at 0.28 the underline read
-     heavier than a secondary link earns, and --hero-rule is also the hairline
-     over the proof strip, which does want that weight. */
-  .hero__quiet {
-    font-size: 0.95rem;
-    font-weight: 500;
-    color: var(--hero-type);
-    text-decoration: none;
-    border-bottom: 1px solid rgba(245, 241, 231, 0.18);
-    padding-bottom: 2px;
-  }
-
-  .hero__quiet:hover { border-bottom-color: var(--hero-type); }
-
   /* The button follows the subhead directly in source order, so the ordering
      fight this block used to arbitrate — index-then-button on desktop,
      button-first on mobile so the CTA cleared the fold on a 375px phone — no
      longer exists. It leads at every width. */
   .hero__act { margin-block: 1.5rem 1.5rem; }
 
-  .hero__buttons {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: center;
-    gap: 1.5rem;
-  }
+  /* The chooser on the charcoal hero. DoorChooser draws every colour from five
+     custom properties for exactly this: the same markup renders on cream
+     elsewhere (nothing does yet, but /contact/'s chooser is the same shape) and
+     the hero overrides them here rather than the component knowing about heroes.
 
-  /* The hero is not a .section--dark, so global.css's inversion for filled
-     buttons (a charcoal fill on charcoal reads as a hole) does not reach it.
-     Restated against the same values rather than adding .section--dark to the
-     markup, which would also pull in that class's padding and background. */
-  .hero__cta {
-    background: var(--cream);
-    color: var(--charcoal);
-    border-color: var(--cream);
-  }
-
-  .hero__cta:hover {
-    background: var(--charcoal);
-    border-color: var(--cream);
-    color: var(--cream);
+     `--chooser-hover` is a lift, not a tint: on a dark surface the cream-soft
+     default would be a white bar. */
+  /* `:global()`, and it is required rather than stylistic. `class` passed to a
+     component lands on that component's root element, which carries the
+     COMPONENT's scope id and not this page's — so a plain `.hero__chooser` rule
+     here compiles to a selector that matches nothing, DoorChooser's own
+     light-surface defaults stand, and the situation text renders charcoal on
+     charcoal. The descendant `.hero` keeps the scoping honest: these overrides
+     still cannot leak past this page's hero. Same pattern as NewsletterForm's
+     `:global(.section--dark) .nl`. */
+  .hero :global(.hero__chooser) {
+    --chooser-line: var(--hero-rule);
+    --chooser-ink: var(--hero-type);
+    --chooser-quiet: var(--hero-quiet);
+    --chooser-hover: rgba(245, 241, 231, 0.08);
+    --chooser-accent: var(--sage);
+    /* Same local wash as the subhead and microcopy: the mark runs behind this
+       block, and sage-on-charcoal drops to 3.97:1 where a ring crosses it. */
+    background: radial-gradient(
+      ellipse 108% 118% at 50% 50%,
+      rgba(var(--hero-wash), 0.93) 0%,
+      rgba(var(--hero-wash), 0.9) 58%,
+      rgba(var(--hero-wash), 0) 100%
+    );
   }
 
   /* `fit-content`, and it is doing real work. Both this and .hero__risk are
@@ -1315,205 +1245,99 @@ const FAQS = [
     font-weight: 500;
   }
 
-  /* ----------------------------------------------------------- pillars -- */
+  /* ------------------------------------------------ the Plan card -- */
 
-  .pillars__head {
-    font-family: var(--font-sans);
-    font-size: clamp(2rem, 4vw, 2.9rem);
-    letter-spacing: -0.02em;
-    margin-bottom: clamp(2.25rem, 4vw, 3rem);
-  }
+  .plan-strip { padding-top: 0; }
 
-  .pillars {
-    display: grid;
-    gap: clamp(2.25rem, 3vw, 3rem);
-  }
-
-  @media (min-width: 820px) {
-    .pillars { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  }
-
-  .pillar {
-    display: grid;
-    align-content: start;
-    gap: 0.5rem;
-    padding-top: 1rem;
-    border-top: 1px solid rgba(245, 241, 231, 0.28);
-    transition: border-top-color 0.25s ease;
-  }
-
-  /* The rule row: the green mark on the left, its index on the right. Reads as
-     a masthead line for the column rather than a card header. */
-  .pillar__rule {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    margin-bottom: 0.85rem;
-  }
-
-  /* One of the four places green is allowed (§3). */
-  .pillar__icon {
-    color: var(--sage);
-    display: block;
-    transition: transform 0.25s ease;
-  }
-
-  .pillar__n {
-    font-family: var(--font-mono);
-    font-size: 0.72rem;
-    letter-spacing: 0.14em;
-    color: rgba(245, 241, 231, 0.4);
-    transition: color 0.25s ease;
-  }
-
-  .pillar:hover { border-top-color: var(--sage); }
-  .pillar:hover .pillar__icon { transform: translateY(-2px); }
-  .pillar:hover .pillar__n { color: var(--cream); }
-
-  .pillar__kicker {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-    color: var(--sage);
-    margin: 0;
-  }
-
-  .pillar__head {
-    font-size: clamp(1.45rem, 2.2vw, 1.75rem);
-    margin: 0;
-    color: var(--cream);
-  }
-
-  .pillar__lede {
-    font-size: 1rem;
-    line-height: 1.6;
-    color: var(--cream);
-    margin: 0;
-  }
-
-  /* Hairline rows, matching the hero's service index — the dotted list read as
-     three loose fragments; ruled rows give the column a spine. */
-  .pillar__list {
-    list-style: none;
-    padding: 0;
-    margin: 1rem 0 0;
-    border-top: 1px solid rgba(245, 241, 231, 0.14);
-  }
-
-  .pillar__list li {
-    font-size: 0.9rem;
-    line-height: 1.55;
-    color: var(--sage);
-    padding: 0.7rem 0;
-    border-bottom: 1px solid rgba(245, 241, 231, 0.14);
-  }
-
-  /* A cream panel on the dark section: the copy asks, the actions answer, and
-     the two sit on one line rather than in a 2×2 grid.
-     The second column is `auto`, not a fraction — sized to the button it holds.
-     As a fraction it reserved half the panel for a button a third that wide and
-     left the rest of the row empty. */
-  .pillars__close {
-    margin-top: clamp(2.5rem, 5vw, 3.5rem);
-    padding: clamp(1.5rem, 3vw, 2.25rem);
-    background: var(--cream);
-    border-radius: 10px;
+  .plan-card {
     display: grid;
     gap: clamp(1.5rem, 3vw, 2.5rem);
-    align-items: center;
+    padding: clamp(1.5rem, 3vw, 2.25rem);
+    border: 1px solid var(--line);
+    border-radius: 10px;
+    background: var(--cream-soft);
   }
 
-  @media (min-width: 900px) {
-    .pillars__close { grid-template-columns: minmax(0, 1fr) auto; }
+  @media (min-width: 880px) {
+    /* The copy leads. The inclusions are a reference list, not a pitch, so they
+       get the narrower column. */
+    .plan-card { grid-template-columns: minmax(0, 1.25fr) minmax(0, 0.85fr); }
   }
 
-  .pillars__cta {
-    margin: 0;
-    max-width: 54ch;
-    font-size: 1.05rem;
+  .plan-card__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    margin: 0.4rem 0 0.75rem;
+  }
+
+  .plan-card__body { margin: 0 0 1rem; line-height: 1.7; }
+
+  .plan-card__strip {
+    display: inline-block;
+    margin: 0 0 1rem;
+    padding: 0.45rem 0.8rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.03em;
     color: var(--stone-deep);
   }
-  .pillars__actions .btn--primary {
-    background: var(--charcoal);
-    color: var(--cream);
+
+  /* A text link, not a button. The homepage's one filled button belongs to the
+     closing form, and this section is a signpost to a page that sells the Plan
+     properly — not the place the Plan gets bought. */
+  .plan-card__link {
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
   }
 
-  .pillars__actions .btn--primary:hover {
-    background: var(--sage);
-    color: var(--cream);
-  }
-  /* Sage rule rather than a card: the pillar columns above already read as
-     ruled text, and a box here would be the only one on the page. */
-  .pillars__proof {
+  .plan-card__link:hover { text-decoration: underline; }
+
+  .plan-card__list {
+    list-style: none;
     margin: 0;
+    padding: 0;
+    align-self: start;
+    border-top: 1px solid var(--line);
+  }
+
+  .plan-card__list li {
+    font-size: 0.9rem;
+    line-height: 1.5;
+    color: var(--stone-deep);
+    padding: 0.6rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  /* --------------------------------------------------- case testimonial -- */
+
+  /* Sage rule rather than a card: the case previews above it are ruled text and
+     a box here would be the only one in the section. */
+  .case__quote {
+    margin: 3rem 0 0;
     padding-left: clamp(1rem, 2vw, 1.5rem);
     border-left: 2px solid var(--sage);
+    max-width: 46rem;
   }
 
-  .pillars__proof blockquote {
+  .case__quote blockquote {
     font-family: var(--font-serif);
-    font-size: clamp(1.15rem, 1.9vw, 1.45rem);
-    line-height: 1.4;
-    color: var(--cream);
+    font-size: clamp(1.15rem, 2vw, 1.5rem);
+    line-height: 1.45;
     margin: 0 0 0.7rem;
   }
 
-  .pillars__proof figcaption {
-    font-size: 0.85rem;
-    line-height: 1.5;
-    color: var(--sage);
-  }
-
-  /* Sage everywhere below was written when this block sat straight on the dark
-     section. It has been a cream panel since, which left the escape link cream
-     on cream — invisible — and the rest of it barely legible. These are the
-     same roles the packages cards use on the same surface. */
-  .pillars__cta a { color: var(--bamboo-deep); }
-
-  .pillars__offer {
-    display: grid;
-    gap: 0.9rem;
-    justify-items: start;
-  }
-
-  .pillars__actions {
-    display: flex;
-    align-items: center;
-    gap: clamp(1.25rem, 3vw, 2rem);
-    flex-wrap: wrap;
-  }
-
-  .pillars__learn-more {
-    color: var(--bamboo-deep);
-    font-size: 0.95rem;
-  }
-
-  .pillars__learn-more:hover {
-    color: var(--charcoal);
-  }
-
-  .pillars__escape {
-    margin: 0;
-    max-width: none;
+  .case__quote figcaption {
     font-size: 0.9rem;
     color: var(--stone-deep);
   }
 
-  /* The question wraps before the answer does, rather than the link breaking
-     across two lines with its arrow orphaned on the second. */
-  .pillars__escape a {
-    color: var(--bamboo-deep);
-    text-underline-offset: 3px;
-    white-space: nowrap;
-  }
+
 
   @media (prefers-reduced-motion: reduce) {
-    .pillar,
-    .pillar__icon,
-    .pillar__n { transition: none; }
-    .pillar:hover .pillar__icon { transform: none; }
-
     /* The global backstop (global.css:1121-1124) kills `transition` site-wide
        but says nothing about `animation` — every keyframe on this page has to
        be switched off here by hand, or reduced-motion users get exactly the
@@ -1531,6 +1355,19 @@ const FAQS = [
   }
 
   /* ------------------------------------------------------------- steps -- */
+
+  .steps__more {
+    margin: 2.5rem 0 0;
+    font-size: 0.95rem;
+  }
+
+  .steps__more a {
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
+  }
+
+  .steps__more a:hover { text-decoration: underline; }
 
   .steps__head {
     font-family: var(--font-sans);
@@ -1585,35 +1422,6 @@ const FAQS = [
   /* cream-soft with hairlines, the treatment the old trust bar used: it reads
      as a strip between two full sections rather than a section of its own,
      which is what keeps it from competing with the close. */
-  .mid-ask {
-    background: var(--cream-soft);
-    border-block: 1px solid var(--line);
-    padding-block: clamp(2rem, 4vw, 2.75rem);
-  }
-
-  .mid-ask__grid {
-    display: grid;
-    gap: clamp(1.25rem, 3vw, 2.5rem);
-    align-items: center;
-  }
-
-  @media (min-width: 960px) {
-    .mid-ask__grid { grid-template-columns: minmax(0, 0.85fr) minmax(0, 1.15fr); }
-  }
-
-  .mid-ask__head {
-    font-family: var(--font-sans);
-    font-size: clamp(1.15rem, 2vw, 1.45rem);
-    line-height: 1.3;
-    margin: 0 0 0.35rem;
-  }
-
-  .mid-ask__body {
-    font-size: 0.95rem;
-    line-height: 1.6;
-    color: var(--stone-deep);
-    margin: 0;
-  }
 
   /* ---------------------------------------------------------- packages -- */
 
@@ -2539,13 +2347,11 @@ const FAQS = [
     //    enough that on a tall viewport the first card is still near the fold.
     reveal('.case__item', '.case__grid', { y: 22, stagger: 0.12, start: 'top 88%' });
     reveal('.case__trust > *', '.case__trust', { y: 12, duration: 0.45, stagger: 0.08 });
+    reveal('.case__quote', '.case__grid', { y: 16, duration: 0.55, start: 'top 92%' });
 
-    // 4. pillars — three reading beats, three calls
-    reveal('.pillar', '.pillars', { y: 26, stagger: 0.12 });
-    reveal('.pillars__cta, .pillars__actions, .pillars__escape', '.pillars__close', {
-      y: 18, stagger: 0.1,
-    });
-    reveal('.pillars__proof', '.pillars__close', { x: 18, y: 0, duration: 0.7 });
+    // 4. the Digital Presence Plan card — one block, so it lifts as a unit
+    //    rather than staggering its own bullet list.
+    reveal('.plan-card', '.plan-strip', { y: 22, duration: 0.6 });
 
     // 5. process
     reveal('.step', '.steps', { stagger: 0.12 });
@@ -2554,9 +2360,6 @@ const FAQS = [
       autoAlpha: 0, scale: 0.7, transformOrigin: '0% 100%',
       duration: 0.5, stagger: 0.12, ease: 'back.out(1.6)',
     });
-
-    // 6. mid-page catch
-    reveal('.mid-ask__grid > *', '.mid-ask', { y: 16, duration: 0.5, stagger: 0.1, start: 'top 88%' });
 
     // 7. Pulse strip
     reveal('.pulse-card', '.pulse-cards', { stagger: 0.1 });

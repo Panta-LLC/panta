@@ -1,7 +1,9 @@
-// The offer is called "the Pulse Check"; the page that sells it lives at
-// /consultation/. This alias exists so social posts, the Google Business
-// Profile and anything printed can carry a link that matches the name of the
-// thing, without splitting the funnel across two URLs.
+// RETIRED NAME. The offer was called "the Pulse Check" and is called "the
+// Review" now (journey-redesign.md §3, and src/lib/offer.js for the full note).
+// This alias stays because it is printed on things that already exist and on
+// profiles we do not control the history of — a link that has been handed out
+// does not stop existing when the name changes. /review is the alias to give
+// out from here on; see review.ts.
 //
 // A 301 rather than a second page on purpose: every CTA on the site already
 // points at /consultation/, and the whole point of one landing page is that

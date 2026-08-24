@@ -1,0 +1,198 @@
+---
+/**
+ * How a project runs, start to finish.
+ *
+ * journey-redesign.md §3: two links on the site said "see how it works" and
+ * both pointed at `/services/`, which is a list of what we sell and not an
+ * answer to how the work runs. The three-step content existed in exactly one
+ * place — a section of the homepage — so anyone who arrived on a service page
+ * could not reach it without going back to the top of the funnel.
+ *
+ * STEPS is imported from lib/process.js rather than copied: the homepage
+ * renders the same three, and the last time this copy lived in two files it
+ * drifted within a month. This page adds the detail the homepage section has no
+ * room for — what each step actually produces — which is the reason it earns a
+ * page rather than being an anchor.
+ */
+import Base from '../layouts/Base.astro';
+import SectionViews from '../components/SectionViews.astro';
+import ThreeDoors from '../components/ThreeDoors.astro';
+import PriceStrip from '../components/PriceStrip.astro';
+import { STEPS } from '../lib/process.js';
+import { OFFER, PRICE_STRIP, ROUTES } from '../lib/offer.js';
+
+const description =
+  'How a Panta project runs: a free 30-minute review, a plan and a fixed-price scope agreed in writing, then a build with a set cadence and a handover you own.';
+
+// The commitments this page makes, restated as schema so the "how long does it
+// take" answer is machine-readable too. No invented durations — every value
+// here is already promised in copy elsewhere on the site.
+const howToSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'HowTo',
+  name: 'How a Panta project runs',
+  description,
+  step: STEPS.map((s, i) => ({
+    '@type': 'HowToStep',
+    position: i + 1,
+    name: s.title.replace(/\.$/, ''),
+    text: s.body,
+  })),
+};
+---
+<Base title="How a project runs — Panta" description={description} schema={[howToSchema]}>
+  <section class="section section--dark" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
+    <div class="container">
+      <p class="label">How we work</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">Three steps, and you can stop after any of them.</h1>
+      <p class="lede">
+        Nothing here locks you in. The first step is free and ends with something in writing
+        you can act on without us. The second is where scope and price are agreed — before
+        any work starts. The third is the build.
+      </p>
+      <PriceStrip tone="dark" text={PRICE_STRIP} />
+    </div>
+  </section>
+
+  <section class="section" data-section="process_steps">
+    <div class="container">
+      <ol class="proc">
+        {STEPS.map((s, i) => (
+          <li class="proc__step">
+            <span class="proc__n" aria-hidden="true">{s.n}</span>
+            <div class="proc__body">
+              <h2 class="proc__title">{s.title}</h2>
+              <p>{s.body}</p>
+              {/* What the step LEAVES BEHIND. This is the half the homepage
+                  section has no room for, and the half that answers "what am I
+                  actually agreeing to" — which is the question the two broken
+                  "see how it works" links were being clicked to answer. */}
+              <p class="proc__out">
+                <span class="proc__out-label">You end up with</span>
+                {s.output}
+              </p>
+              {s.note && <p class="small proc__note">{s.note}</p>}
+            </div>
+          </li>
+        ))}
+      </ol>
+    </div>
+  </section>
+
+  <!-- What we ask of you. A process page that only describes our side reads as
+       a brochure; the honest version names the two things that actually decide
+       whether a small project lands on time. -->
+  <section class="section section--dark" data-section="process_you">
+    <div class="container">
+      <p class="label">What we need from you</p>
+      <h2>Two things, and neither is a lot.</h2>
+      <div class="grid grid--2" style="margin-top: 2rem;">
+        <div class="card card--onDark">
+          <h3>One person who can decide</h3>
+          <p>
+            Not a committee. Someone who can say yes to a direction and mean it. Projects
+            that slip almost always slip here, and it is the one thing we cannot do for you.
+          </p>
+        </div>
+        <div class="card card--onDark">
+          <h3>The stuff only you have</h3>
+          <p>
+            Logins, photographs, the list of services in the order you actually sell them.
+            We tell you exactly what we need at the start of the build, in one list, once.
+          </p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="section" data-section="process_after">
+    <div class="container" style="max-width: 46rem;">
+      <p class="label">Afterward</p>
+      <h2>You own it.</h2>
+      <p>
+        Every project is handed over with your accounts, your files, and your control. We stay
+        reachable for questions and we are happy to keep working together — but nothing about
+        the handover depends on it. If you want the whole picture graded rather than a single
+        project scoped, that is the
+        <a href={ROUTES.plan}>Digital Presence Plan</a>, and it is paid work with its own
+        timeline.
+      </p>
+      <p class="small">
+        Still deciding whether any of this applies to you? {OFFER.Name} is the free way to find
+        out — <a href={ROUTES.review}>see what it covers →</a>
+      </p>
+    </div>
+  </section>
+
+  <ThreeDoors location="process_doors" heading="Start wherever you actually are." />
+</Base>
+
+<SectionViews />
+
+<style>
+  .proc {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    gap: clamp(2rem, 4vw, 3rem);
+    counter-reset: none;
+  }
+
+  .proc__step {
+    display: grid;
+    gap: 1rem 1.5rem;
+    grid-template-columns: auto minmax(0, 1fr);
+    align-items: start;
+    padding-bottom: clamp(2rem, 4vw, 3rem);
+    border-bottom: 1px solid var(--line);
+  }
+
+  .proc__step:last-child { border-bottom: 0; padding-bottom: 0; }
+
+  /* Green is scarce by rule; step numerals are one of the four places it is
+     allowed (see the palette note in global.css). */
+  .proc__n {
+    font-family: var(--font-mono);
+    font-size: clamp(1.6rem, 3vw, 2.2rem);
+    line-height: 1;
+    color: var(--bamboo-deep);
+  }
+
+  .proc__title {
+    font-family: var(--font-serif);
+    font-size: clamp(1.35rem, 2.6vw, 1.9rem);
+    margin: 0 0 0.6rem;
+  }
+
+  .proc__body p { line-height: 1.75; }
+
+  .proc__out {
+    margin-top: 1rem;
+    padding: 0.9rem 1.1rem;
+    background: var(--cream-soft);
+    border-left: 3px solid var(--sage);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .proc__out-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    margin-bottom: 0.35rem;
+  }
+
+  .proc__note { color: var(--stone-deep); margin-top: 0.75rem; }
+
+  .card--onDark {
+    background: transparent;
+    border-color: rgba(245, 241, 231, 0.28);
+    color: var(--cream);
+  }
+
+  .card--onDark h3 { color: var(--cream); margin-bottom: 0.6rem; }
+  .card--onDark p { color: var(--sage); }
+</style>

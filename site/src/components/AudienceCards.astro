@@ -1,0 +1,89 @@
+---
+/**
+ * "Who this is for" — three short cards, one per persona.
+ *
+ * journey-redesign.md §4 asks every service page to carry this, modelled on the
+ * Digital Presence Plan's persona section (§5.4 calls that section "the model
+ * for the rest of the site"). The job is self-recognition: a practitioner, a
+ * nonprofit director and a local business owner each need a different sentence
+ * about the same service, and a page that writes one sentence for all three
+ * writes it for none of them.
+ *
+ * The cards are data (`service.audience` in the Studio) rather than three fixed
+ * slots, so a service with two genuine audiences shows two rather than padding
+ * to three with a card nobody meant.
+ */
+interface Card {
+  title: string;
+  body: string;
+}
+interface Props {
+  label?: string;
+  heading?: string;
+  cards: Card[];
+  class?: string;
+}
+const { label = 'Who this is for', heading, cards = [], class: className } = Astro.props;
+const items = cards.filter((c) => c?.title && c?.body);
+---
+{items.length > 0 && (
+  <section class:list={['section aud', className]} data-section="audience">
+    <div class="container">
+      {label && <p class="label">{label}</p>}
+      {heading && <h2 class="aud__head">{heading}</h2>}
+      <div class="aud__grid">
+        {items.map((c) => (
+          <div class="aud__card">
+            <p class="aud__who">{c.title}</p>
+            <p class="aud__body">{c.body}</p>
+          </div>
+        ))}
+      </div>
+    </div>
+  </section>
+)}
+
+<style>
+  .aud__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    line-height: 1.2;
+    max-width: 26ch;
+    margin: 0.5rem 0 0;
+  }
+
+  /* auto-fit rather than a fixed three: two audiences must not leave a hole,
+     and a fourth must not orphan onto its own row. */
+  .aud__grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 2rem;
+    grid-template-columns: repeat(auto-fit, minmax(15rem, 1fr));
+  }
+
+  .aud__card {
+    padding: 1.35rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream-soft);
+  }
+
+  .aud__who {
+    font-weight: 500;
+    margin: 0 0 0.5rem;
+  }
+
+  .aud__body {
+    margin: 0;
+    font-size: 0.94rem;
+    line-height: 1.65;
+    color: var(--stone-deep);
+  }
+
+  :global(.section--dark) .aud__card {
+    background: rgba(245, 241, 231, 0.05);
+    border-color: rgba(245, 241, 231, 0.18);
+  }
+
+  :global(.section--dark) .aud__body { color: var(--sage); }
+</style>

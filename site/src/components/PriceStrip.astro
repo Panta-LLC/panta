@@ -1,0 +1,60 @@
+---
+/**
+ * The price-and-time line that sits directly under a page's hero buttons.
+ *
+ * journey-redesign.md §1.3, "a number on every offer": price uncertainty is the
+ * main reason a nonprofit director cannot proceed without a call, and the call
+ * is exactly what they are trying to avoid before they have board cover. A
+ * range costs nothing to publish and removes the need for the call to exist
+ * just to answer it.
+ *
+ * Rendered as a bordered strip rather than a paragraph so it reads as a spec
+ * line — the same register as a delivery estimate — and not as another claim.
+ *
+ * `set:html` because the strip carries a <strong> around the number on some
+ * surfaces. Every value that reaches it is either a literal in lib/offer.js or
+ * a short line from the Studio; visitor input never touches it.
+ */
+interface Props {
+  /** The line. Defaults are per-surface, so callers pass one explicitly. */
+  text: string;
+  /** Sits on a dark or bamboo surface — inverts the hairline and the ink. */
+  tone?: 'light' | 'dark';
+  class?: string;
+}
+const { text, tone = 'light', class: className } = Astro.props;
+---
+<p class:list={['pricestrip', `pricestrip--${tone}`, className]} set:html={text} />
+
+<style>
+  .pricestrip {
+    display: inline-block;
+    margin: 1.25rem 0 0;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream-soft);
+
+    /* Mono, like every other metadata line on the site (§3's third role):
+       kickers, breadcrumbs, CTA microcopy. A price is metadata about the offer,
+       not a sentence of the pitch. */
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+    color: var(--stone-deep);
+  }
+
+  .pricestrip :global(strong) {
+    font-weight: 400;
+    color: var(--charcoal);
+  }
+
+  .pricestrip--dark {
+    border-color: rgba(245, 241, 231, 0.28);
+    background: rgba(245, 241, 231, 0.05);
+    color: var(--sage);
+  }
+
+  .pricestrip--dark :global(strong) { color: var(--cream); }
+</style>

@@ -1,10 +1,26 @@
 ---
 import Base from '../../layouts/Base.astro';
+import ThreeDoors from '../../components/ThreeDoors.astro';
 import { getDoc, getProjects, getTestimonial } from '../../lib/sanity.js';
+import { serviceHref } from '../../lib/pillars.js';
 
 const c = await getDoc('workPage');
 const projects = await getProjects();
 const testimonial = await getTestimonial();
+
+// The filter row (journey-redesign.md §5.6). Built from the services the work
+// ACTUALLY demonstrates, not from the full service list: a tag that filters to
+// zero cases is a dead control, and on a two-case page most of them would be.
+// The row hides itself entirely below two tags, where filtering is theatre.
+const TAGS = (() => {
+  const seen = new Map();
+  for (const p of projects) {
+    for (const svc of p.services ?? []) {
+      if (svc?.slug && !seen.has(svc.slug)) seen.set(svc.slug, svc.indexLabel || svc.title);
+    }
+  }
+  return [...seen].map(([slug, label]) => ({ slug, label }));
+})();
 ---
 <Base
   title="Client Work — Panta"
@@ -22,12 +38,40 @@ const testimonial = await getTestimonial();
   <!-- PROJECTS -->
   <section class="section">
     <div class="container">
+      {/* Filtering, not navigation: these change what is shown on this page and
+          go nowhere, so they are <button>s with aria-pressed rather than links.
+          Without JS every card stays visible and the row simply does nothing —
+          which is the correct degradation for a filter over two items. */}
+      {TAGS.length > 1 && (
+        <div class="wf" role="group" aria-label="Filter work by service">
+          <button class="wf__btn is-on" type="button" data-filter="all" aria-pressed="true">All work</button>
+          {TAGS.map((t) => (
+            <button
+              class="wf__btn"
+              type="button"
+              data-filter={t.slug}
+              aria-pressed="false"
+              data-track="cta_click"
+              data-track-cta={`work_filter_${t.slug}`}
+              data-track-location="work_index"
+            >{t.label}</button>
+          ))}
+        </div>
+      )}
       <div class="grid grid--3">
         {projects.map((p) => {
           const Card = p.slug ? 'a' : 'div';
           const props = p.slug ? { href: `/work/${p.slug}/` } : {};
+          /* Space-separated slugs, read by the filter script. On the element
+             rather than in a JS map so the markup is self-describing and a card
+             added later needs no code change. */
+          const tags = (p.services ?? []).map((s) => s?.slug).filter(Boolean).join(' ');
           return (
-            <Card class:list={['card', 'work-card', { 'work-card--link': p.slug }]} {...props}>
+            <Card
+              class:list={['card', 'work-card', { 'work-card--link': p.slug }]}
+              data-tags={tags}
+              {...props}
+            >
               {p.thumbnail && (
                 <img
                   class="work-thumb"
@@ -55,6 +99,9 @@ const testimonial = await getTestimonial();
           );
         })}
       </div>
+      <p class="wf__empty" data-work-empty hidden>
+        No case studies under that service yet — <button class="wf__reset" type="button">show all work</button>.
+      </p>
       <p class="small" style="margin-top: 2rem;">
         {c.footNote} <a href="/services/web-design-development/">{c.footLinkLabel}</a>
       </p>
@@ -73,32 +120,106 @@ const testimonial = await getTestimonial();
     </section>
   )}
 
-  <!-- CTA -->
-  <section class="section section--bamboo">
-    <div class="container">
-      <h2>{c.ctaTitle}</h2>
-      <p class="lede" style="max-width: 54ch;">{c.ctaLede}</p>
-      <div class="btn-row" style="margin-top: 1.5rem;">
-        <a
-          href="/consultation/"
-          class="btn btn--primary"
-          data-track="cta_click"
-          data-track-cta="consultation"
-          data-track-location="work_cta"
-        >{c.ctaPrimaryLabel}</a>
-        <a
-          href="/digital-presence-plan/"
-          class="btn btn--ghost"
-          data-track="cta_click"
-          data-track-cta="plan"
-          data-track-location="work_cta"
-        >{c.ctaSecondaryLabel}</a>
-      </div>
-    </div>
-  </section>
+  <!-- CTA — all three doors (journey-redesign.md §1.1). The page used to close
+       on the review plus the Plan, which offered the undecided visitor two
+       flavours of "talk to us" and the decided one neither. The Plan is still
+       named, in the line under the doors. -->
+  <ThreeDoors location="work_doors" heading={c.ctaTitle} body={c.ctaLede} />
 </Base>
 
+<script>
+  // Work filter (journey-redesign.md §5.6). Client-side and stateless: nothing
+  // is written to the URL or to storage — /privacy/ promises the site "stores
+  // nothing on your device" (docs/FUNNEL-MEASUREMENT.md), and a filter over a
+  // handful of cards does not need to survive a reload to be worth having.
+  const row = document.querySelector<HTMLElement>('.wf');
+  const cards = Array.from(document.querySelectorAll<HTMLElement>('.work-card'));
+  const empty = document.querySelector<HTMLElement>('[data-work-empty]');
+
+  const apply = (tag: string) => {
+    let shown = 0;
+    for (const card of cards) {
+      const tags = (card.dataset.tags ?? '').split(/\s+/).filter(Boolean);
+      const on = tag === 'all' || tags.includes(tag);
+      card.hidden = !on;
+      if (on) shown++;
+    }
+    // Only reachable if a tag's only case study is unpublished between builds,
+    // but a filter that empties the page silently reads as a broken page.
+    empty?.toggleAttribute('hidden', shown > 0);
+  };
+
+  row?.addEventListener('click', (e) => {
+    const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('.wf__btn');
+    if (!btn) return;
+    for (const b of row.querySelectorAll<HTMLButtonElement>('.wf__btn')) {
+      const on = b === btn;
+      b.classList.toggle('is-on', on);
+      b.setAttribute('aria-pressed', String(on));
+    }
+    apply(btn.dataset.filter ?? 'all');
+  });
+
+  document.querySelector('.wf__reset')?.addEventListener('click', () => {
+    row?.querySelector<HTMLButtonElement>('[data-filter="all"]')?.click();
+  });
+</script>
+
 <style>
+  /* --- filter row --- */
+  .wf {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 2rem;
+  }
+
+  .wf__btn {
+    font-family: var(--font-sans);
+    font-size: 0.85rem;
+    font-weight: 500;
+    padding: 0.4rem 0.9rem;
+    border-radius: 999px;
+    border: 1px solid var(--line);
+    background: transparent;
+    color: var(--stone-deep);
+    cursor: pointer;
+    transition: background 0.18s ease, color 0.18s ease, border-color 0.18s ease;
+  }
+
+  .wf__btn:hover { border-color: var(--sage); color: var(--charcoal); }
+
+  .wf__btn.is-on {
+    background: var(--charcoal);
+    border-color: var(--charcoal);
+    color: var(--cream);
+  }
+
+  .wf__btn:focus-visible {
+    outline: 2px solid var(--bamboo-deep);
+    outline-offset: 2px;
+  }
+
+  .wf__empty {
+    margin-top: 1.5rem;
+    font-size: 0.95rem;
+    color: var(--stone-deep);
+  }
+
+  .wf__reset {
+    font: inherit;
+    padding: 0;
+    border: 0;
+    background: none;
+    color: var(--bamboo-deep);
+    text-decoration: underline;
+    cursor: pointer;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .wf__btn { transition: none; }
+  }
+
   .work-card {
     display: flex;
     flex-direction: column;

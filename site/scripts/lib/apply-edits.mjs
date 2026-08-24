@@ -7,6 +7,9 @@
  *
  * Safety contract:
  *   - dry run unless --apply is passed
+ *   - re-running a batch is a no-op: values are compared structurally, so an
+ *     already-applied array or object edit reports "already done" rather than
+ *     as a conflict
  *   - every set() declares the value it expects to find; a field holding
  *     neither the expected old value nor the new one is a CONFLICT, reported
  *     and never overwritten
@@ -59,9 +62,44 @@ export function readPath(doc, path) {
 }
 
 /**
+ * Value equality for the expected-old / already-done checks.
+ *
+ * `===` is right for the scalars every early batch dealt in, and wrong the
+ * moment a batch sets an ARRAY or an OBJECT — two structurally identical arrays
+ * are never `===`, so an already-applied array edit reports as a CONFLICT and
+ * aborts the run. That breaks the one property these scripts are supposed to
+ * have: re-running a batch is a no-op.
+ *
+ * Order-INSENSITIVE on object keys, and it has to be: Sanity returns documents
+ * with keys normalised (roughly alphabetical), so a reference written here as
+ * `{_type, _ref, _key}` comes back as `{_key, _ref, _type}`. A JSON.stringify
+ * comparison calls those two different and re-reports every applied array edit
+ * as a conflict — which is exactly the bug this replaced.
+ *
+ * Array order IS significant, because it is content: `featuredProjects[0]` is
+ * the case study a service page leads with.
+ */
+const same = (a, b) => {
+  if (a === b) return true;
+  if (a === undefined || b === undefined || a === null || b === null) return false;
+  if (typeof a !== 'object' || typeof b !== 'object') return false;
+  if (Array.isArray(a) !== Array.isArray(b)) return false;
+  if (Array.isArray(a)) {
+    return a.length === b.length && a.every((item, i) => same(item, b[i]));
+  }
+  const ak = Object.keys(a);
+  const bk = Object.keys(b);
+  return ak.length === bk.length && ak.every((k) => k in b && same(a[k], b[k]));
+};
+
+/**
  * @param {object} batch
  * @param {string} batch.name              label for the run
- * @param {Array}  [batch.sets]            [docId, path, expectedOld, newValue]
+ * @param {Array}  [batch.sets]            [docId, path, expectedOld, newValue].
+ *   `expectedOld` of `undefined` means "this field should not exist yet", which
+ *   is how a batch adds a new field. `newValue` of `undefined` means "remove
+ *   it" and is routed to unset() — a literal set-to-undefined is dropped when
+ *   the patch is serialised, so it would commit successfully and change nothing.
  * @param {Array}  [batch.inserts]         [docId, arrayField, item, afterKey]
  * @param {Array}  [batch.replacements]    [docId, arrayField, item] — replace by _key
  * @param {Array}  [batch.unsets]          [docId, path, expectedOld] — remove a field
@@ -90,10 +128,35 @@ export async function run({ name, sets = [], inserts = [], replacements = [], un
     (await client.fetch('*[_id in $ids]', { ids })).map((d) => [d._id, d]),
   );
 
+  /**
+   * Queued operations, per document, as DATA rather than as composed calls on a
+   * patch builder.
+   *
+   * The builder cannot be used as an accumulator, which is the trap this shape
+   * exists to close. A Sanity patch is one object with one key per operation
+   * kind, and the client's methods assign rather than merge: `.unset(['a'])`
+   * followed by `.unset(['b'])` unsets only `b`, and two `.insert()` calls keep
+   * only the second. Both failures are silent — the mutation commits, the run
+   * reports success, and one of the two edits simply never happened.
+   *
+   * Collecting the operations here and building the patch once at commit time
+   * means the merge is explicit and a batch touching one document five ways
+   * still lands all five.
+   */
   const patches = new Map();
-  const queue = (id, fn) => {
-    if (!patches.has(id)) patches.set(id, []);
-    patches.get(id).push(fn);
+  const ops = (id) => {
+    if (!patches.has(id)) patches.set(id, { set: {}, unset: [], inserts: [] });
+    return patches.get(id);
+  };
+  const queueSet = (id, path, value) => {
+    ops(id).set[path] = value;
+  };
+  const queueUnset = (id, path) => {
+    const u = ops(id).unset;
+    if (!u.includes(path)) u.push(path);
+  };
+  const queueInsert = (id, anchor, item) => {
+    ops(id).inserts.push({ anchor, item });
   };
 
   let changes = 0;
@@ -110,12 +173,19 @@ export async function run({ name, sets = [], inserts = [], replacements = [], un
       continue;
     }
     const current = readPath(doc, path);
-    if (current === to) {
+    if (same(current, to)) {
       console.log(`  already done  ${id}.${path}`);
       done++;
-    } else if (current === from) {
-      console.log(`  WILL SET      ${id}.${path}`);
-      queue(id, (p) => p.set({ [path]: to }));
+    } else if (same(current, from)) {
+      /* `set({field: undefined})` is not "clear this field" — the value is
+         dropped when the patch is serialised, so the mutation is a no-op and the
+         edit re-reports as pending on every subsequent run. A batch that means
+         to remove a field writes `undefined` as its `to` quite naturally, so
+         route that to unset() here rather than making every caller remember. */
+      const clearing = to === undefined;
+      console.log(`  WILL ${clearing ? 'UNSET' : 'SET  '}       ${id}.${path}`);
+      if (clearing) queueUnset(id, path);
+      else queueSet(id, path, to);
       changes++;
     } else {
       console.log(
@@ -140,9 +210,9 @@ export async function run({ name, sets = [], inserts = [], replacements = [], un
     if (current === undefined) {
       console.log(`  already done  ${id}.${path}`);
       done++;
-    } else if (current === from) {
+    } else if (same(current, from)) {
       console.log(`  WILL UNSET    ${id}.${path}`);
-      queue(id, (p) => p.unset([path]));
+      queueUnset(id, path);
       changes++;
     } else {
       console.log(
@@ -169,7 +239,7 @@ export async function run({ name, sets = [], inserts = [], replacements = [], un
     } else {
       console.log(`  WILL INSERT   ${id}.${field}[_key=="${item._key}"]`);
       const anchor = afterKey ? `${field}[_key=="${afterKey}"]` : `${field}[-1]`;
-      queue(id, (p) => p.insert('after', anchor, [item]));
+      queueInsert(id, anchor, item);
       changes++;
     }
   }
@@ -190,7 +260,7 @@ export async function run({ name, sets = [], inserts = [], replacements = [], un
       done++;
     } else {
       console.log(`  WILL REPLACE  ${id}.${field}[_key=="${item._key}"]`);
-      queue(id, (p) => p.set({ [`${field}[_key=="${item._key}"]`]: { ...existing, ...item } }));
+      queueSet(id, `${field}[_key=="${item._key}"]`, { ...existing, ...item });
       changes++;
     }
   }
@@ -216,11 +286,26 @@ export async function run({ name, sets = [], inserts = [], replacements = [], un
     return;
   }
 
+  /**
+   * One patch per document for sets and unsets, plus one more per insert.
+   *
+   * The inserts have to be separate patches rather than separate keys: `insert`
+   * is a single key on a patch, so two inserts into one document cannot be
+   * expressed in one. A transaction may hold several patches for the same
+   * document and applies them in order, which is exactly what is wanted — two
+   * FAQs inserted after the same anchor land in the order they were queued.
+   */
   const tx = client.transaction();
-  for (const [id, fns] of patches) {
-    let patch = client.patch(id);
-    for (const fn of fns) patch = fn(patch);
-    tx.patch(patch);
+  for (const [id, { set, unset, inserts }] of patches) {
+    if (Object.keys(set).length || unset.length) {
+      let patch = client.patch(id);
+      if (Object.keys(set).length) patch = patch.set(set);
+      if (unset.length) patch = patch.unset(unset);
+      tx.patch(patch);
+    }
+    for (const { anchor, item } of inserts) {
+      tx.patch(client.patch(id).insert('after', anchor, [item]));
+    }
   }
   await tx.commit();
   console.log('\nApplied. Rebuild and redeploy for this to reach the live site.');

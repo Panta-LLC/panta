@@ -5,38 +5,43 @@ import Base from '../layouts/Base.astro';
  * Booking confirmation — and the site's only macro conversion.
  *
  * The receiving end of `pulse_check_booked` (docs/FUNNEL-MEASUREMENT.md §1).
- * Koalendar sends invitees here via its **After booking → "Redirect invitee
- * after booking (URL)"** setting, which is what the switch away from the Google
- * Calendar embed bought: that one reported nothing back and could not redirect,
- * so a booking was not observable by any means.
  *
- * ⚠ Two things about this page are load-bearing and not obvious:
+ * ⚠ **Nothing currently sends anyone here.** The scheduler is back to a Google
+ * Calendar appointment schedule, and Google has no "redirect the invitee after
+ * booking" setting — that redirect is the one thing Koalendar had and the only
+ * reason it was ever the scheduler. So `pulse_check_booked` reads zero, the
+ * funnel ends at `booking_viewed`, and bookings are counted in Google Calendar
+ * by hand.
  *
- * 1. **Koalendar redirects the frame that submitted the booking**, and on
- *    /consultation/ that frame is the embedded iframe. So this page first loads
- *    inside somebody else's layout, 800px tall, with the site header above it
- *    and the whole consultation page around it. The inline script at the top of
- *    the body promotes it to the top window before anything else runs.
+ * The page is kept rather than deleted because it is the receiving end of a
+ * flow that may come back, and because it is a perfectly good confirmation page
+ * to link by hand from a follow-up email. It is unchanged and ready: point any
+ * scheduler that CAN redirect at `/thanks/?loc=…&type=…` and the conversion
+ * starts counting again with no code change.
  *
- * 2. **Koalendar's "Pass event details to your redirected page" appends the
- *    invitee's name and email to this URL**, which would otherwise put personal
- *    data into browser history, into the referrer, and into Plausible — which
- *    is sent the full URL, not just the path. The inline script discards every
- *    parameter it does not recognise, so the leak is closed regardless.
+ * Two things in it are load-bearing for that future and not obvious:
  *
- *    Not hypothetical: the setting was found ON when the switch was made
- *    (`includeInviteeInRedirect: true` in the event's public config), which
- *    makes that script load-bearing rather than belt-and-braces. Turning the
- *    setting off is still the real fix — check it with the curl one-liner in
- *    docs/FUNNEL-MEASUREMENT.md §5 — but do not remove the scrubbing on the
- *    strength of having done so.
+ * 1. **A scheduler redirects the frame that submitted the booking**, and on
+ *    /consultation/ that frame is the embedded iframe. Without the inline
+ *    script at the top of the body, this page would first load inside somebody
+ *    else's layout, with the site header above it and the whole consultation
+ *    page around it. The script promotes it to the top window before anything
+ *    else runs.
+ *
+ * 2. **A scheduler's "pass the invitee's details to the redirected page"
+ *    option appends their name and email to this URL**, which would otherwise
+ *    put personal data into browser history, into the referrer, and into
+ *    Plausible — which is sent the full URL, not just the path. The inline
+ *    script discards every parameter it does not recognise, so the leak is
+ *    closed regardless of a setting nobody remembers to check. That was not
+ *    hypothetical last time: the option was found ON.
  *
  * Deliberately noindex, robots-disallowed, out of the sitemap, and linked from
  * nothing. Its only visitors should be people who just booked, because every
  * visitor counts as a booking.
  */
 const description =
-  'Your Pulse Check is booked. Here is what happens next.';
+  'Your review is booked. Here is what happens next.';
 ---
 <Base
   title="You're booked — Panta"
@@ -50,12 +55,12 @@ const description =
       too late for either. */}
   <script is:inline>
     (function () {
-      // Everything Koalendar might append is dropped. `loc` and `type` are the
-      // only parameters this page understands, and they come from whatever is
-      // typed into Koalendar's redirect URL field — static, chosen by us, and
-      // never personal. Anything else is either the invitee's name and email
-      // (if "Pass event details" got switched on) or noise; both are removed
-      // the same way, so no allowlist maintenance is needed when Koalendar
+      // Everything a scheduler might append is dropped. `loc` and `type` are
+      // the only parameters this page understands, and they come from whatever
+      // is typed into its redirect URL field — static, chosen by us, and never
+      // personal. Anything else is either the invitee's name and email (if a
+      // "pass event details" option got switched on) or noise; both are removed
+      // the same way, so no allowlist maintenance is needed when a scheduler
       // adds a parameter.
       var ALLOWED = ['loc', 'type'];
       var incoming = new URLSearchParams(location.search);
@@ -69,16 +74,16 @@ const description =
 
       // 1. Climb out of the booking iframe.
       //
-      // Koalendar redirects the frame that submitted the booking. On
+      // A scheduler redirects the frame that submitted the booking. On
       // /consultation/ that is the embed, so without this the visitor sees this
-      // page rendered inside an 800px box in the middle of the page they were
+      // page rendered inside a 640px box in the middle of the page they were
       // just on — header, footer and all, twice over.
       //
       // Allowed because by this point the framed document is ours: the iframe
-      // started on koalendar.com and has navigated to allthingspanta.com, which
-      // is same-origin with the top document. The try/catch covers the other
-      // case — a third party framing this page, where touching top throws and
-      // the right move is to do nothing.
+      // started on the scheduler's domain and has navigated to
+      // allthingspanta.com, which is same-origin with the top document. The
+      // try/catch covers the other case — a third party framing this page,
+      // where touching top throws and the right move is to do nothing.
       try {
         if (window.top && window.top !== window.self) {
           // Flag first: the top-level load is what counts the booking, and
@@ -103,7 +108,7 @@ const description =
   <section class="section section--dark" style="padding-block: clamp(3.5rem, 8vw, 6rem);">
     <div class="container narrow">
       <p class="label">Confirmed</p>
-      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">Your Pulse Check is booked.</h1>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.4rem);">Your review is booked.</h1>
       <p class="lede">
         A confirmation and a calendar invite are on their way to the address you
         booked with. If they haven&rsquo;t arrived in a few minutes, check your
@@ -172,9 +177,13 @@ const description =
   // this one event.
   //
   // Fired on page load rather than on a click, because the visitor's last
-  // action happened inside Koalendar, which reports nothing back. Arriving here
-  // IS the completion signal — which is exactly why this page must stay
+  // action happened inside a scheduler, which reports nothing back. Arriving
+  // here IS the completion signal — which is exactly why this page must stay
   // unlinked, noindex and robots-disallowed.
+  //
+  // Dormant while the scheduler is Google Calendar: see the note at the top of
+  // this file. Left wired up so that the day something can redirect here, the
+  // conversion starts counting without a code change.
   //
   // Which CTA produced the booking is NOT carried here from the click. It is
   // read out of Plausible's funnel report instead, where the same visitor's
@@ -186,9 +195,9 @@ const description =
   // promotion to the top window. That top-level load is what counts the
   // booking; firing here too would count it twice.
   if (!(window as any).__pantaPromoted) {
-    // Read from whatever is typed into Koalendar's redirect URL field. The
+    // Read from whatever is typed into the scheduler's redirect URL field. The
     // inline script has already discarded everything else, so nothing here can
-    // be an invitee's name or email even if "Pass event details" is on.
+    // be an invitee's name or email even if "pass event details" is on.
     const params = new URLSearchParams(location.search);
 
     (window as any).pantaTrack?.('pulse_check_booked', {

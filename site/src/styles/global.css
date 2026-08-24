@@ -942,9 +942,122 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
   color: var(--stone-deep);
 }
 
+/* The three doors at the head of the mobile panel — two lines each, because a
+   door is only useful if the visitor can tell which one is theirs. */
+.mobile-nav__doors a { padding: 0.6rem 0; }
+
+.mobile-nav__door-label {
+  display: block;
+  color: var(--bamboo-deep);
+}
+
+.mobile-nav__door-note {
+  display: block;
+  font-size: 0.85rem;
+  font-weight: 400;
+  line-height: 1.45;
+  color: var(--stone-deep);
+}
+
 .mobile-nav__cta {
   justify-self: start;
   margin-top: 0.75rem;
+}
+
+/* --- header chooser (journey-redesign.md §3) ------------------------------ */
+/* A native <details>. The panel is absolutely positioned under the trigger; the
+   <details> itself is the positioning context. */
+.start {
+  position: relative;
+}
+
+.start__trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  list-style: none;
+  /* Safari draws its own disclosure triangle on summary; the caret below is
+     ours and is the one that rotates. */
+  -webkit-appearance: none;
+}
+
+.start__trigger::-webkit-details-marker { display: none; }
+.start__trigger::marker { content: ''; }
+
+.start__caret { transition: transform 0.2s ease; }
+.start[open] .start__caret { transform: rotate(180deg); }
+
+.start__panel {
+  position: absolute;
+  top: calc(100% + 0.6rem);
+  right: 0;
+  z-index: 60;
+  width: min(21rem, calc(100vw - 2rem));
+  padding: 1rem;
+  background: var(--cream);
+  color: var(--charcoal);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: 0 18px 44px -20px rgba(38, 37, 31, 0.45);
+  text-align: left;
+}
+
+.start__label {
+  font-family: var(--font-mono);
+  font-size: 0.62rem;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--stone-deep);
+  margin: 0 0 0.5rem;
+}
+
+.start__list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border-top: 1px solid var(--line);
+}
+
+.start__list li { border-bottom: 1px solid var(--line); }
+
+.start__door {
+  display: grid;
+  gap: 0.15rem;
+  padding: 0.7rem 0.35rem;
+  text-decoration: none;
+  color: inherit;
+  transition: background 0.16s ease, padding-left 0.16s ease;
+}
+
+.start__door:hover,
+.start__door:focus-visible {
+  background: var(--cream-soft);
+  padding-left: 0.7rem;
+}
+
+.start__door-label {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 0.4rem;
+  font-weight: 500;
+  font-size: 0.95rem;
+  color: var(--bamboo-deep);
+}
+
+.start__arrow { transition: transform 0.16s ease; }
+.start__door:hover .start__arrow { transform: translateX(3px); }
+
+.start__door-note {
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--stone-deep);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .start__caret,
+  .start__door,
+  .start__arrow { transition: none; }
 }
 
 /* Mobile-only header CTA. Above 859px the ask lives inside .site-nav; below it
@@ -997,6 +1110,41 @@ html[data-hero-theme] .site-header:has(.mobile-nav.is-open) .site-nav .btn--prim
 
 .site-footer a { color: var(--sage); }
 .site-footer a:hover { color: var(--cream); }
+
+/* The newsletter door, on every page (journey-redesign.md §1.1). The footer is
+   a charcoal surface but is not `.section--dark`, so NewsletterForm's own dark
+   override does not reach it — these are the same values, aimed at the footer.
+   Specificity beats the component's scoped rules (Astro scopes with :where(),
+   which adds nothing), so no !important is needed. */
+.site-footer__nl {
+  border-bottom: 1px solid #3c3a32;
+  padding-bottom: 2rem;
+  margin-bottom: 2.5rem;
+}
+
+.site-footer__nl .nl__head { color: var(--cream); }
+.site-footer__nl .nl__body,
+.site-footer__nl .nl__label,
+.site-footer__nl .nl__msg { color: var(--sage); }
+
+.site-footer__nl .nl__input {
+  background: transparent;
+  border-color: rgba(245, 241, 231, 0.35);
+  color: var(--cream);
+}
+
+.site-footer__nl .nl__input::placeholder { color: var(--stone); }
+
+.site-footer__nl .nl__btn {
+  border-color: var(--cream);
+  color: var(--cream);
+  background: transparent;
+}
+
+.site-footer__nl .nl__btn:hover {
+  background: var(--cream);
+  color: var(--charcoal);
+}
 
 .site-footer__grid {
   display: grid;

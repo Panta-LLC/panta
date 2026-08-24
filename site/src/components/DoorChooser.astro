@@ -1,0 +1,159 @@
+---
+/**
+ * "Where are you?" — the three-door chooser, in the first screen.
+ *
+ * journey-redesign.md §5.1: the homepage hero used to spend its one filled
+ * button committing every visitor to the review before they knew whether it
+ * fit. This sorts the three visitors who are actually arriving — the one who
+ * knows something is wrong but not what, the one who knows exactly what they
+ * need built, and the one who is just looking — inside the first screen.
+ *
+ * The third door here is the WORK, not the newsletter, which is the one place
+ * the three doors differ from their form everywhere else (ThreeDoors.astro).
+ * That is deliberate and comes straight from §5.1: on a first visit "just
+ * looking" means wanting evidence, not wanting mail. The newsletter door is
+ * still on the page — it is in the footer, on every page.
+ *
+ * Rows, not cards: this sits directly under a headline and a subhead, and three
+ * cards there would be a second hero. Each row is a whole link, with the
+ * situation set in the reading voice and the destination named at the end, so
+ * the visitor matches on their own situation rather than on our label for it.
+ */
+import { DOORS, ROUTES } from '../lib/offer.js';
+
+interface Props {
+  /** Analytics location suffix — e.g. `home_hero`. */
+  location: string;
+  heading?: string;
+  class?: string;
+}
+const { location, heading = 'Where are you?', class: className } = Astro.props;
+
+const OPTIONS = [
+  {
+    /* The situation, in the visitor's words. The destination follows it. */
+    situation: 'Something isn’t working and I’m not sure what',
+    dest: 'Free 30-minute review',
+    href: DOORS.review.href,
+    cta: DOORS.review.cta,
+    /* One primary, always. The chooser sorts; it does not abstain. */
+    primary: true,
+  },
+  {
+    situation: 'I know what I need built',
+    dest: 'Request a quote',
+    href: DOORS.quote.href,
+    cta: DOORS.quote.cta,
+  },
+  {
+    situation: 'Just looking',
+    dest: 'See client work',
+    href: ROUTES.work,
+    cta: 'work',
+  },
+];
+---
+<div class:list={['chooser', className]} data-chooser>
+  <p class="chooser__head">{heading}</p>
+  <ul class="chooser__list">
+    {OPTIONS.map((o) => (
+      <li>
+        <a
+          class:list={['chooser__row', { 'chooser__row--primary': o.primary }]}
+          href={o.href}
+          data-track="cta_click"
+          data-track-cta={o.cta}
+          data-track-location={`${location}_chooser`}
+        >
+          <span class="chooser__situation">{o.situation}</span>
+          <span class="chooser__dest">
+            {o.dest}<span class="chooser__arrow" aria-hidden="true">→</span>
+          </span>
+        </a>
+      </li>
+    ))}
+  </ul>
+</div>
+
+<style>
+  .chooser {
+    /* Tokens rather than literals so the same markup can sit on the charcoal
+       hero or on a cream section — the hero sets these, the defaults cover
+       everywhere else. */
+    --chooser-line: var(--line);
+    --chooser-ink: var(--charcoal);
+    --chooser-quiet: var(--stone-deep);
+    --chooser-hover: var(--cream-soft);
+    --chooser-accent: var(--bamboo-deep);
+
+    max-width: 40rem;
+    margin-inline: auto;
+    text-align: left;
+  }
+
+  .chooser__head {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--chooser-quiet);
+    margin: 0 0 0.6rem;
+  }
+
+  .chooser__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    border-top: 1px solid var(--chooser-line);
+  }
+
+  .chooser__list li { border-bottom: 1px solid var(--chooser-line); }
+
+  .chooser__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.35rem 1rem;
+    padding: 0.85rem 0.6rem;
+    text-decoration: none;
+    color: var(--chooser-ink);
+    transition: background 0.18s ease, padding-left 0.18s ease;
+  }
+
+  .chooser__row:hover,
+  .chooser__row:focus-visible {
+    background: var(--chooser-hover);
+    padding-left: 0.9rem;
+  }
+
+  .chooser__situation {
+    font-size: 1rem;
+    line-height: 1.4;
+  }
+
+  /* The recommended door is the only one set in the accent. Weight alone was
+     not enough to separate it from two neighbours in the same size. */
+  .chooser__row--primary .chooser__situation { font-weight: 500; }
+
+  .chooser__dest {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.4rem;
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.04em;
+    color: var(--chooser-quiet);
+    white-space: nowrap;
+  }
+
+  .chooser__row--primary .chooser__dest { color: var(--chooser-accent); }
+
+  .chooser__arrow { transition: transform 0.18s ease; }
+  .chooser__row:hover .chooser__arrow { transform: translateX(3px); }
+
+  @media (prefers-reduced-motion: reduce) {
+    .chooser__row,
+    .chooser__arrow { transition: none; }
+  }
+</style>

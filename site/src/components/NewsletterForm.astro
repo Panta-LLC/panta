@@ -8,11 +8,17 @@
  *     page and the homepage spends both on the hero and final CTAs.
  *   - "primary" (Pulse index, article end) — filled. There the newsletter IS
  *     the conversion (§5a: the only filled CTA on the page).
+ *   - "inline" (the third door, and the footer) — no card, no surface of its
+ *     own: a heading, a line, and a field on one row. It exists because
+ *     journey-redesign.md §1.1 puts the newsletter on EVERY page as the
+ *     not-yet exit, and a bordered panel repeated in every footer and at the
+ *     foot of every service page reads as an ad rather than an offer. The
+ *     third door is deliberately the quietest of the three.
  */
 interface Props {
   /** Reported to the API so signups can be attributed per surface. */
   source: string;
-  variant?: 'quiet' | 'primary';
+  variant?: 'quiet' | 'primary' | 'inline';
   heading?: string;
   body?: string;
   class?: string;
@@ -173,6 +179,54 @@ const {
 
   .nl__msg[data-state='error'] { color: #b4462f; }
   .nl__msg[data-state='ok'] { color: var(--bamboo-deep); }
+
+  /* Inline: the third door. No border, no fill — it must not read as a peer of
+     the two buttons above it. */
+  .nl--inline {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    gap: 0.75rem 2rem;
+  }
+
+  .nl--inline .nl__head { font-size: 1.05rem; margin-bottom: 0.15rem; }
+  .nl--inline .nl__body { font-size: 0.88rem; }
+  /* The field's own label is redundant once the blurb sits beside it on one
+     row — but it stays in the accessibility tree, because the placeholder is an
+     example address and not the field's name. */
+  .nl--inline .nl__label {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* Bamboo surfaces (the three-door close). Same treatment as the dark
+     override below: the panel disappears and the controls invert. */
+  :global(.section--bamboo) .nl {
+    background: transparent;
+    border-color: rgba(245, 241, 231, 0.32);
+  }
+  :global(.section--bamboo) .nl__head,
+  :global(.section--bamboo) .nl__body,
+  :global(.section--bamboo) .nl__label,
+  :global(.section--bamboo) .nl__msg { color: var(--cream); }
+  :global(.section--bamboo) .nl__input {
+    background: rgba(38, 37, 31, 0.12);
+    border-color: rgba(245, 241, 231, 0.4);
+    color: var(--cream);
+  }
+  :global(.section--bamboo) .nl__input::placeholder { color: rgba(245, 241, 231, 0.6); }
+  :global(.section--bamboo) .nl__btn {
+    border-color: var(--cream);
+    color: var(--cream);
+  }
+  :global(.section--bamboo) .nl__btn:hover {
+    background: var(--cream);
+    color: var(--charcoal);
+  }
 
   /* Dark surfaces (homepage Pulse strip) */
   :global(.section--dark) .nl {

@@ -2,6 +2,8 @@
 import Base from '../../layouts/Base.astro';
 import ReadDepth from '../../components/ReadDepth.astro';
 import { getCaseStudies } from '../../lib/sanity.js';
+import { serviceHref } from '../../lib/pillars.js';
+import { ROUTES } from '../../lib/offer.js';
 
 export async function getStaticPaths() {
   const { getCaseStudies } = await import('../../lib/sanity.js');
@@ -118,22 +120,60 @@ const schema = [
       nobody reads a case study without also converting past it. */}
   <ReadDepth event="case_study_read" props={{ study: p.slug }} />
 
+  {/* The services this case demonstrates (journey-redesign.md §5.6: "each case
+      study page should end with a link to the SERVICE it demonstrates, not only
+      to the review"). A visitor who has just read a whole case study is more
+      interested than almost anyone else on the site, and the only exit was a
+      calendar. Renders nothing when the project has no services set. */}
+  {(p.services ?? []).filter(Boolean).length > 0 && (
+    <section class="section" style="padding-top: 0;">
+      <div class="container narrow">
+        <p class="label">What this project was</p>
+        <ul class="svc-out">
+          {p.services.filter(Boolean).map((svc) => (
+            <li>
+              <a
+                href={serviceHref(svc)}
+                data-track="cta_click"
+                data-track-cta={`service_${svc.slug}`}
+                data-track-location="case_study_services"
+              >
+                <span class="svc-out__name">{svc.title}</span>
+                <span class="svc-out__body">{svc.summary}</span>
+              </a>
+            </li>
+          ))}
+        </ul>
+      </div>
+    </section>
+  )}
+
   <section class="section section--bamboo">
     <div class="container">
       <h2>Want this kind of clarity for your organization?</h2>
       <p class="lede" style="max-width: 54ch;">
         Every project starts the same way: a free 30-minute conversation and an
-        honest read on where you stand.
+        honest read on where you stand. If you already know what you need built,
+        skip the call and send the brief instead.
       </p>
       <div class="btn-row" style="margin-top: 1.5rem;">
         <a
-          href="/consultation/"
+          href={ROUTES.review}
           class="btn btn--primary"
           data-track="cta_click"
-          data-track-cta="consultation"
+          data-track-cta="pulse_check"
           data-track-location="case_study_cta"
         >Get a free review</a>
-        <a href="/work/" class="btn btn--ghost">See more client work</a>
+        {/* The second door. It replaced "See more client work" — a link back to
+            the index the visitor came from, offered to the one person on the
+            site who has read a case study end to end. */}
+        <a
+          href={ROUTES.quote}
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="quote_request"
+          data-track-location="case_study_cta"
+        >Request a quote</a>
       </div>
     </div>
   </section>
@@ -145,6 +185,27 @@ const schema = [
   .crumb-sep { margin-inline: 0.4rem; opacity: 0.6; }
 
   .narrow { max-width: 46rem; }
+
+  /* --- the services this case demonstrates --- */
+  .svc-out {
+    list-style: none;
+    padding: 0;
+    margin: 0.75rem 0 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .svc-out li { border-bottom: 1px solid var(--line); }
+
+  .svc-out a {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.9rem 0;
+    text-decoration: none;
+  }
+
+  .svc-out__name { font-weight: 500; color: var(--charcoal); }
+  .svc-out a:hover .svc-out__name { color: var(--bamboo-deep); }
+  .svc-out__body { font-size: 0.9rem; color: var(--stone-deep); }
 
   .tagrow {
     list-style: none;
