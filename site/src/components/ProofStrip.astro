@@ -1,0 +1,184 @@
+---
+/**
+ * Proof for ONE service, on the page where that service is decided.
+ *
+ * journey-redesign.md §1.2: "proof travels with the service — a case study, a
+ * testimonial, or a sample deliverable appears on the page where the decision
+ * is made, never one click away on a general Work index." The site already had
+ * the evidence; it was just filed under /work/, which is a page a buyer visits
+ * before they have a question, not after.
+ *
+ * Everything here is a real Sanity `project` field. Nothing is composed,
+ * inferred or rounded — see the proof-gap note: the case studies carry no
+ * metrics, so this renders what is true (what the work was, what changed, in
+ * the client's own words where a quote exists) and stays silent otherwise.
+ * A project with no quote renders the case alone; no project renders nothing.
+ */
+interface Props {
+  label?: string;
+  /** Sanity `project` documents, already narrowed to this service. */
+  projects: any[];
+  /** Analytics location suffix — e.g. `service_brand-design`. */
+  location: string;
+  class?: string;
+}
+const { label = 'Proof', projects = [], location, class: className } = Astro.props;
+
+// One case, not a grid: this sits high on the page as evidence for the claim
+// directly above it, and two cases here would re-create the Work index the
+// section exists to stop sending people to.
+const lead = projects.filter(Boolean)[0];
+const quote = lead?.quote
+  ? {
+      text: lead.quote,
+      author: lead.quoteAuthor,
+      role: lead.quoteRole,
+    }
+  : null;
+---
+{lead && (
+  <section class:list={['section proofstrip', className]} data-section="proof">
+    <div class="container">
+      {label && <p class="kicker">{label}</p>}
+      {/* The quote is optional — only one of the two case studies carries one —
+          so the grid has to be two shapes, not one with a hole in it. Without
+          the modifier the case sat in a 1.35fr column with an empty 1fr beside
+          it, which reads as a failed image load rather than as a design. */}
+      <div class:list={['proofstrip__grid', { 'proofstrip__grid--solo': !quote?.author }]}>
+        <article class="proofstrip__case">
+          {lead.thumbnail && (
+            <a
+              class="proofstrip__media"
+              href={`/work/${lead.slug}/`}
+              tabindex="-1"
+              aria-hidden="true"
+              data-track="cta_click"
+              data-track-cta="proof_case_image"
+              data-track-location={location}
+            >
+              <img src={lead.thumbnail} alt="" loading="lazy" decoding="async" />
+            </a>
+          )}
+          <h3 class="proofstrip__name">{lead.name}</h3>
+          {(lead.client?.sector || lead.clientType) && (
+            <p class="proofstrip__meta">{lead.client?.sector ?? lead.clientType}</p>
+          )}
+          <p class="proofstrip__body">{lead.summary}</p>
+          {(lead.contributions ?? []).length > 0 && (
+            <p class="proofstrip__did">{lead.contributions.join(' · ')}</p>
+          )}
+          {lead.slug && (
+            <a
+              class="proofstrip__link"
+              href={`/work/${lead.slug}/`}
+              data-track="cta_click"
+              data-track-cta="proof_case"
+              data-track-location={location}
+            >Read the full story <span aria-hidden="true">→</span></a>
+          )}
+        </article>
+
+        {/* The quote is testimony, so it stands beside the work rather than
+            under it — attributed or not at all. An unattributed pull quote on a
+            page selling trustworthiness is worth less than the space. */}
+        {quote && quote.author && (
+          <figure class="proofstrip__quote">
+            <blockquote>“{quote.text}”</blockquote>
+            <figcaption>
+              — {quote.author}{quote.role ? `, ${quote.role}` : ''}
+            </figcaption>
+          </figure>
+        )}
+      </div>
+    </div>
+  </section>
+)}
+
+<style>
+  .proofstrip__grid {
+    display: grid;
+    gap: clamp(1.5rem, 4vw, 3rem);
+    margin-top: 1.25rem;
+    align-items: start;
+  }
+
+  @media (min-width: 860px) {
+    /* The case leads; the quote is a margin note against it. Equal columns
+       would make the sentence compete with the evidence it is about. */
+    .proofstrip__grid { grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr); }
+  }
+
+  /* No quote: one column, capped at a readable measure rather than stretched
+     across the container. A lone case study at full container width has a
+     screenshot wide enough to dominate the page it is only evidence on. */
+  .proofstrip__grid--solo { max-width: 42rem; }
+
+  .proofstrip__media {
+    display: block;
+    margin-bottom: 1.1rem;
+    border-radius: var(--radius);
+    overflow: hidden;
+    border: 1px solid var(--line);
+  }
+
+  .proofstrip__media img {
+    display: block;
+    width: 100%;
+    height: auto;
+  }
+
+  .proofstrip__name {
+    font-family: var(--font-serif);
+    font-size: clamp(1.3rem, 2.4vw, 1.7rem);
+    margin: 0 0 0.25rem;
+  }
+
+  .proofstrip__meta {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    margin: 0 0 0.75rem;
+  }
+
+  .proofstrip__body {
+    margin: 0 0 0.75rem;
+    line-height: 1.7;
+  }
+
+  .proofstrip__did {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin: 0 0 0.9rem;
+  }
+
+  .proofstrip__link {
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
+  }
+
+  .proofstrip__link:hover { text-decoration: underline; }
+
+  .proofstrip__quote {
+    margin: 0;
+    padding: 1.4rem 1.5rem;
+    border-left: 3px solid var(--sage);
+    background: var(--cream-soft);
+    border-radius: 0 var(--radius) var(--radius) 0;
+  }
+
+  .proofstrip__quote blockquote {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: clamp(1.05rem, 1.9vw, 1.25rem);
+    line-height: 1.5;
+  }
+
+  .proofstrip__quote figcaption {
+    margin-top: 0.75rem;
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+  }
+</style>

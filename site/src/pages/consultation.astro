@@ -2,30 +2,38 @@
 import Base from '../layouts/Base.astro';
 import LeadForm from '../components/LeadForm.astro';
 import SectionViews from '../components/SectionViews.astro';
-import { getDoc, getProjects } from '../lib/sanity.js';
+import { getDoc, getProjects, getTestimonial } from '../lib/sanity.js';
 import { bookingEmbedUrl } from '../lib/booking.js';
+import { OFFER, ROUTES } from '../lib/offer.js';
 
 const c = await getDoc('consultationPage');
 const settings = await getDoc('siteSettings');
 const projects = await getProjects();
+// Testimony about this exact offer — "found in 30 minutes what two other people
+// missed for months". journey-redesign.md §5.2 puts it directly above the
+// calendar, which is the last place a decision gets made on this page.
+const testimonial = await getTestimonial();
 
-// The Koalendar booking page, managed in Sanity → Site Settings. The embed URL
-// is derived from it (see lib/booking.js) rather than stored separately —
-// `calEmbedUrl` is the retired Google Calendar field and is no longer read.
+// The Google Calendar appointment schedule, managed in Sanity → Site Settings.
+// The embed URL is derived from it (see lib/booking.js) rather than stored
+// separately — `calEmbedUrl` is the retired second field and is no longer read.
 const SCHEDULE_URL = settings.scheduleUrl;
 const CAL_EMBED_URL = bookingEmbedUrl(SCHEDULE_URL);
 
 // "Audit", "scorecard" and "graded" belong to the paid Digital Presence Plan.
-// This page sells the free call, so it says "consultation" throughout —
-// otherwise prospects think the free call already delivered the paid plan.
+// This page sells the free call, so it never uses them — otherwise prospects
+// think the free call already delivered the paid plan.
+//
+// The offer is "the Review" (journey-redesign.md §3, and lib/offer.js for what
+// the rename did and did not touch). The URL stays /consultation/.
 const description =
-  'The Pulse Check: a free 30-minute review for organizations at any stage. Walk away with an honest read on where you stand and a one-page written readout within 48 hours.';
+  'The Review: a free 30-minute look at your presence, for organizations at any stage. Walk away with an honest read on where you stand and a one-page written readout within 48 hours.';
 
 const consultSchema = [
   {
     '@context': 'https://schema.org',
     '@type': 'Service',
-    name: 'Free 30-Minute Consultation',
+    name: 'The Review — free 30-minute consultation',
     serviceType: 'Digital presence review',
     description,
     provider: { '@type': 'ProfessionalService', name: 'Panta LLC', url: 'https://www.allthingspanta.com' },
@@ -35,7 +43,7 @@ const consultSchema = [
 ];
 ---
 <Base
-  title="Free 30-Minute Consultation — Panta"
+  title="The Review — a free 30-minute consultation — Panta"
   description={description}
   schema={consultSchema}
 >
@@ -151,7 +159,7 @@ const consultSchema = [
 
         <div class="sheet__head">
           <div>
-            <p class="sheet__kicker">Pulse Check — Readout</p>
+            <p class="sheet__kicker">The Review — Readout</p>
             <p class="sheet__client">Cedar &amp; Stone Landscaping</p>
           </div>
           <p class="sheet__meta">Sent 2 days after the call<br />1 page · no attachments</p>
@@ -230,7 +238,7 @@ const consultSchema = [
   <section class="section fit" data-section="consultation_fit">
     <div class="container">
       <p class="label">Who books this</p>
-      <h2 style="max-width: 24ch;">Two kinds of people get the most out of it.</h2>
+      <h2 style="max-width: 26ch;">Three kinds of people get the most out of it.</h2>
       <div class="fit__grid">
         <div class="fit__card">
           <p class="fit__who">The owner who built it themselves</p>
@@ -251,10 +259,26 @@ const consultSchema = [
             read you can forward to people who weren&rsquo;t on the call.
           </p>
         </div>
+        {/* The third portrait (journey-redesign.md §5.2). The page showed the
+            DIY owner and the nonprofit director and left out the practitioner
+            setting up — the person the Arielle Rae Hastings case study is
+            about, and one of the three audiences the homepage hero names. */}
+        <div class="fit__card">
+          <p class="fit__who">The practitioner setting up</p>
+          <p class="fit__body">
+            You&rsquo;re opening a practice — therapy, law, bodywork, consulting — and
+            everything has to exist at once: the name, the site, the intake, the listing
+            people actually search. You are not short of opinions about it, you are short of
+            an order to do them in. Thirty minutes is usually enough to find one.
+          </p>
+        </div>
         <div class="fit__card fit__card--not">
           <p class="fit__who">Probably not a fit if&hellip;</p>
           <ul class="fit__list">
-            <li>You already know exactly what you want built and just need a quote — <a href="/contact/">send us the brief instead</a>, it&rsquo;s faster.</li>
+            {/* Was /contact/ — a general contact form that promised nothing. The
+                quote door is a real page with a real commitment now (§5.3), so
+                this link finally goes where its own sentence says it does. */}
+            <li>You already know exactly what you want built and just need a quote — <a href={ROUTES.quote}>send us the brief instead</a>, and you&rsquo;ll have a number in writing within two business days.</li>
             <li>You&rsquo;re looking for someone to run ads or post to social for you on retainer. That isn&rsquo;t what we do.</li>
             <li>You want the full graded assessment now. That&rsquo;s the <a href="/digital-presence-plan/">Digital Presence Plan</a>, and it&rsquo;s paid work.</li>
           </ul>
@@ -358,6 +382,18 @@ const consultSchema = [
         </a>
       </div>
 
+      {/* Directly above the scheduler, because this is testimony about the
+          CALL — not about a website build — and the calendar is where the
+          decision to take it gets made (§5.2). */}
+      {testimonial && (
+        <figure class="book-quote">
+          <blockquote>“{testimonial.quote}”</blockquote>
+          <figcaption>
+            <strong>{testimonial.author}</strong>{testimonial.role ? ` — ${testimonial.role}` : ''}
+          </figcaption>
+        </figure>
+      )}
+
       {/* Rendered only when the setting parses. An iframe with src={undefined}
           resolves to the current page and embeds /consultation/ inside itself,
           which is a worse failure than no calendar at all — the fallback link
@@ -369,7 +405,7 @@ const consultSchema = [
             title="Book your free consultation with Panta"
             loading="lazy"
             width="100%"
-            height="800"></iframe>
+            height="640"></iframe>
         )}
       </div>
       <p class="small" style="margin: 0.9rem auto 0; max-width: none;">
@@ -439,19 +475,16 @@ const consultSchema = [
 <SectionViews />
 
 <script>
-  // Booking funnel. The scheduler is a cross-origin Koalendar embed, which
-  // still exposes no completion event to the host page — but unlike the Google
-  // Calendar embed it replaced, it can redirect the invitee on completion. So
-  // the booking IS observable now, just not from this page: it is counted on
-  // /thanks/, which Koalendar redirects to.
+  // Booking funnel, such as it can be measured. The scheduler is a cross-origin
+  // Google Calendar embed: it exposes no completion event to the host page and,
+  // unlike the Koalendar embed it replaced, it cannot redirect the invitee to a
+  // page of ours on completion either. So a booking is NOT observable from
+  // here, or from anywhere — `booking_viewed` is the end of this funnel again
+  // and actual bookings are counted in Google Calendar itself.
   //
-  // That makes `booking_viewed` the step BEFORE the conversion rather than the
-  // end of the funnel. Keep it — reaching the calendar and completing a booking
-  // are different things, and the ratio between them is where a broken booking
-  // flow shows up.
-  //
-  // Still don't add a "booking_completed" here. This page cannot see one, and
-  // an event named for something it is guessing at is worse than no event.
+  // Don't add a "booking_completed" event unless the scheduler grows a way to
+  // report one. An event named for something the page is guessing at is worse
+  // than no event. See docs/FUNNEL-MEASUREMENT.md for what this costs.
   const track = (window as any).pantaTrack ?? (() => {});
   const embed = document.querySelector<HTMLElement>('.book-embed');
 
@@ -473,6 +506,26 @@ const consultSchema = [
 </script>
 
 <style>
+  /* The testimonial above the scheduler. Centred, because the whole booking
+     section is centred — a left rule here would be the only left-aligned edge
+     in the column. */
+  .book-quote {
+    margin: 0 auto 1.75rem;
+    max-width: 40rem;
+  }
+
+  .book-quote blockquote {
+    margin: 0 0 0.6rem;
+    font-family: var(--font-serif);
+    font-size: clamp(1.1rem, 2vw, 1.4rem);
+    line-height: 1.45;
+  }
+
+  .book-quote figcaption {
+    font-size: 0.88rem;
+    color: var(--stone-deep);
+  }
+
   .hero-grid {
     display: grid;
     grid-template-columns: 1.1fr 0.9fr;
@@ -809,6 +862,18 @@ const consultSchema = [
 
   @media (min-width: 860px) {
     .fit__grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+    /* With the practitioner card added (§5.2) there are four children in a
+       three-column grid, and the disqualifier is the one that must not be
+       mistaken for a fourth portrait — so it spans the row beneath them rather
+       than sitting in a column with two empty cells beside it. */
+    .fit__card--not { grid-column: 1 / -1; }
+    /* Its bullets read as a row of three at that width; stacked full-width they
+       are three very long lines. */
+    .fit__card--not .fit__list {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 1rem 1.5rem;
+    }
   }
 
   .fit__card {
@@ -982,11 +1047,10 @@ const consultSchema = [
   .book-embed iframe {
     display: block;
     width: 100%;
-    /* Koalendar's own embed guidance is 800px. Its booking page is taller than
-       the Google Calendar one it replaced (a month grid plus a time column,
-       then the details form), and short-changing it gives the iframe its own
-       inner scrollbar inside a page that already scrolls. */
-    min-height: 800px;
+    /* 640px: enough for Google's month grid, its time column and the booking
+       form beneath them. Short-changing it gives the iframe its own inner
+       scrollbar inside a page that already scrolls. */
+    min-height: 640px;
     border: 0;
   }
 

@@ -126,12 +126,44 @@ export default defineType({
     }),
     defineField({name: 'heroSecondaryHref', type: 'string', group: 'hero'}),
 
+    // ------------------------------------------------- price & audience --
+    // journey-redesign.md §4: every service page carries a price strip, proof,
+    // and "who this is for". The first two have code defaults; the third has
+    // none, because a persona sentence written by a template would be worth
+    // less than the space — an unfilled `audience` renders a build-blocking
+    // placeholder instead (see services/[slug].astro).
+    defineField({
+      name: 'priceStrip',
+      type: 'string',
+      group: 'hero',
+      description:
+        'The price/time line under the hero buttons. Leave EMPTY to use the site-wide band ("Most projects: $2,000–$10,000 · scoped in weeks · fixed price in writing", set in src/lib/offer.js). Fill it in only when this service has its own published range — and then it must be a range you will honour in writing.',
+    }),
+
+    defineField({
+      name: 'audienceLabel',
+      type: 'string',
+      group: 'body',
+      description: 'Defaults to "Who this is for".',
+    }),
+    defineField({name: 'audienceTitle', type: 'string', group: 'body'}),
+    defineField({
+      name: 'audience',
+      type: 'array',
+      group: 'body',
+      of: [defineArrayMember({type: 'labeledCard'})],
+      validation: (rule) => rule.max(4),
+      description:
+        'Two or three personas — practitioner, nonprofit, local business — each with ONE sentence on what this service does for them specifically. Not a benefits list: the job is that a reader recognises themselves. Required for a page-ready service; the page renders a visible placeholder and fails npm run check:launch without it.',
+    }),
+
     // ---------------------------------------------------------- sections --
     defineField({
       name: 'proofLabel',
       type: 'string',
       group: 'body',
-      description: 'Sets the quiet client strip under the hero. Leave empty to hide it.',
+      description:
+        'Heading over the proof block under the hero (defaults to "Proof"). The block itself is built from Featured projects below — it shows the case study and the client\'s own quote where there is one, so a service with no featured project shows nothing here and blocks the launch check.',
     }),
 
     defineField({name: 'workLabel', type: 'string', group: 'body'}),
@@ -143,7 +175,7 @@ export default defineType({
       of: [defineArrayMember({type: 'reference', to: [{type: 'project'}]})],
       validation: (rule) => rule.max(3),
       description:
-        'Work to show on this service. If empty, falls back to projects flagged "featured".',
+        'Work to show on this service. THE FIRST ONE is the proof block under the hero, so put the project that actually demonstrates THIS service first — a brand page proving itself with a website build is the exact mismatch the proof block exists to fix. If empty, falls back to projects flagged "featured".',
     }),
     defineField({name: 'moreCardTitle', type: 'string', group: 'body'}),
     defineField({name: 'moreCardBody', type: 'text', rows: 2, group: 'body'}),
@@ -161,6 +193,13 @@ export default defineType({
 
     defineField({name: 'pivotLabel', type: 'string', group: 'body'}),
     defineField({name: 'pivotTitle', type: 'string', group: 'body'}),
+    defineField({
+      name: 'pivotAnchor',
+      type: 'string',
+      group: 'body',
+      description:
+        'Optional #fragment id for the pivot band, so something else can deep-link straight to it — the homepage Custom Software card points at /services/operations/#small-tools this way. Lowercase, hyphenated, no "#". LOAD-BEARING once anything links to it: a stale fragment scrolls silently to the top of the page rather than 404ing, so changing it breaks the link with no error anywhere.',
+    }),
     defineField({name: 'pivotLede', type: 'text', rows: 2, group: 'body'}),
     defineField({name: 'pivotIntro', type: 'text', rows: 2, group: 'body'}),
     defineField({
@@ -176,7 +215,12 @@ export default defineType({
     defineField({name: 'processTitle', type: 'string', group: 'body'}),
     defineField({name: 'processBody', type: 'text', rows: 3, group: 'body'}),
     defineField({name: 'processLinkLabel', type: 'string', group: 'body'}),
-    defineField({name: 'processLinkHref', type: 'string', group: 'body'}),
+    defineField({
+      name: 'processLinkHref',
+      type: 'string',
+      group: 'body',
+      description: 'Defaults to /process/. Leave empty unless this service genuinely runs differently.',
+    }),
 
     // -------------------------------------------------------------- faq --
     defineField({name: 'faqLabel', type: 'string', group: 'faq'}),
@@ -189,17 +233,28 @@ export default defineType({
     }),
 
     // -------------------------------------------------------------- cta --
-    // The page always ends in a review CTA; these only override the defaults.
-    defineField({name: 'ctaTitle', type: 'string', group: 'cta'}),
-    defineField({name: 'ctaBody', type: 'text', rows: 3, group: 'cta'}),
+    // The page always ends in the THREE DOORS (review · quote · newsletter) —
+    // journey-redesign.md §1.1. These two are the heading and lede over them.
     defineField({
-      name: 'ctaLabel',
+      name: 'ctaTitle',
       type: 'string',
       group: 'cta',
-      description:
-        'Buttons describe, copy brands — must pass the no-context test. Never "Pulse Check"; the brand name belongs in the note below.',
+      description: 'Heading over the three doors. Defaults to "Not sure this is what you need?".',
     }),
-    defineField({name: 'ctaNote', type: 'string', group: 'cta'}),
+    defineField({
+      name: 'ctaBody',
+      type: 'text',
+      rows: 3,
+      group: 'cta',
+      description:
+        'One line under that heading. Do NOT re-pitch the review here — the doors name themselves, and the review is already the recommended one.',
+    }),
+    // `ctaLabel` and `ctaNote` are retired: the door labels come from
+    // src/lib/offer.js so all three read identically on every page, and the
+    // microcopy line they sat under went with the single-CTA close. Left
+    // undeclared rather than deprecated — any value still in a document is
+    // simply not read, and re-adding them would reintroduce per-page drift in
+    // the one label that must not drift.
 
     // --------------------------------------------------- content gaps --
     defineField({

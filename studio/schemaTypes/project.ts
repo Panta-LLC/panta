@@ -27,10 +27,19 @@ export default defineType({
     defineField({
       name: 'contributions',
       type: 'array',
-      description: 'Short service tags shown on cards',
+      description:
+        'Short service tags shown on cards. FREE TEXT — descriptive only. It does not join to anything, so it cannot filter /work/ or link to a service page; use "Services demonstrated" below for that.',
       of: [
         defineArrayMember({type: 'string'}),
       ],
+    }),
+    defineField({
+      name: 'services',
+      type: 'array',
+      title: 'Services demonstrated',
+      of: [defineArrayMember({type: 'reference', to: [{type: 'service'}]})],
+      description:
+        'Which services this project is evidence for. Load-bearing in two places (journey-redesign.md §5.6): it builds the filter row on /work/, and it is how a case study page ends by pointing at the service it demonstrates instead of only at the review. Set it on every project — a project with none is invisible to both.',
     }),
     defineField({name: 'outcome', type: 'text', description: 'Short outcome line shown on cards'}),
     defineField({name: 'challengeLabel', type: 'string'}),

@@ -1,6 +1,9 @@
 ---
 import Base from '../layouts/Base.astro';
+import SectionViews from '../components/SectionViews.astro';
+import PriceStrip from '../components/PriceStrip.astro';
 import { getDoc } from '../lib/sanity.js';
+import { PLAN, ROUTES } from '../lib/offer.js';
 
 const c = await getDoc('planPage');
 
@@ -17,7 +20,7 @@ const planSchema = [
   {
     '@context': 'https://schema.org',
     '@type': 'FAQPage',
-    mainEntity: c.faqs.map(({ q, a }) => ({
+    mainEntity: (c.faqs ?? []).map(({ q, a }) => ({
       '@type': 'Question',
       name: q,
       acceptedAnswer: { '@type': 'Answer', text: a },
@@ -44,14 +47,23 @@ const planSchema = [
           data-track-cta="consultation"
           data-track-location="plan_hero"
         >Get a free review</a>
+        {/* Was `/contact/?quote=1` — a button that led to a generic contact
+            form with three lines of swapped hero copy, i.e. a promise the
+            destination could not keep (journey-redesign.md §5.4). It goes to
+            the real quote page now, with the dropdown pre-set to the Plan. */}
         <a
-          href="/contact/?quote=1"
+          href={`${ROUTES.quote}?need=plan`}
           class="btn btn--ghost"
           data-track="cta_click"
-          data-track-cta="quote"
+          data-track-cta="quote_request"
           data-track-location="plan_hero"
-        >Get a quote</a>
+        >Request a quote</a>
       </div>
+      {/* §5.4 asks for a price floor here. There is no published floor yet — see
+          the note on PLAN in lib/offer.js — so this commits to everything around
+          the number rather than staying silent about the whole deal. Swap the
+          string there the day a floor exists; nothing else has to change. */}
+      <PriceStrip tone="dark" text={PLAN.strip} />
     </div>
   </section>
 
@@ -88,6 +100,116 @@ const planSchema = [
           {c.proofNote} <a href="/work/" style="color: var(--sage);">{c.proofLinkLabel} →</a>
         </p>
       )}
+    </div>
+  </section>
+
+  <!-- ===================== SAMPLE DELIVERABLE ===================== -->
+  <!-- journey-redesign.md §5.4, mirroring the review page's sample readout.
+       The section above promises six deliverables and a graded scorecard; this
+       is what one page of that actually looks like. A promise nobody has seen is
+       worth less than a document they have, and this is the offer's single
+       biggest asymmetry against a competitor who also says "audit".
+
+       Two constraints on anything edited here — the inverse of the ones on the
+       readout facsimile in consultation.astro, and just as load-bearing:
+
+       1. IT MUST SHOW GRADES. Scoring, the four categories and the 90-day
+          roadmap are what separates this paid engagement from the free call.
+          The free readout is three observations and one recommendation and must
+          never show a scorecard; this one must, or the two offers look alike.
+       2. IT STAYS LABELLED AS A SAMPLE, and stays Cedar & Stone — the same
+          fictional client as the free readout and sample-audit-report.md, so
+          neither sample can be mistaken for a real client's document. Swap in a
+          real anonymized plan only with that client's written say-so, and keep
+          the chip either way.
+
+       The numbers are illustrative and belong to an invented client. They are
+       not Panta's results and must never be presented as an outcome — see the
+       proof-gap note: no real client metric exists yet. -->
+  <section class="section sample" id="sample" data-section="plan_sample">
+    <div class="container">
+      <div class="sample__intro">
+        <p class="label">What arrives</p>
+        <h2>One page of it, so you know what you are buying.</h2>
+        <p>
+          The scorecard runs to four categories and forty checks. This is the summary page
+          and the first three rows of the roadmap — enough to see the shape of it, the
+          language it is written in, and where the DIY line falls.
+        </p>
+      </div>
+
+      <figure class="sheet">
+        <figcaption class="sheet__chip">Sample plan · fictional client</figcaption>
+
+        <div class="sheet__head">
+          <div>
+            <p class="sheet__kicker">Digital Presence Plan — Scorecard</p>
+            <p class="sheet__client">Cedar &amp; Stone Landscaping</p>
+          </div>
+          <p class="sheet__meta">Delivered 10 business days after kickoff<br />Re-scored free at 90 days</p>
+        </div>
+
+        <p class="sheet__bottleneck">
+          <span class="sheet__bottleneck-label">The bottleneck</span>
+          You are winning the search and losing the handoff. Visibility is your strongest
+          category and conversion is your weakest, which means you are paying — in time and in
+          rank — to deliver people to a door that does not open on a phone.
+        </p>
+
+        <table class="scorecard">
+          <caption class="visually-hidden">Sample scores by category, out of 10</caption>
+          <thead>
+            <tr>
+              <th scope="col">Category</th>
+              <th scope="col">Score</th>
+              <th scope="col">What it means</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              { cat: 'Found', score: 8, of: 10, note: 'Ranking and profiles are in good shape. Directories are thin.' },
+              { cat: 'Trusted', score: 5, of: 10, note: 'Real proof exists — 47 reviews, good photography — none of it on the site.' },
+              { cat: 'Chosen', score: 3, of: 10, note: 'Mobile contact form is unusable. No second way to reach you.' },
+              { cat: 'Kept', score: 4, of: 10, note: 'No follow-up after an enquiry. Nothing brings a past customer back.' },
+            ].map((row) => (
+              <tr>
+                <th scope="row">{row.cat}</th>
+                <td class="scorecard__score">
+                  <span class="scorecard__n">{row.score}</span>
+                  <span class="scorecard__of">/ {row.of}</span>
+                  <span class="scorecard__bar" aria-hidden="true">
+                    <span class="scorecard__fill" style={`width: ${(row.score / row.of) * 100}%`}></span>
+                  </span>
+                </td>
+                <td>{row.note}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <p class="sheet__kicker sheet__roadmap-label">90-day roadmap — first three</p>
+        <ol class="roadmap">
+          {[
+            { tag: 'DIY', when: 'Week 1', what: 'Replace the contact form with the theme’s native block. Test it on an actual phone.' },
+            { tag: 'DIY', when: 'Week 2', what: 'Claim the Houzz profile carrying six customer photos. Add your own.' },
+            { tag: 'Project', when: 'Weeks 3–6', what: 'Rewrite the homepage around the design-build work and the neighborhoods you serve. Put the reviews and the photography on it.' },
+          ].map((row) => (
+            <li class="roadmap__row">
+              <span class:list={['roadmap__tag', `roadmap__tag--${row.tag.toLowerCase()}`]}>{row.tag}</span>
+              <span class="roadmap__when">{row.when}</span>
+              <span class="roadmap__what">{row.what}</span>
+            </li>
+          ))}
+        </ol>
+
+        <p class="sheet__sign">
+          <span class="sheet__ps">
+            Everything tagged <strong>DIY</strong> is free and yours to do without us — that is
+            roughly half of a typical roadmap. <strong>Project</strong> rows are quoted
+            separately, and you are under no obligation to have us do any of them.
+          </span>
+        </p>
+      </figure>
     </div>
   </section>
 
@@ -130,10 +252,10 @@ const planSchema = [
         <p>{c.pricingBody}</p>
         <div class="btn-row" style="margin-top: 1rem;">
           <a
-            href="/contact/?quote=1"
+            href={`${ROUTES.quote}?need=plan`}
             class="btn btn--primary"
             data-track="cta_click"
-            data-track-cta="quote"
+            data-track-cta="quote_request"
             data-track-location="plan_pricing"
           >{c.pricingCtaLabel}</a>
           <span class="small">{c.pricingCtaNote}</span>
@@ -168,3 +290,249 @@ const planSchema = [
     </div>
   </section>
 </Base>
+
+<SectionViews />
+
+<style>
+  /* --------------------------------------------------- sample deliverable -- */
+  /* The sheet reads as a DOCUMENT, not as another card on the page: paper-white
+     against the section's cream, a hairline rule instead of the site's usual
+     card border. Same treatment as the sample readout on /consultation/ — the
+     two samples are the same family of artifact and a visitor who has seen one
+     should recognise the other. Deliberately re-declared here rather than
+     lifted into global.css: two pages is not yet a pattern, and the first thing
+     a shared `.sheet` would attract is a third caller that is not a document. */
+  .sample { padding-top: 0; }
+
+  .sample__intro {
+    max-width: 46rem;
+    margin-bottom: clamp(1.75rem, 4vw, 2.5rem);
+  }
+
+  .sheet {
+    position: relative;
+    margin: 0 auto;
+    max-width: 46rem;
+    padding: clamp(1.75rem, 4vw, 3rem);
+    background: #fffdf7;
+    border: 1px solid var(--line);
+    border-radius: 4px;
+    box-shadow: 0 18px 46px -28px rgba(38, 37, 31, 0.4);
+  }
+
+  .sheet__chip {
+    display: inline-block;
+    margin-bottom: 1.5rem;
+    padding: 4px 10px;
+    border-radius: 999px;
+    background: #eef0e0;
+    border: 1px solid var(--sage);
+    font-family: var(--font-mono);
+    font-size: 0.62rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+  }
+
+  .sheet__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1.5rem;
+    flex-wrap: wrap;
+    padding-bottom: 1.1rem;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .sheet__kicker {
+    margin: 0;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+  }
+
+  .sheet__client {
+    margin: 0.3rem 0 0;
+    font-family: var(--font-serif);
+    font-size: clamp(1.15rem, 2.4vw, 1.45rem);
+    line-height: 1.2;
+    color: var(--charcoal);
+  }
+
+  .sheet__meta {
+    margin: 0;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    text-align: right;
+    color: var(--stone-deep);
+  }
+
+  @media (max-width: 480px) {
+    .sheet__meta { text-align: left; }
+  }
+
+  /* The headline finding, above the table. A scorecard alone is data; the
+     sentence that says what the data means is the deliverable. */
+  .sheet__bottleneck {
+    margin: 1.4rem 0 1.75rem;
+    padding: 1rem 1.15rem;
+    background: #eef0e0;
+    border-left: 3px solid var(--bamboo-deep);
+    border-radius: 0 var(--radius) var(--radius) 0;
+    font-family: var(--font-serif);
+    font-size: 1rem;
+    line-height: 1.65;
+    color: var(--charcoal);
+    max-width: none;
+  }
+
+  .sheet__bottleneck-label {
+    display: block;
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+    margin-bottom: 0.35rem;
+  }
+
+  .scorecard {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.9rem;
+  }
+
+  .scorecard th,
+  .scorecard td {
+    text-align: left;
+    padding: 0.7rem 0.75rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+
+  .scorecard thead th {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+  }
+
+  .scorecard tbody th { font-weight: 500; white-space: nowrap; }
+
+  .scorecard__score { white-space: nowrap; width: 1%; }
+
+  .scorecard__n {
+    font-family: var(--font-mono);
+    font-size: 1rem;
+    color: var(--charcoal);
+  }
+
+  .scorecard__of {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    color: var(--stone-deep);
+    margin-left: 0.15rem;
+  }
+
+  /* The bar is redundant with the number beside it — which is the point. It is
+     aria-hidden, so a screen reader gets "5 / 10" once rather than twice. */
+  .scorecard__bar {
+    display: block;
+    width: 5rem;
+    height: 4px;
+    margin-top: 0.35rem;
+    border-radius: 2px;
+    background: var(--line);
+    overflow: hidden;
+  }
+
+  .scorecard__fill {
+    display: block;
+    height: 100%;
+    background: var(--bamboo-deep);
+  }
+
+  .sheet__roadmap-label { margin-top: 2rem; }
+
+  .roadmap {
+    list-style: none;
+    margin: 0.75rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+  }
+
+  .roadmap__row {
+    display: grid;
+    grid-template-columns: auto auto minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    align-items: baseline;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--line);
+    font-size: 0.9rem;
+  }
+
+  @media (max-width: 620px) {
+    .roadmap__row { grid-template-columns: auto minmax(0, 1fr); }
+    .roadmap__what { grid-column: 1 / -1; }
+  }
+
+  /* The tag is the whole argument of the section: half of what we find is
+     yours to fix for free, and saying so in a chip beside each row is more
+     credible than saying it in a paragraph. */
+  .roadmap__tag {
+    font-family: var(--font-mono);
+    font-size: 0.58rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    padding: 3px 8px;
+    border-radius: 999px;
+    white-space: nowrap;
+  }
+
+  .roadmap__tag--diy {
+    background: #eef0e0;
+    border: 1px solid var(--sage);
+    color: var(--bamboo-deep);
+  }
+
+  .roadmap__tag--project {
+    background: var(--cream-soft);
+    border: 1px solid var(--line);
+    color: var(--stone-deep);
+  }
+
+  .roadmap__when {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: var(--stone-deep);
+    white-space: nowrap;
+  }
+
+  .sheet__sign {
+    margin: 1.75rem 0 0;
+    padding-top: 1.1rem;
+    border-top: 1px solid var(--line);
+    max-width: none;
+  }
+
+  .sheet__ps {
+    font-size: 0.85rem;
+    line-height: 1.6;
+    color: var(--stone-deep);
+  }
+
+  /* The table has a <caption> for screen readers — the visible heading above it
+     is a <p>, which a table does not inherit as its name. */
+  .visually-hidden {
+    position: absolute;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+</style>

@@ -2,18 +2,26 @@
 import '@fontsource/ibm-plex-mono/400.css';
 import Base from '../../layouts/Base.astro';
 import Placeholder from '../../components/Placeholder.astro';
-import PulseTerm from '../../components/PulseTerm.astro';
 import SectionViews from '../../components/SectionViews.astro';
+import PriceStrip from '../../components/PriceStrip.astro';
+import ProofStrip from '../../components/ProofStrip.astro';
+import AudienceCards from '../../components/AudienceCards.astro';
+import ThreeDoors from '../../components/ThreeDoors.astro';
 import { getService, getServiceSlugs, getProjects, getPillars } from '../../lib/sanity.js';
 import { serviceHref } from '../../lib/pillars.js';
 import { serviceSchema, faqSchema } from '../../lib/schema.js';
+import { PRICE_STRIP, QUOTE_PROMISE, ROUTES } from '../../lib/offer.js';
 
-// One template for every service (PULSE-HOME-BUILD.md §8 Phase 3). Sections
-// render only when their fields are populated, following work/[slug].astro —
-// so a service with three sections and one with eight both look deliberate.
+// One template for every service (PULSE-HOME-BUILD.md §8 Phase 3, rebuilt to
+// journey-redesign.md §4). Sections render only when their fields are
+// populated, following work/[slug].astro — so a service with three sections and
+// one with eight both look deliberate.
 //
-// The closing review CTA is NOT conditional. Every service page ends in one;
-// that is what makes the hero's service links scenic routes rather than leaks.
+// Four things are NOT conditional, because they are the template's whole point:
+// the price strip, the proof, the "who this is for" cards, and the three-door
+// close. Before this, a visitor could read a service page end to end and learn
+// neither what it costs nor who it is for, and the only exit was the same
+// review CTA printed twice.
 export async function getStaticPaths() {
   const slugs = await getServiceSlugs();
   return slugs.map((slug) => ({ params: { slug } }));
@@ -28,25 +36,41 @@ if (!p) {
 // featuredProjects is per-service. Falling back to the global `featured` flag
 // keeps the migrated web design page rendering exactly as it did before
 // anyone sets explicit references.
+//
+// The fallback is no longer gated on the work section's labels: the proof strip
+// (§1.2, "proof travels with the service") needs a project whether or not this
+// service also runs a full work section, and gating it on a label meant the
+// pages with the least copy — exactly the ones needing proof most — showed none.
 let projects = (p.featuredProjects ?? []).filter(Boolean);
-if (!projects.length && (p.workLabel || p.workTitle)) {
-  projects = (await getProjects()).filter((x) => x.featured).slice(0, 2);
+if (!projects.length) {
+  projects = ((await getProjects()) ?? []).filter((x) => x.featured).slice(0, 2);
 }
 
 const pillar = (await getPillars()).find((x) => x.id === p.pillar);
 const faqs = (p.faqs ?? []).filter((f) => f?.q && f?.a);
 
-// Defaults live here, not in Sanity, so every page ends in a review CTA even
-// if an editor empties the fields. "Pulse Check" never appears on the button —
-// buttons describe, copy brands (§7.1).
-const CTA = {
+// Defaults live here, not in Sanity, so every page closes properly even if an
+// editor empties the fields. The closing section is the three doors now, and
+// these strings are its heading and lede — the old single-CTA block (title,
+// body, label, note) is gone, along with the second copy of it that used to sit
+// in the hero. Buttons describe, copy brands: the door labels come from
+// lib/offer.js and no button carries the offer's name (§7.1).
+const CLOSE = {
   title: p.ctaTitle ?? 'Not sure this is what you need?',
   body:
     p.ctaBody ??
-    'Book a free 30-minute review and we will tell you honestly — including if the answer is something else, or nothing at all. You will get a one-page written readout within 48 hours either way.',
-  label: p.ctaLabel ?? 'Get a free review',
-  note: p.ctaNote ?? 'We call it the Pulse Check · readout within 48 hours',
+    'Take whichever door fits. If you are not sure, the review is free and we will tell you honestly — including if the answer is something else, or nothing at all.',
 };
+
+// §4's price strip. One band across all five services (lib/offer.js explains
+// why it is one band and not five ranges); `priceStrip` in the Studio overrides
+// it per service the day per-service numbers exist.
+const priceStrip = p.priceStrip ?? PRICE_STRIP;
+
+// The "who this is for" cards. Sanity-driven, and absent rather than invented
+// when a service has not had them written — AudienceCards renders nothing on an
+// empty array, and the gap below makes that visible instead of silent.
+const audience = (p.audience ?? []).filter((a) => a?.title && a?.body);
 
 const schema = [
   serviceSchema({
@@ -63,6 +87,12 @@ const gap = (cond, note) => (p.pageReady && cond ? note : null);
 const gaps = [
   gap(!(p.includes ?? []).length, `what "${p.title}" includes — 3 or more cards`),
   gap(!p.heroLede, `hero lede for "${p.title}"`),
+  // Both new, and both real launch blockers rather than nice-to-haves: §1.2 and
+  // §4 make proof and audience part of the template, and a template section
+  // that silently vanishes when unfilled is how the pages ended up without them
+  // in the first place.
+  gap(!audience.length, `"who this is for" cards for "${p.title}" — 2 or 3 personas`),
+  gap(!projects.length, `a case study to reference from "${p.title}" (Studio → Featured projects)`),
   ...(p.contentGaps ?? []),
 ].filter(Boolean);
 ---
@@ -82,24 +112,37 @@ const gaps = [
       </p>
       <h1 class="svc-hero__title">{p.heroTitle ?? p.title}</h1>
       <p class="lede">{p.heroLede ?? p.summary}</p>
+      {/* Two doors in the hero, not one. §1.1: the ready buyer arriving on a
+          service page had exactly one control, and it committed them to a call
+          they were on this page specifically to avoid. The review stays the
+          recommendation (filled); the quote is the alternative (ghost).
+
+          `heroSecondaryLabel` — a per-service ghost button, usually pointing at
+          the work — no longer renders here. It was optional, and where it was
+          set it took the slot the quote door needs; the work is one section
+          below this in the proof strip either way. */}
       <div class="btn-row">
         <a
-          href="/consultation/"
+          href={ROUTES.review}
           class="btn btn--primary"
           data-track="cta_click"
           data-track-cta="pulse_check"
           data-track-location={`service_${p.slug}_hero`}
         >Get a free review</a>
-        {p.heroSecondaryLabel && (
-          <a
-            href={p.heroSecondaryHref ?? '/work/'}
-            class="btn btn--ghost"
-            data-track="cta_click"
-            data-track-cta="secondary"
-            data-track-location={`service_${p.slug}_hero`}
-          >{p.heroSecondaryLabel}</a>
-        )}
+        <a
+          href={`${ROUTES.quote}?need=${p.slug}`}
+          class="btn btn--ghost"
+          data-track="cta_click"
+          data-track-cta="quote_request"
+          data-track-location={`service_${p.slug}_hero`}
+        >Request a quote</a>
       </div>
+      {/* The number, at the top, where the "can we even afford this" question
+          is actually forming — §1.3. */}
+      <PriceStrip tone="dark" text={priceStrip} />
+      <p class="svc-hero__quote-note">
+        Already know what you need built? {QUOTE_PROMISE}
+      </p>
     </div>
   </section>
 
@@ -112,14 +155,23 @@ const gaps = [
   )}
 
   <!-- ===================== proof strip ===================== -->
-  {p.proofLabel && projects.length > 0 && (
-    <section class="proof">
-      <div class="container proof-inner">
-        <p class="proof-q">{p.proofLabel}</p>
-        {projects.map((x) => <span class="client">{x.name}</span>)}
-      </div>
-    </section>
-  )}
+  <!-- Was a hairline row of client NAMES under the hero — a list of words with
+       no evidence attached, which is the weakest form proof can take. It is now
+       the case study itself plus the client's own sentence about it, on the page
+       where this service is decided (§1.2). ProofStrip renders nothing when
+       there is no project, and the gap above blocks the build in that state. -->
+  <ProofStrip
+    label={p.proofLabel ?? 'Proof'}
+    projects={projects}
+    location={`service_${p.slug}`}
+  />
+
+  <!-- ===================== who this is for ===================== -->
+  <AudienceCards
+    label={p.audienceLabel ?? 'Who this is for'}
+    heading={p.audienceTitle}
+    cards={audience}
+  />
 
   <!-- ===================== selected work ===================== -->
   {projects.length > 0 && (p.workLabel || p.workTitle) && (
@@ -168,7 +220,7 @@ const gaps = [
 
   <!-- ===================== pivot band ===================== -->
   {p.pivotTitle && (
-    <section class="section section--bamboo" data-section="pivot">
+    <section class="section section--bamboo" id={p.pivotAnchor} data-section="pivot">
       <div class="container">
         {p.pivotLabel && <p class="label" style="color: var(--cream);">{p.pivotLabel}</p>}
         <h2 style="color: var(--cream);">{p.pivotTitle}</h2>
@@ -205,8 +257,12 @@ const gaps = [
         {p.processBody && (
           <p class="lede" style="max-width: 56ch;">
             {p.processBody}
+            {/* Defaults to /process/, not /services/. The old default was the
+                reason two "see how it works" links on this site landed on a list
+                of what we sell (§3) — a service list is not an answer to how a
+                project runs, and now there is a page that is. */}
             {p.processLinkLabel && (
-              <> <a href={p.processLinkHref ?? '/services/'}>{p.processLinkLabel} →</a></>
+              <> <a href={p.processLinkHref ?? ROUTES.process}>{p.processLinkLabel} →</a></>
             )}
           </p>
         )}
@@ -251,23 +307,17 @@ const gaps = [
     </section>
   )}
 
-  <!-- ===================== closing review CTA (always) ===================== -->
-  <section class="section section--bamboo" data-section="cta">
-    <div class="container svc-cta__inner">
-      <h2 class="svc-cta__head">{CTA.title}</h2>
-      <p class="svc-cta__body">{CTA.body}</p>
-      <a
-        class="btn btn--filled"
-        href="/consultation/"
-        data-track="cta_click"
-        data-track-cta="pulse_check"
-        data-track-location={`service_${p.slug}_cta`}
-      >{CTA.label}</a>
-      <p class="svc-cta__micro">
-        <PulseTerm text={CTA.note} location={`service_${p.slug}_cta`} />
-      </p>
-    </div>
-  </section>
+  <!-- ================= closing: three doors (always) ================= -->
+  <!-- Replaces the single review CTA that closed every service page — the
+       second copy of the ask already made in the hero. All three exits now,
+       with the review still recommended: §1.1. `need` carries this service
+       through to the quote form's dropdown. -->
+  <ThreeDoors
+    location={`service_${p.slug}_doors`}
+    heading={CLOSE.title}
+    body={CLOSE.body}
+    need={p.slug}
+  />
 </Base>
 
 <style>
@@ -285,22 +335,13 @@ const gaps = [
     margin-bottom: 1rem;
   }
 
-  /* --- proof strip (same pattern as /consultation/) --- */
-  .proof {
-    background: var(--cream-soft);
-    border-block: 1px solid var(--line);
-    padding-block: 1.1rem;
+  /* The quote door's promise, directly under the two buttons — the ready buyer
+     should not have to find it in the FAQ (§4, Web Design specifics). */
+  .svc-hero__quote-note {
+    margin: 0.75rem 0 0;
+    font-size: 0.88rem;
+    color: var(--sage);
   }
-
-  .proof-inner {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: baseline;
-    gap: 0.5rem 1.5rem;
-  }
-
-  .proof-q { font-size: 0.85rem; color: var(--stone-deep); margin: 0; }
-  .client { font-size: 0.85rem; font-weight: 500; }
 
   /* --- work cards --- */
   .work-card, .card--more {
@@ -371,41 +412,6 @@ const gaps = [
   .faq summary::after { content: ' +'; color: var(--bamboo-deep); }
   .faq[open] summary::after { content: ' –'; }
   .faq p { margin: 0.6rem 0 0; color: var(--stone-deep); }
-
-  /* --- closing CTA --- */
-  .svc-cta__inner {
-    display: grid;
-    gap: 1rem;
-    justify-items: start;
-    max-width: 44rem;
-  }
-
-  .svc-cta__head {
-    font-family: var(--font-serif);
-    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
-    margin: 0;
-    color: var(--cream);
-  }
-
-  .svc-cta__body {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: var(--cream);
-    margin: 0;
-    max-width: 54ch;
-  }
-
-  .svc-cta__micro {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-    color: var(--cream);
-    opacity: 0.85;
-    margin: 0;
-    /* This block runs cream on bamboo; the Pulse Check term's default accent
-       (bamboo-deep) would all but vanish against it. */
-    --pulse-term-accent: var(--cream);
-  }
 
   @media (prefers-reduced-motion: reduce) {
     .work-card, .card--more { transition: none; }

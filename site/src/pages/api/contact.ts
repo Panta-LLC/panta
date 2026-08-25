@@ -41,10 +41,26 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   const form = await request.formData();
   const wantsJson = String(form.get('xhr') ?? '').trim() === '1';
 
+  // Where a no-JS (or JS-failed) submission lands. /quote/ needs its own
+  // destination — journey-redesign.md §7 measures the quote path separately,
+  // and bouncing a quote request to /contact/?sent=1 would both lose that
+  // number and show the wrong confirmation ("we'll reply" rather than "you'll
+  // have a written quote in two business days").
+  //
+  // An ALLOWLIST, not the submitted value: `return_to` arrives in a form body
+  // from an unauthenticated POST, and passing it to redirect() unchecked is an
+  // open redirect — anyone could host a form that posts here and bounces the
+  // visitor to their own domain carrying our origin as the referrer.
+  const RETURNS: Record<string, string> = {
+    contact: '/contact/',
+    quote: '/quote/',
+  };
+  const returnTo = RETURNS[String(form.get('return_to') ?? '').trim()] ?? '/contact/';
+
   // Every exit routes through here so the two response shapes can never drift.
-  const ok = () => (wantsJson ? json({ ok: true }) : redirect('/contact/?sent=1', 303));
+  const ok = () => (wantsJson ? json({ ok: true }) : redirect(`${returnTo}?sent=1`, 303));
   const fail = (error: string, status: number) =>
-    wantsJson ? json({ ok: false, error }, status) : redirect('/contact/?error=1', 303);
+    wantsJson ? json({ ok: false, error }, status) : redirect(`${returnTo}?error=1`, 303);
 
   // Honeypot: real visitors never fill this; bots (and some password managers
   // that autofill name="website") do. Pretend success so we don't tip them off.
@@ -64,6 +80,10 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   // Which surface the lead came from, so homepage and /contact/ are tellable
   // apart in the inbox. Defaults to the page that had no field before this.
   const source = String(form.get('source') ?? 'contact_page').slice(0, 40);
+  // Quote-form only (journey-redesign.md §5.3). Optional everywhere else, so
+  // every existing form posts unchanged and simply omits both lines below.
+  const need = String(form.get('need') ?? '').trim().slice(0, 60);
+  const budget = String(form.get('budget') ?? '').trim().slice(0, 60);
 
   if (!name || !email || !email.includes('@')) {
     return fail('Add your name and a valid email address.', 400);
@@ -107,7 +127,7 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       // the real send happens below and is unreachable on a machine with no
       // credentials.
       console.info(
-        `\n--- confirmation that would go to ${email} ---\n${confirmationText({ name, message })}\n--- end ---\n`,
+        `\n--- confirmation that would go to ${email} ---\n${confirmationText({ name, message, isQuote: source === 'quote_page' })}\n--- end ---\n`,
       );
       return ok();
     }
@@ -129,7 +149,12 @@ export const POST: APIRoute = async ({ request, redirect }) => {
       from: `"panta.llc contact form" <${SMTP_USER}>`,
       to,
       replyTo: `"${name.replace(/"/g, '')}" <${email}>`,
-      subject: `New ${source === 'contact_page' ? 'contact' : 'lead'} from ${name}${org ? ` (${org})` : ''}`,
+      // A quote request is a different job from a lead — it has a two-business-day
+      // clock on it — so it says so in the subject rather than needing the body
+      // read to find out.
+      subject: `New ${
+        source === 'quote_page' ? 'QUOTE REQUEST' : source === 'contact_page' ? 'contact' : 'lead'
+      } from ${name}${org ? ` (${org})` : ''}`,
       text: [
         `Name: ${name}`,
         // Labelled "Website or organization" on the form (LeadForm.astro) —
@@ -137,6 +162,8 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         `Website / org: ${org || '—'}`,
         `Email: ${email}`,
         `Source: ${source}`,
+        ...(need ? [`Needs: ${need}`] : []),
+        ...(budget ? [`Budget: ${budget}`] : []),
         '',
         message || '(no message)',
       ].join('\n'),
@@ -155,13 +182,14 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   // honeypot path returned long before here, so bots never trigger a send to a
   // spoofed address.
   try {
+    const isQuote = source === 'quote_page';
     await transporter.sendMail({
       from: `"Panta" <${SMTP_USER}>`,
       to: email,
       // Replies land with the humans, not in the form's own mailbox.
       replyTo: to,
-      subject: 'We got your note — Panta',
-      text: confirmationText({ name, message }),
+      subject: isQuote ? 'We got your brief — Panta' : 'We got your note — Panta',
+      text: confirmationText({ name, message, isQuote }),
     });
   } catch (err) {
     console.error('contact: confirmation to sender failed (lead was delivered)', err);
@@ -180,8 +208,41 @@ export const POST: APIRoute = async ({ request, redirect }) => {
  * promises the site makes: a reply within one business day, and the written
  * readout within 48 hours of the call.
  */
-function confirmationText({ name, message }: { name: string; message: string }) {
+function confirmationText({
+  name,
+  message,
+  isQuote = false,
+}: {
+  name: string;
+  message: string;
+  isQuote?: boolean;
+}) {
   const firstName = name.split(/\s+/)[0];
+  // The quote path promises a written number in two business days, and the
+  // receipt has to repeat the promise the page made rather than the generic
+  // one — a confirmation that quietly downgrades the commitment is worse than
+  // no confirmation.
+  if (isQuote) {
+    return [
+      `Hi ${firstName},`,
+      '',
+      'Thanks for the brief — this is just to confirm it arrived.',
+      '',
+      'You will have a fixed-price quote in writing within two business days, or a',
+      'short note saying what we would need to know first. Either way it comes from',
+      'a person who has read what you sent.',
+      '',
+      ...(message
+        ? ['Here is the brief you sent, for your records:', '', ...message.split('\n').map((l) => `> ${l}`), '']
+        : []),
+      'If it turns out the scope is still open, we may suggest starting with the free',
+      '30-minute review instead — but we will say why, and you will still get the',
+      'number you asked for.',
+      '',
+      '— Panta',
+      'hello@panta.llc',
+    ].join('\n');
+  }
   return [
     `Hi ${firstName},`,
     '',

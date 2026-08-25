@@ -1,136 +1,247 @@
 ---
+/**
+ * A contact page that is a contact page (journey-redesign.md §5.5).
+ *
+ * It used to sell the review: the hero said "the fastest path is a free review"
+ * with a button to /consultation/, and the right-hand column ran a "what
+ * happens next" list that promised to schedule the review and then recommend
+ * the Digital Presence Plan. All of that is already stated on the review page,
+ * where someone reading it has asked to be sold to. Here it was answering a
+ * question nobody on this page had asked — they came to say something.
+ *
+ * What replaced it: the address, a short note form, and the three doors as
+ * links. If a visitor turns out to want the review or a quote, the chooser
+ * hands them the right page in one click instead of re-pitching one of them.
+ *
+ * `?quote=1` used to swap this hero into a pretend quote form. That door is a
+ * real page now, so the parameter redirects there — old links (and anything
+ * printed) still land somewhere that keeps the promise the label made.
+ */
 import Base from '../layouts/Base.astro';
+import SectionViews from '../components/SectionViews.astro';
 import { getDoc } from '../lib/sanity.js';
+import { DOORS, OFFER, QUOTE_PROMISE, ROUTES } from '../lib/offer.js';
 
-const c = await getDoc('contactPage');
+const c = (await getDoc('contactPage')) ?? {};
 const settings = await getDoc('siteSettings');
+
+// Fallbacks in code, not in the Studio, for the same reason the homepage hero
+// has them: this page must render as written if a field is emptied. The old
+// version read `c.nextItems.map(...)` with no guard and would have thrown a
+// build error on an emptied array.
+const HERO = {
+  label: c.heroLabel || 'Contact',
+  title: c.heroTitle || 'Say hello.',
+  lede:
+    c.heroLede ||
+    'Tell us what’s going on and we’ll reply within one business day — with a straight answer if it doesn’t need a call, and a time to talk if it does.',
+};
+
+// The three doors, as links rather than as a pitch. Order is the same
+// everywhere on the site: unsure, decided, not-yet.
+const CHOOSER = [
+  {
+    label: DOORS.review.label,
+    body: `${OFFER.gloss}, then ${OFFER.deliverable}.`,
+    href: ROUTES.review,
+    cta: DOORS.review.cta,
+  },
+  {
+    label: 'Request a quote',
+    body: QUOTE_PROMISE,
+    href: ROUTES.quote,
+    cta: DOORS.quote.cta,
+  },
+  {
+    label: 'Get Pulse in your inbox',
+    body: 'One useful idea every other week. No fluff, no funnels.',
+    href: ROUTES.pulse,
+    cta: DOORS.pulse.cta,
+  },
+];
 ---
 <Base
-  title="Contact Panta — book a free 30-minute review"
-  description="Tell us what's not working about your online presence. We reply within one business day — because response speed is one of the things we audit."
+  title="Contact Panta"
+  description="Say hello. hello@panta.llc — we reply within one business day, because response speed is one of the things we look at."
 >
-  <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
-    <div class="container">
-      <p class="label" data-default={c.heroLabel} data-quote={c.quoteHeroLabel}>{c.heroLabel}</p>
-      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);" data-default={c.heroTitle} data-quote={c.quoteHeroTitle}>{c.heroTitle}</h1>
-      <p class="lede" data-default={c.heroLede} data-quote={c.quoteHeroLede}>{c.heroLede}</p>
-      <div class="btn-row">
-        <a
-          href="/consultation/"
-          class="btn btn--primary"
-          data-track="cta_click"
-          data-track-cta="consultation"
-          data-track-location="contact_hero"
-        >{c.heroCtaLabel}</a>
-      </div>
+  <section class="section section--dark" style="padding-block: clamp(2.75rem, 6vw, 4rem);">
+    <div class="container" style="max-width: 46rem;">
+      <p class="label">{HERO.label}</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">{HERO.title}</h1>
+      <p class="lede">{HERO.lede}</p>
+      <p class="ct-mail">
+        <a href={`mailto:${settings.email}`} data-track="cta_click" data-track-cta="email" data-track-location="contact_hero">{settings.email}</a>
+      </p>
+      <p class="ct-reply">{settings.replyLine ?? 'We reply within one business day.'}</p>
     </div>
   </section>
 
-  <section class="section">
+  <!-- The chooser, ABOVE the form. Someone who wants the review or a quote
+       should not have to write a note asking for one — and a note asking for
+       one costs them a day of waiting that the calendar and the quote form
+       both skip. -->
+  <section class="section" style="padding-bottom: 0;" data-section="contact_chooser">
     <div class="container">
-      <div class="grid grid--2" style="gap: 3rem; align-items: start;">
-        <div>
-          <p class="form-status form-status--ok" id="status-sent" hidden>
-            Sent — thank you. We'll reply within one business day.
-          </p>
-          <p class="form-status form-status--err" id="status-error" hidden>
-            Something went wrong sending that. Email us directly instead —
-            <a href="mailto:hello@panta.llc">hello@panta.llc</a>.
-          </p>
-          <form class="form-grid" method="post" action="/api/contact">
-            <div class="hp-field" aria-hidden="true">
-              <label for="company_url">Leave this field empty</label>
-              <input type="text" id="company_url" name="company_url" tabindex="-1" autocomplete="off" value="" />
-            </div>
-            <div>
-              <label for="name">Your name</label>
-              <input type="text" id="name" name="name" autocomplete="name" required />
-            </div>
-            <div>
-              <label for="org">Website or organization</label>
-              <input type="text" id="org" name="org" autocomplete="organization" />
-            </div>
-            <div>
-              <label for="email">Email</label>
-              <input type="email" id="email" name="email" autocomplete="email" required />
-            </div>
-            <div>
-              <label for="message">What made you reach out now?</label>
-              <textarea id="message" name="message" rows="5" placeholder="The itch. A form nobody fills out, a listing with the wrong hours, a hunch you're invisible on Google…"></textarea>
-            </div>
-            <div>
-              <button type="submit" class="btn btn--primary">Send it over</button>
-            </div>
-          </form>
+      <p class="label">Looking for something specific?</p>
+      <ul class="ct-doors">
+        {CHOOSER.map((d) => (
+          <li>
+            <a
+              class="ct-door"
+              href={d.href}
+              data-track="cta_click"
+              data-track-cta={d.cta}
+              data-track-location="contact_chooser"
+            >
+              <span class="ct-door__label">{d.label}<span class="ct-door__arrow" aria-hidden="true">→</span></span>
+              <span class="ct-door__body">{d.body}</span>
+            </a>
+          </li>
+        ))}
+      </ul>
+    </div>
+  </section>
+
+  <section class="section" data-section="contact_form">
+    <div class="container" style="max-width: 40rem;">
+      <p class="label">Or just send a note</p>
+      <h2 class="ct-formhead">Anything at all.</h2>
+
+      <p class="form-status form-status--ok" id="status-sent" hidden>
+        Sent — thank you. We'll reply within one business day.
+      </p>
+      <p class="form-status form-status--err" id="status-error" hidden>
+        Something went wrong sending that. Email us directly instead —
+        <a href="mailto:hello@panta.llc">hello@panta.llc</a>.
+      </p>
+
+      <form class="form-grid" method="post" action="/api/contact">
+        <input type="hidden" name="return_to" value="contact" />
+        <input type="hidden" name="source" value="contact_page" />
+        <div class="hp-field" aria-hidden="true">
+          <label for="company_url">Leave this field empty</label>
+          <input type="text" id="company_url" name="company_url" tabindex="-1" autocomplete="off" value="" />
         </div>
         <div>
-          <p class="label">{c.emailLabel}</p>
-          <p style="font-family: var(--font-serif); font-size: 1.5rem;">
-            <a href={`mailto:${settings.email}`}>{settings.email}</a>
-          </p>
-          <hr class="divider" />
-          <p class="label">{c.nextLabel}</p>
-          <ul class="checklist">
-            {c.nextItems.map((item) => <li>{item}</li>)}
-          </ul>
+          <label for="name">Your name</label>
+          <input type="text" id="name" name="name" autocomplete="name" required />
         </div>
-      </div>
+        <div>
+          <label for="email">Email</label>
+          <input type="email" id="email" name="email" autocomplete="email" required />
+        </div>
+        <div>
+          <label for="org">Website or organization <span class="opt">(optional)</span></label>
+          <input type="text" id="org" name="org" autocomplete="organization" />
+        </div>
+        <div>
+          <label for="message">What made you reach out now?</label>
+          <textarea id="message" name="message" rows="5" placeholder="The itch. A form nobody fills out, a listing with the wrong hours, a hunch you're invisible on Google…"></textarea>
+        </div>
+        <div>
+          <button type="submit" class="btn btn--primary">Send it over</button>
+        </div>
+      </form>
     </div>
   </section>
 </Base>
 
+<SectionViews />
+
 <script>
   const track = (window as any).pantaTrack ?? (() => {});
-
-  // /api/contact redirects to a bare ?sent=1, so ?quote=1 is gone by the time
-  // we report the lead. Stash the intent on the way in and read it back after.
-  const INTENT_KEY = 'panta:contact-intent';
-  const readIntent = () => {
-    try {
-      return sessionStorage.getItem(INTENT_KEY) ?? 'general';
-    } catch (_) {
-      return 'general';
-    }
-  };
-
   const params = new URLSearchParams(window.location.search);
+
+  // Legacy `?quote=1` links. This page used to fake a quote form by swapping
+  // three lines of hero copy; the real one lives at /quote/ now, so send them
+  // there rather than leaving them on a page that no longer keeps the promise
+  // the link they clicked made. `replace` so Back doesn't bounce them here.
+  if (params.has('quote') && !params.has('sent') && !params.has('error')) {
+    window.location.replace('/quote/');
+  }
+
   if (params.has('sent')) {
     document.getElementById('status-sent')?.removeAttribute('hidden');
     // Fired on the post-redirect landing rather than on submit: /api/contact
     // only sends us here once the mail actually went out, so this counts real
     // leads instead of clicks that failed validation or SMTP.
-    track('contact_submitted', { intent: readIntent() });
-    try {
-      sessionStorage.removeItem(INTENT_KEY);
-    } catch (_) {
-      /* swallow */
-    }
+    //
+    // The `intent` dimension and its sessionStorage carrier are gone with the
+    // quote mode above. That is also the storage rule holding: /privacy/
+    // promises the site "stores nothing on your device" (see
+    // docs/FUNNEL-MEASUREMENT.md), and this page was the last thing writing to
+    // sessionStorage. Quote intent is now a separate URL and counts itself.
+    track('contact_submitted');
   } else if (params.has('error')) {
     document.getElementById('status-error')?.removeAttribute('hidden');
-    track('contact_failed', { intent: readIntent() });
-  }
-
-  // Quote mode: arriving from a "Get a quote" CTA swaps the hero copy so the
-  // intent carries through instead of landing on a generic contact page.
-  if (params.has('quote')) {
-    try {
-      sessionStorage.setItem(INTENT_KEY, 'quote');
-    } catch (_) {
-      /* swallow */
-    }
-    document.querySelectorAll<HTMLElement>('[data-quote]').forEach((el) => {
-      const quoteCopy = el.dataset.quote;
-      if (quoteCopy) el.textContent = quoteCopy;
-    });
-    const message = document.getElementById('message') as HTMLTextAreaElement | null;
-    if (message) {
-      message.placeholder =
-        'What you have now, what you need built, and roughly when you need it.';
-    }
+    track('contact_failed');
   }
 </script>
 
 <style>
+  .ct-mail {
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 3vw, 1.9rem);
+    margin: 1.5rem 0 0.25rem;
+  }
+
+  .ct-mail a { color: var(--cream); text-decoration-thickness: 1px; text-underline-offset: 0.2em; }
+  .ct-mail a:hover { color: var(--sage); }
+
+  .ct-reply {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.06em;
+    color: var(--sage);
+    margin: 0;
+  }
+
+  .ct-doors {
+    list-style: none;
+    margin: 1rem 0 0;
+    padding: 0;
+    border-top: 1px solid var(--line);
+    max-width: 46rem;
+  }
+
+  .ct-doors li { border-bottom: 1px solid var(--line); }
+
+  .ct-door {
+    display: grid;
+    gap: 0.2rem;
+    padding: 0.95rem 0.5rem;
+    text-decoration: none;
+    color: inherit;
+    transition: background 0.18s ease, padding-left 0.18s ease;
+  }
+
+  .ct-door:hover,
+  .ct-door:focus-visible {
+    background: var(--cream-soft);
+    padding-left: 0.85rem;
+  }
+
+  .ct-door__label {
+    display: inline-flex;
+    align-items: baseline;
+    gap: 0.45rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+  }
+
+  .ct-door__arrow { transition: transform 0.18s ease; }
+  .ct-door:hover .ct-door__arrow { transform: translateX(3px); }
+
+  .ct-door__body { font-size: 0.9rem; color: var(--stone-deep); }
+
+  .ct-formhead {
+    font-family: var(--font-serif);
+    font-size: clamp(1.4rem, 2.6vw, 1.9rem);
+    margin: 0.4rem 0 1.5rem;
+  }
+
+  .opt { color: var(--stone-deep); font-weight: 400; }
+
   .form-status {
     padding: 0.9rem 1.1rem;
     border-radius: 8px;
@@ -157,5 +268,9 @@ const settings = await getDoc('siteSettings');
     width: 1px;
     height: 1px;
     overflow: hidden;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .ct-door, .ct-door__arrow { transition: none; }
   }
 </style>

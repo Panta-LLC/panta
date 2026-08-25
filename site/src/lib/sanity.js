@@ -127,7 +127,7 @@ export const getService = (slug) =>
 // a page for — a 404 introduced by a toggle in an unrelated document. `select()`
 // with no fallback yields null, which packageHref() reads as "no destination".
 const PACKAGE_CARD = `_id, title, summary, order, listed, pageReady, priceFrom,
-  bullets, "slug": slug.current,
+  bullets, anchor, "slug": slug.current,
   "service": select(
     coalesce(service->listed, true) == true => service->{title, pageReady, "slug": slug.current}
   )`;
@@ -163,11 +163,28 @@ export const getPackage = (slug) =>
     { slug }
   );
 
+// Which services a project demonstrates. Filtered on the SERVICE's own
+// `listed`, the way getService() filters relatedServices — unlisting a service
+// must not leave a case study linking to a page that is no longer built.
+//
+// This is what makes /work/ filterable by service and what lets a case study
+// end by pointing at the service it demonstrates rather than only at the review
+// (journey-redesign.md §5.6). `contributions` cannot do that job: it is free
+// text written per project and does not join to anything.
+const PROJECT_SERVICES = `"services": services[
+    defined(@->slug.current) && coalesce(@->listed, true) == true
+  ]->{title, indexLabel, summary, pageReady, "slug": slug.current}`;
+
 // `name` and `clientType` are the project's own free-text copies; `client` is
 // the profile they were copied from. Both ship until the pages that read the
 // flat fields are moved over — see studio/schemaTypes/project.ts.
+// `quote`/`quoteAuthor`/`quoteRole` are selected here, not only by
+// getFeaturedCaseStudy(), because ProofStrip renders a service's case study with
+// the client's own sentence beside it (journey-redesign.md §1.2) and reads this
+// projection through `service.featuredProjects`.
 const PROJECT_CARD = `_id, name, clientType, url, situation, summary, contributions,
-  outcome, featured, thumbnail, imageAlt, year, "slug": slug.current,
+  outcome, featured, thumbnail, imageAlt, year, quote, quoteAuthor, quoteRole,
+  "slug": slug.current,
   "client": client->{name, sector, url, "slug": slug.current,
     "logo": select(logoApproved == true => logo.asset->url),
     "logoAlt": coalesce(logo.alt, name)}`;
@@ -175,7 +192,8 @@ const PROJECT_CARD = `_id, name, clientType, url, situation, summary, contributi
 /** All client projects, in display order (card-level fields only). */
 export const getProjects = () =>
   sanity.fetch(
-    `*[_type == "project" && !(_id in path("drafts.**"))] | order(order asc){${PROJECT_CARD}}`
+    `*[_type == "project" && !(_id in path("drafts.**"))] | order(order asc){${PROJECT_CARD},
+      ${PROJECT_SERVICES}}`
   );
 
 /** Projects that have their own case study page. */
@@ -184,6 +202,7 @@ export const getCaseStudies = () =>
     `*[_type == "project" && defined(slug.current) && !(_id in path("drafts.**"))]
       | order(order asc){
         ..., "slug": slug.current,
+        ${PROJECT_SERVICES},
         "client": client->{name, sector, url, "slug": slug.current,
           "logo": select(logoApproved == true => logo.asset->url),
           "logoAlt": coalesce(logo.alt, name)}

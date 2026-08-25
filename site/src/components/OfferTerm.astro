@@ -1,13 +1,19 @@
 ---
 /**
- * CTA microcopy with the words "Pulse Check" turned into a definition link.
+ * CTA microcopy with the offer's name turned into a definition link.
  *
- * The button never says "Pulse Check" — buttons describe, copy brands, so the
- * brand name only ever appears in the line underneath (see homeHero.ctaLabel's
- * description in the Studio). That leaves the name doing work with nothing to
- * explain it: a first-time reader sees a term of art with no definition. This
- * gives it one on hover or focus, and makes the term itself the link to the
- * page that explains it properly.
+ * The button never says the offer's name — buttons describe, copy brands, so
+ * the name only ever appears in the line underneath (see homeHero.ctaMicrocopy
+ * in the Studio). That leaves the name doing work with nothing to explain it: a
+ * first-time reader sees a term of art with no definition. This gives it one on
+ * hover or focus, and makes the term itself the link to the page that explains
+ * it properly.
+ *
+ * Was PulseTerm, matching "Pulse Check". The offer is "the Review" now
+ * (journey-redesign.md §3) and the term comes from lib/offer.js, so the two can
+ * never drift again. The pattern is case-sensitive on "Review" — see the note
+ * on TERM there; matching the lowercase "free review" would hang a tooltip off
+ * every button label on the site.
  *
  * The term is found in the text rather than composed around it because the
  * microcopy is CMS-editable — an editor can rewrite the line, move the phrase,
@@ -16,12 +22,14 @@
  *
  * Interaction notes:
  *  - the trigger is a real link, so touch (no hover) still gets the answer by
- *    tapping through to /consultation/, and keyboard gets the tip on focus;
+ *    tapping through to the review page, and keyboard gets the tip on focus;
  *  - the tip holds no interactive content, which is what makes a hover/focus
  *    popover legitimate here rather than something needing dismiss handling;
  *  - `aria-describedby` means screen readers get the definition without
  *    depending on the visual affordance at all.
  */
+import { OFFER, ROUTES, TERM } from '../lib/offer.js';
+
 interface Props {
   /** The full microcopy line. Rendered verbatim apart from the matched term. */
   text: string;
@@ -32,56 +40,51 @@ interface Props {
   cue?: string;
 }
 
-const {
-  text,
-  location,
-  tip = 'A free 30-minute conversation about where things stand — plus a one-page readout within 48 hours: three observations and one recommendation, yours to keep whether we work together or not.',
-  cue = 'See what’s included',
-} = Astro.props;
+const { text, location, tip = OFFER.definition, cue = 'See what\u2019s included' } = Astro.props;
 
-const HREF = '/consultation/';
+const HREF = ROUTES.review;
 
 // First occurrence only. Two tooltips in one short line is noise, not help.
-const match = text.match(/pulse check/i);
+const match = text.match(TERM);
 const before = match ? text.slice(0, match.index) : text;
 const label = match?.[0] ?? null;
 const after = match ? text.slice((match.index ?? 0) + match[0].length) : '';
 
-const tipId = `pulse-tip-${location}`;
+const tipId = `offer-tip-${location}`;
 ---
 {/* Inline content only, no wrapper element: the caller keeps its own <p> so
     that paragraph still lives in the caller's template and its scoped styles
     (.hero__micro and friends) keep applying. */}
 <Fragment>
   {before}{label && (
-    <span class="pulse-term">
+    <span class="offer-term">
       <a
-        class="pulse-term__trigger"
+        class="offer-term__trigger"
         href={HREF}
         aria-describedby={tipId}
         data-track="cta_click"
-        data-track-cta="pulse_term"
+        data-track-cta="offer_term"
         data-track-location={location}
       >{label}</a>
       {/* Kept in the layout (visibility, not display) so the script can measure
           it before it is shown — a display:none element has no box to measure. */}
-      <span class="pulse-term__tip" id={tipId} role="tooltip">
-        <span class="pulse-term__tip-body">{tip}</span>
-        <span class="pulse-term__tip-cue">{cue} <span aria-hidden="true">→</span></span>
+      <span class="offer-term__tip" id={tipId} role="tooltip">
+        <span class="offer-term__tip-body">{tip}</span>
+        <span class="offer-term__tip-cue">{cue} <span aria-hidden="true">→</span></span>
       </span>
     </span>
   )}{after}
 </Fragment>
 
 <style>
-  .pulse-term {
+  .offer-term {
     position: relative;
     display: inline-block;
   }
 
   /* Dotted, not solid: this is a definition, and it should not read as one
      more link competing with the button directly above it. */
-  .pulse-term__trigger {
+  .offer-term__trigger {
     color: inherit;
     text-decoration: underline dotted;
     text-underline-offset: 0.25em;
@@ -89,13 +92,13 @@ const tipId = `pulse-tip-${location}`;
     cursor: pointer;
   }
 
-  /* Set --pulse-term-accent on the containing paragraph where bamboo-deep
+  /* Set --offer-term-accent on the containing paragraph where bamboo-deep
      would not survive the background — the closing CTA on service pages runs
      cream text on bamboo. Custom properties inherit through the component
      boundary, so the caller can do this from its own scoped styles. */
-  .pulse-term__trigger:hover,
-  .pulse-term__trigger:focus-visible {
-    color: var(--pulse-term-accent, var(--bamboo-deep));
+  .offer-term__trigger:hover,
+  .offer-term__trigger:focus-visible {
+    color: var(--offer-term-accent, var(--bamboo-deep));
     text-decoration-style: solid;
   }
 
@@ -103,7 +106,7 @@ const tipId = `pulse-tip-${location}`;
      CTA button, and a tip opening upward covers the button the moment someone
      leans in to find out what they are about to click. The script flips it
      back up only when there is no room below. */
-  .pulse-term__tip {
+  .offer-term__tip {
     position: absolute;
     top: calc(100% + 0.6rem);
     left: 50%;
@@ -114,15 +117,15 @@ const tipId = `pulse-tip-${location}`;
     max-width: min(20rem, calc(100vw - 2rem));
     padding: 0.75rem 0.85rem;
 
-    /* Tokens, not literals, for the same reason --pulse-term-accent exists: a
+    /* Tokens, not literals, for the same reason --offer-term-accent exists: a
        tip is an OVERLAY, so it has to invert against whatever it is floating
        over, and only the caller knows what that is. The defaults are the
        charcoal panel this always had, which is correct on cream and on
        section--bamboo. On a charcoal surface it was a charcoal panel over
        charcoal — the box vanished and the sentence appeared to be printed
        loose across whatever sat behind it. */
-    background: var(--pulse-tip-surface, var(--charcoal));
-    color: var(--pulse-tip-ink, var(--cream));
+    background: var(--offer-tip-surface, var(--charcoal));
+    color: var(--offer-tip-ink, var(--cream));
     border-radius: var(--radius);
     box-shadow: 0 8px 24px rgba(38, 37, 31, 0.22);
 
@@ -142,12 +145,12 @@ const tipId = `pulse-tip-${location}`;
     transition: opacity 0.15s ease, visibility 0.15s;
   }
 
-  .pulse-term__tip.is-above {
+  .offer-term__tip.is-above {
     top: auto;
     bottom: calc(100% + 0.6rem);
   }
 
-  .pulse-term__tip::after {
+  .offer-term__tip::after {
     content: '';
     position: absolute;
     bottom: 100%;
@@ -156,38 +159,38 @@ const tipId = `pulse-tip-${location}`;
     left: calc(50% - var(--shift, 0px));
     transform: translateX(-50%);
     border: 6px solid transparent;
-    border-bottom-color: var(--pulse-tip-surface, var(--charcoal));
+    border-bottom-color: var(--offer-tip-surface, var(--charcoal));
   }
 
-  .pulse-term__tip.is-above::after {
+  .offer-term__tip.is-above::after {
     bottom: auto;
     top: 100%;
     border-bottom-color: transparent;
-    border-top-color: var(--pulse-tip-surface, var(--charcoal));
+    border-top-color: var(--offer-tip-surface, var(--charcoal));
   }
 
-  .pulse-term__tip-body {
+  .offer-term__tip-body {
     display: block;
   }
 
-  /* Its own token rather than reusing --pulse-term-accent: that one colours the
+  /* Its own token rather than reusing --offer-term-accent: that one colours the
      trigger against the PAGE, this one colours the cue against the TIP, and on
      an inverted tip those two are opposite colours. */
-  .pulse-term__tip-cue {
+  .offer-term__tip-cue {
     display: block;
     margin-top: 0.5rem;
-    color: var(--pulse-tip-cue, var(--sage));
+    color: var(--offer-tip-cue, var(--sage));
     font-weight: 500;
   }
 
-  .pulse-term:hover .pulse-term__tip,
-  .pulse-term:focus-within .pulse-term__tip {
+  .offer-term:hover .offer-term__tip,
+  .offer-term:focus-within .offer-term__tip {
     opacity: 1;
     visibility: visible;
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .pulse-term__tip {
+    .offer-term__tip {
       transition: none;
     }
   }
@@ -199,8 +202,8 @@ const tipId = `pulse-tip-${location}`;
   // most of the time.
   const PAD = 12;
 
-  for (const term of document.querySelectorAll<HTMLElement>('.pulse-term')) {
-    const tip = term.querySelector<HTMLElement>('.pulse-term__tip');
+  for (const term of document.querySelectorAll<HTMLElement>('.offer-term')) {
+    const tip = term.querySelector<HTMLElement>('.offer-term__tip');
     if (!tip) continue;
 
     const place = () => {

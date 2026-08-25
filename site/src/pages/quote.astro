@@ -1,0 +1,378 @@
+---
+/**
+ * The quote door (journey-redesign.md §5.3).
+ *
+ * The visitor this page exists for already knows what they want built and is
+ * trying to avoid a call. Until now the site offered them `/contact/?quote=1`,
+ * which swapped three lines of hero copy on a general contact form and promised
+ * nothing — a false door. Every page that pointed at it was routing a ready
+ * buyer into the top of the funnel.
+ *
+ * Two commitments this page makes that nothing else on the site makes, and that
+ * are the entire reason it converts: **a written number** and **two business
+ * days**. Both are stated in the hero, restated under the button, and repeated
+ * in the confirmation email (`api/contact.ts`). If either becomes untrue, change
+ * it in lib/offer.js — QUOTE_PROMISE is the single source.
+ *
+ * The honesty note is not decoration either. Panta will sometimes want to
+ * recommend a review or the Plan instead, and a page that hides that is setting
+ * up the reply as a bait-and-switch. Saying it up front is what makes the
+ * recommendation land as advice when it arrives.
+ *
+ * Posts to /api/contact like every other form on the site — one handler, one
+ * inbox, one submission format. `need` and `budget` are new optional fields
+ * that route echoes into the mail body; nothing else about the endpoint moved.
+ */
+import Base from '../layouts/Base.astro';
+import SectionViews from '../components/SectionViews.astro';
+import { getServices, getTestimonial } from '../lib/sanity.js';
+import { OFFER, PLAN, QUOTE_PROMISE, ROUTES } from '../lib/offer.js';
+
+// The dropdown is the service list plus the two answers that are not services:
+// the Plan (a paid engagement, not one of the five) and "not sure", which has
+// to be an option or the people who pick it invent one in the textarea.
+//
+// Sanity-driven for the same reason the nav is: the number of services is data.
+// `indexLabel` first — these are option labels in a narrow control.
+const services = (await getServices()) ?? [];
+const NEEDS = [
+  ...services.map((s) => ({ value: s.slug, label: s.indexLabel || s.title })),
+  { value: 'plan', label: PLAN.Name },
+  { value: 'small-tool', label: 'A small internal tool' },
+  { value: 'not-sure', label: 'Not sure yet' },
+];
+
+// Optional and deliberately coarse. A required budget field on a quote form is
+// a qualification gate, and this page's whole premise is that the visitor has
+// already qualified themselves. Bands rather than a number so nobody has to
+// commit to a figure they have not been given by a board yet.
+const BUDGETS = [
+  'Under $2,000',
+  '$2,000 – $5,000',
+  '$5,000 – $10,000',
+  '$10,000 +',
+  'Not established yet',
+];
+
+const testimonial = await getTestimonial();
+
+const description =
+  'Already know what you need built? Send the brief and get a fixed-price quote in writing within two business days — no call required.';
+
+const quoteSchema = {
+  '@context': 'https://schema.org',
+  '@type': 'ContactPage',
+  name: 'Request a quote — Panta',
+  description,
+};
+---
+<Base title="Request a quote — Panta" description={description} schema={[quoteSchema]}>
+  <section class="section section--dark" style="padding-block: clamp(3rem, 7vw, 5rem);">
+    <div class="container" style="max-width: 46rem;">
+      <p class="label">Request a quote</p>
+      <h1 style="font-size: clamp(2.2rem, 4.5vw, 3.2rem);">Tell us what you need built.</h1>
+      <p class="lede">
+        If you already know the scope, skip the call. Send the brief and you&rsquo;ll have a
+        fixed-price quote in writing within two business days — or a short note saying what
+        we&rsquo;d need to know first.
+      </p>
+      <p class="qt-strip">Written quote · 2 business days · no call required</p>
+    </div>
+  </section>
+
+  <section class="section" data-section="quote_form">
+    <div class="container qt-grid">
+      <div>
+        <p class="form-status form-status--ok" id="status-sent" hidden>
+          Got it. You&rsquo;ll have a written quote — or a question — within two business days.
+        </p>
+        <p class="form-status form-status--err" id="status-error" hidden>
+          Something went wrong sending that. Email the brief to
+          <a href="mailto:hello@panta.llc">hello@panta.llc</a> instead and we&rsquo;ll pick it up.
+        </p>
+
+        <form class="form-grid" method="post" action="/api/contact" id="quote-form">
+          <input type="hidden" name="source" value="quote_page" />
+          {/* Names the allowlist key in /api/contact, not a URL — see the
+              open-redirect note there. Without it a submission lands on
+              /contact/?sent=1 and the quote path loses its conversion. */}
+          <input type="hidden" name="return_to" value="quote" />
+
+          {/* Honeypot — real visitors never fill this. Named `company_url`, not
+              `website`: password managers autofill the latter and were silently
+              swallowing real submissions. */}
+          <div class="hp-field" aria-hidden="true">
+            <label for="company_url">Leave this field empty</label>
+            <input type="text" id="company_url" name="company_url" tabindex="-1" autocomplete="off" value="" />
+          </div>
+
+          <div class="qt-row">
+            <div>
+              <label for="name">Your name</label>
+              <input type="text" id="name" name="name" autocomplete="name" required />
+            </div>
+            <div>
+              <label for="email">Email</label>
+              <input type="email" id="email" name="email" autocomplete="email" required />
+            </div>
+          </div>
+
+          <div>
+            <label for="org">Organization or current website <span class="opt">(optional)</span></label>
+            <input type="text" id="org" name="org" autocomplete="organization" />
+          </div>
+
+          <div>
+            <label for="need">What do you need?</label>
+            <select id="need" name="need">
+              {NEEDS.map((n) => <option value={n.value}>{n.label}</option>)}
+            </select>
+          </div>
+
+          <div>
+            <label for="message">Describe it</label>
+            <textarea
+              id="message"
+              name="message"
+              rows="6"
+              required
+              placeholder="What you have now, what you need built, and roughly when you need it. Pages, features, deadlines, anything already decided — the more specific, the closer the number."
+            ></textarea>
+          </div>
+
+          <div>
+            <label for="budget">Budget range <span class="opt">(optional)</span></label>
+            <select id="budget" name="budget">
+              <option value="">Prefer not to say</option>
+              {BUDGETS.map((b) => <option value={b}>{b}</option>)}
+            </select>
+            <p class="hint">
+              Not a filter. It tells us whether to quote the whole thing or the version that
+              fits — and we&rsquo;ll say honestly if neither is worth doing.
+            </p>
+          </div>
+
+          <div>
+            <button type="submit" class="btn btn--filled">Send the brief</button>
+            <p class="hint" style="margin-top: 0.6rem;">{QUOTE_PROMISE}</p>
+          </div>
+        </form>
+      </div>
+
+      <aside class="qt-aside">
+        {/* The honesty note from §5.3, verbatim in substance: Panta will
+            sometimes want to recommend something other than what was asked for,
+            and saying so before it happens is what keeps that recommendation
+            from reading as a bait-and-switch when it arrives. */}
+        <div class="qt-note">
+          <p class="label">One thing up front</p>
+          <p>
+            Sometimes we&rsquo;ll come back and suggest a review or a plan first — but
+            we&rsquo;ll say why, and we&rsquo;ll still give you the number you asked for.
+          </p>
+        </div>
+
+        {testimonial && (
+          <figure class="qt-quote">
+            <blockquote>“{testimonial.quote}”</blockquote>
+            <figcaption>— {testimonial.author}{testimonial.role ? `, ${testimonial.role}` : ''}</figcaption>
+          </figure>
+        )}
+
+        <div class="qt-alt">
+          <p class="label">Not sure of the scope yet?</p>
+          <p>
+            {OFFER.Name} is faster than guessing — 30 minutes, and{' '}
+            {OFFER.deliverable} you can quote against.
+          </p>
+          <a
+            class="qt-alt__link"
+            href={ROUTES.review}
+            data-track="cta_click"
+            data-track-cta="pulse_check"
+            data-track-location="quote_aside"
+          >Get a free review <span aria-hidden="true">→</span></a>
+          <p class="small" style="margin-top: 1rem;">
+            Want everything graded rather than one project scoped?
+            <a href={PLAN.href}>{PLAN.Name} →</a>
+          </p>
+        </div>
+      </aside>
+    </div>
+  </section>
+</Base>
+
+<SectionViews />
+
+<script>
+  const track = (window as any).pantaTrack ?? (() => {});
+
+  // The quote path is measured separately from the review path
+  // (journey-redesign.md §7) — that is the whole point of giving it its own
+  // URL. `quote_started` fires on first interaction with the form, so a page
+  // that gets read and abandoned is tellable apart from one that gets opened
+  // and half-filled.
+  const form = document.getElementById('quote-form');
+  let started = false;
+  form?.addEventListener(
+    'input',
+    () => {
+      if (started) return;
+      started = true;
+      track('quote_started');
+    },
+    { once: false }
+  );
+
+  // ?need=<slug> preselects the dropdown. Every quote door on the site passes
+  // it, so someone arriving from the brand page does not have to re-answer a
+  // question the link already knew the answer to.
+  //
+  // Matched against the option values that are actually rendered rather than
+  // trusted: the parameter is in the URL and therefore attacker-controllable,
+  // and assigning an unknown value would silently leave the control on its
+  // first option while looking like it had been set.
+  const params = new URLSearchParams(window.location.search);
+  const need = params.get('need');
+  const select = document.getElementById('need') as HTMLSelectElement | null;
+  if (need && select && Array.from(select.options).some((o) => o.value === need)) {
+    select.value = need;
+  }
+
+  // Submission result. The endpoint 303s back here with ?sent=1 or ?error=1 —
+  // the same redirect flow /contact/ uses, so there is no second response shape
+  // to keep in sync. `quote_submitted` is the door's conversion.
+  if (params.has('sent')) {
+    document.getElementById('status-sent')?.removeAttribute('hidden');
+    document.getElementById('quote-form')?.setAttribute('hidden', '');
+    track('quote_submitted');
+  } else if (params.has('error')) {
+    document.getElementById('status-error')?.removeAttribute('hidden');
+    track('quote_failed');
+  }
+</script>
+
+<style>
+  .qt-strip {
+    display: inline-block;
+    margin: 1.25rem 0 0;
+    padding: 0.5rem 0.85rem;
+    border: 1px solid rgba(245, 241, 231, 0.28);
+    border-radius: var(--radius);
+    background: rgba(245, 241, 231, 0.05);
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.03em;
+    color: var(--sage);
+  }
+
+  .qt-grid {
+    display: grid;
+    gap: clamp(2rem, 5vw, 3.5rem);
+    align-items: start;
+  }
+
+  @media (min-width: 900px) {
+    .qt-grid { grid-template-columns: minmax(0, 1.3fr) minmax(0, 0.85fr); }
+  }
+
+  .qt-row { display: grid; gap: 1rem; }
+  @media (min-width: 560px) {
+    .qt-row { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .opt { color: var(--stone-deep); font-weight: 400; }
+
+  .hint {
+    margin: 0.4rem 0 0;
+    font-size: 0.85rem;
+    line-height: 1.55;
+    color: var(--stone-deep);
+  }
+
+  select {
+    width: 100%;
+    padding: 0.7rem 0.85rem;
+    font-family: var(--font-sans);
+    font-size: 0.95rem;
+    color: var(--charcoal);
+    background: var(--cream);
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+  }
+
+  select:focus-visible {
+    outline: 2px solid var(--bamboo-deep);
+    outline-offset: 1px;
+  }
+
+  .qt-aside { display: grid; gap: 1.5rem; }
+
+  .qt-note,
+  .qt-alt {
+    padding: 1.35rem;
+    border: 1px solid var(--line);
+    border-radius: var(--radius);
+    background: var(--cream-soft);
+  }
+
+  .qt-note p:last-child,
+  .qt-alt p:last-child { margin-bottom: 0; }
+
+  .qt-alt__link {
+    display: inline-block;
+    margin-top: 0.5rem;
+    font-weight: 500;
+    color: var(--bamboo-deep);
+    text-decoration: none;
+  }
+
+  .qt-alt__link:hover { text-decoration: underline; }
+
+  .qt-quote {
+    margin: 0;
+    padding-left: 1.1rem;
+    border-left: 3px solid var(--sage);
+  }
+
+  .qt-quote blockquote {
+    margin: 0;
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    line-height: 1.5;
+  }
+
+  .qt-quote figcaption {
+    margin-top: 0.6rem;
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+  }
+
+  .form-status {
+    padding: 0.9rem 1.1rem;
+    border-radius: 8px;
+    margin-bottom: 1.25rem;
+    font-size: 0.95rem;
+  }
+
+  .form-status--ok {
+    background: #eef0e0;
+    border: 1px solid var(--sage);
+    color: var(--bamboo-deep);
+  }
+
+  .form-status--err {
+    background: #f7e9e4;
+    border: 1px solid #d9a08c;
+    color: #8a4a2f;
+  }
+
+  /* honeypot: hidden from people, present for bots */
+  .hp-field {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+</style>

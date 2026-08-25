@@ -36,7 +36,9 @@ export default defineConfig({
       // curious visitor arriving from search would each be counted as a
       // booking. It is reachable only by a scheduler redirect.
       filter: (page) =>
-        !['/journey', '/consultation-condensed', '/thanks'].some((p) => page.includes(p)),
+        !['/journey', '/consultation-condensed', '/hero-mockup', '/hero-centered', '/thanks'].some(
+          (p) => page.includes(p),
+        ),
     }),
   ],
 });

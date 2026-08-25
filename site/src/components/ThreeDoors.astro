@@ -1,0 +1,175 @@
+---
+/**
+ * The three doors, as a page's closing section.
+ *
+ * journey-redesign.md §1.1: keep the Review as the primary door, give the ready
+ * buyer a second (quote) and the not-yet visitor a third (newsletter). Every
+ * service page ends with all three. It replaces the two redundant review CTAs
+ * that used to close those pages — the same ask, printed twice, with no exit
+ * for either of the other two visitors.
+ *
+ * The hierarchy is deliberate and must survive editing: the review is a filled
+ * button, the quote is a ghost button, the newsletter is a line of text with a
+ * field. That ordering is the recommendation. Making all three equal would turn
+ * a recommendation into a menu, and a menu at the end of a page is where
+ * visitors leave.
+ *
+ * Filled-button budget: this spends ONE `.btn--filled` (check-launch.mjs rule
+ * 3d caps a page at two besides nav). The quote door is `.btn--ghost` for that
+ * reason as much as for hierarchy — a page carrying this section plus a hero
+ * CTA is at the cap, which is the intended ceiling.
+ */
+import NewsletterForm from './NewsletterForm.astro';
+import { DOORS, PLAN, QUOTE_PROMISE } from '../lib/offer.js';
+
+interface Props {
+  /** Analytics location, e.g. `service_brand-design_doors`. */
+  location: string;
+  heading?: string;
+  body?: string;
+  /** Prefills the quote form's "what do you need" dropdown. */
+  need?: string;
+  /** Drop the newsletter door on surfaces that already carry a signup. */
+  newsletter?: boolean;
+  class?: string;
+}
+const {
+  location,
+  heading = 'Three ways to start.',
+  body = 'Whichever one fits — none of them commits you to the next.',
+  need,
+  newsletter = true,
+  class: className,
+} = Astro.props;
+
+// The quote door carries the intent through as a query parameter rather than
+// as a second page, so /quote/ stays one URL with one funnel number.
+const quoteHref = need ? `${DOORS.quote.href}?need=${encodeURIComponent(need)}` : DOORS.quote.href;
+---
+<section class:list={['section section--bamboo doors', className]} data-section="doors">
+  <div class="container">
+    <h2 class="doors__head">{heading}</h2>
+    <p class="doors__body">{body}</p>
+
+    <div class="doors__grid">
+      <div class="doors__door">
+        <p class="doors__when">Not sure what’s wrong</p>
+        <p class="doors__what">{DOORS.review.body}</p>
+        <a
+          class="btn btn--filled"
+          href={DOORS.review.href}
+          data-track="cta_click"
+          data-track-cta={DOORS.review.cta}
+          data-track-location={location}
+        >{DOORS.review.label}</a>
+      </div>
+
+      <div class="doors__door">
+        <p class="doors__when">You know what you need built</p>
+        <p class="doors__what">{QUOTE_PROMISE} Or a short note saying what we’d need to know first.</p>
+        <a
+          class="btn btn--ghost doors__ghost"
+          href={quoteHref}
+          data-track="cta_click"
+          data-track-cta={DOORS.quote.cta}
+          data-track-location={location}
+        >{DOORS.quote.label}</a>
+      </div>
+    </div>
+
+    {newsletter && (
+      <NewsletterForm
+        source={location}
+        variant="inline"
+        heading="Not ready for either?"
+        body={DOORS.pulse.label + ' — one useful idea, no funnel.'}
+        class="doors__nl"
+      />
+    )}
+
+    <p class="doors__plan">
+      Want the whole picture graded, not just a conversation? That’s
+      <a href={PLAN.href} data-track="cta_click" data-track-cta="plan" data-track-location={location}>{PLAN.name}</a>.
+    </p>
+  </div>
+</section>
+
+<style>
+  .doors__head {
+    font-family: var(--font-serif);
+    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
+    color: var(--cream);
+    margin: 0;
+  }
+
+  .doors__body {
+    color: var(--cream);
+    opacity: 0.85;
+    margin: 0.5rem 0 0;
+    max-width: 52ch;
+  }
+
+  .doors__grid {
+    display: grid;
+    gap: 1.25rem;
+    margin-top: 2rem;
+  }
+
+  @media (min-width: 760px) {
+    .doors__grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  }
+
+  .doors__door {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.6rem;
+    padding: 1.4rem;
+    border: 1px solid rgba(245, 241, 231, 0.32);
+    border-radius: var(--radius);
+    background: rgba(38, 37, 31, 0.1);
+  }
+
+  .doors__when {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--cream);
+    opacity: 0.8;
+    margin: 0;
+  }
+
+  .doors__what {
+    margin: 0;
+    color: var(--cream);
+    font-size: 0.95rem;
+    line-height: 1.6;
+    /* Pushes the button to the foot of the card so the two doors' buttons line
+       up regardless of how long each promise runs. */
+    flex: 1;
+  }
+
+  /* .btn--ghost is charcoal-on-transparent by default, which on bamboo is
+     3.4:1. Cream keeps the ghost reading as secondary without failing AA. */
+  .doors__ghost {
+    border-color: var(--cream);
+    color: var(--cream);
+  }
+
+  .doors__ghost:hover {
+    background: var(--cream);
+    color: var(--charcoal);
+  }
+
+  .doors__nl { margin-top: 1.5rem; }
+
+  .doors__plan {
+    margin: 1.5rem 0 0;
+    font-size: 0.9rem;
+    color: var(--cream);
+    opacity: 0.9;
+  }
+
+  .doors__plan a { color: var(--cream); }
+</style>

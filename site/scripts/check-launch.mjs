@@ -169,18 +169,77 @@ for (const file of files) {
 }
 
 // --- 4. buttons describe, copy brands (§7.1) --------------------------------
-// No button may read "Pulse Check". Checks anchor/button text only.
+// A button must pass the no-context test: it names the action, never the offer.
+// "The Review" is the offer's name (journey-redesign.md §3) and belongs in
+// headlines and microcopy — the button says "Get a free review".
+//
+// The old form of this rule matched "Pulse Check" and is now rule 4b, which
+// catches the retired name anywhere on the page rather than only on buttons.
+// The pattern here is capitalised and word-bounded on purpose: "Get a free
+// review" is the correct label and must not trip it.
 for (const file of files) {
   const html = readFileSync(file, 'utf8')
   for (const m of html.matchAll(/<(?:a|button)\b[^>]*class="[^"]*btn[^"]*"[^>]*>([\s\S]*?)<\/(?:a|button)>/g)) {
     const label = m[1].replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim()
-    if (/pulse check/i.test(label)) {
+    if (/pulse check/i.test(label) || /\bThe Review\b/.test(label)) {
       problems.push({
         kind: 'naming rule',
         where: file.replace(DIST, '') || '/',
         detail: `button reads "${label}" — buttons describe, copy brands`,
       })
     }
+  }
+}
+
+// --- 4b. the retired offer name (journey-redesign.md §3) --------------------
+// "Pulse Check" was the entry offer's name and is now "the Review". Copy lives
+// in three places — this repo, the Sanity dataset, and a Studio an editor can
+// type into — so the rename can be undone from outside the codebase by someone
+// who never saw the decision. This is the only thing that would notice.
+//
+// Scoped to VISIBLE text, and deliberately two words: "Pulse" on its own is the
+// newsletter and is correct everywhere it appears.
+for (const file of files) {
+  const html = readFileSync(file, 'utf8')
+  const text = html
+    .replace(/<script[\s\S]*?<\/script>/g, ' ')
+    .replace(/<style[\s\S]*?<\/style>/g, ' ')
+    .replace(/<[^>]+>/g, ' ')
+  if (/pulse check/i.test(text)) {
+    problems.push({
+      kind: 'naming rule',
+      where: file.replace(DIST, '') || '/',
+      detail: '"Pulse Check" — the offer is called the Review (journey-redesign.md §3)',
+    })
+  }
+}
+
+// --- 4c. the three doors reach every page (journey-redesign.md §1.1) --------
+// Every page gives the ready buyer a quote path and the not-yet visitor a
+// newsletter. The newsletter is in the footer sitewide and the quote link is in
+// the footer nav, so this is really a check that the layout still renders them —
+// but that is exactly the regression worth catching: both arrive via Base.astro,
+// and a page that stops using it loses two thirds of the funnel silently.
+//
+// /thanks/ is exempt: it is reached only by a scheduler redirect after a booking
+// is already made, and offering someone three ways to start at that moment is
+// noise. Prototype pages are exempt for the same reason they are out of the
+// sitemap — they are not part of the journey yet.
+const DOOR_EXEMPT = ['/thanks/', '/journey/', '/consultation-condensed/', '/hero-mockup/', '/hero-centered/']
+for (const file of files) {
+  const where = file.replace(DIST, '').replace(/index\.html$/, '') || '/'
+  if (DOOR_EXEMPT.includes(where)) continue
+  const html = readFileSync(file, 'utf8')
+  const missing = [
+    html.includes('href="/quote/') ? null : 'no quote link',
+    html.includes('/api/subscribe') ? null : 'no newsletter signup',
+  ].filter(Boolean)
+  if (missing.length) {
+    problems.push({
+      kind: 'three doors',
+      where,
+      detail: `${missing.join(' · ')} — every page carries all three doors`,
+    })
   }
 }
 

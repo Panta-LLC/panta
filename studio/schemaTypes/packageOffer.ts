@@ -100,6 +100,13 @@ export default defineType({
         'The capability this package draws on. Load-bearing: until Page ready is on, the homepage card links here instead. A package with neither renders as an unlinked card.',
     }),
     defineField({
+      name: 'anchor',
+      type: 'string',
+      group: 'index',
+      description:
+        'Optional #fragment on the service page above, for a package whose home is a SECTION of that page rather than the page itself (e.g. "small-tools" on Operations). Ignored unless the service exists and is Page ready — appending a fragment to the /services/#slug fallback would produce a URL that scrolls nowhere. Must match an id actually rendered on that page.',
+    }),
+    defineField({
       name: 'contentGaps',
       type: 'array',
       group: 'index',

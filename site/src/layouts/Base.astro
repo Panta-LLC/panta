@@ -3,7 +3,9 @@ import '../styles/global.css';
 import RippleMark from '../components/RippleMark.astro';
 import Analytics from '../components/Analytics.astro';
 import SocialLinks from '../components/SocialLinks.astro';
+import NewsletterForm from '../components/NewsletterForm.astro';
 import { getDoc, getServices } from '../lib/sanity.js';
+import { DOORS, QUOTE_PROMISE, ROUTES } from '../lib/offer.js';
 import { normalizeSocialProfiles } from '../lib/social.js';
 import { serviceHref } from '../lib/pillars.js';
 
@@ -115,19 +117,25 @@ const megaQuickLinks = [
   // and what they walk away with — scrolled off above them. See the rule in
   // index.astro. Buttons that do promise a slot ("or pick a time now") still
   // deep-link.
-  { href: '/consultation/', label: 'Get a free review', cta: 'consultation' },
+  { href: ROUTES.review, label: 'Get a free review', cta: 'consultation' },
+  // The second door (journey-redesign.md §1.1). It was `/contact/?quote=1` and
+  // is a real page now; the mega menu is where a visitor who arrived knowing
+  // what they need should be able to find it without reading a service page.
+  { href: ROUTES.quote, label: 'Request a quote', cta: 'quote_request' },
+  { href: ROUTES.process, label: 'How a project runs', cta: 'process' },
   // Web design & development was here; it is now in the enumerated list above,
   // and a "Start here" row repeating a link one row up is not a shortcut.
-  { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
+  { href: ROUTES.plan, label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
   { href: '/contact/', label: 'Contact', cta: 'contact' },
 ];
 
 const footerLinks = [
   // The page top, not #book — same reason as megaQuickLinks above.
-  { href: '/consultation/', label: 'Get a free review', cta: 'consultation' },
-  { href: '/services/web-design-development/', label: 'Web design & development', cta: 'websites' },
-  { href: '/digital-presence-plan/', label: 'The Digital Presence Plan', cta: 'plan' },
+  { href: ROUTES.review, label: 'Get a free review', cta: 'consultation' },
+  { href: ROUTES.quote, label: 'Request a quote', cta: 'quote_request' },
+  { href: ROUTES.process, label: 'How a project runs', cta: 'process' },
+  { href: ROUTES.plan, label: 'The Digital Presence Plan', cta: 'plan' },
   { href: '/work/', label: 'Client work', cta: 'work' },
   { href: '/services/', label: 'Services', cta: 'services' },
   { href: '/about/', label: 'About Panta', cta: 'about' },
@@ -156,12 +164,52 @@ const footerNextLinks = [
  */
 const mobileReachable = new Set([
   '/services/',
-  '/consultation/',
+  ROUTES.review,
   ...services.map((s) => serviceHref(s)),
   ...megaNext.map((p) => p.href),
   ...flatNavItems.map((i) => i.href),
 ]);
 const mobileQuickLinks = megaQuickLinks.filter((l) => !mobileReachable.has(l.href));
+
+/**
+ * The header chooser (journey-redesign.md §3).
+ *
+ * The persistent header button read "Get a free review" and committed every
+ * visitor to one of the three doors before they knew whether it fit. It reads
+ * "Start here" now and opens these three.
+ *
+ * Built on a native <details>, not a scripted popover: it opens on click and on
+ * Enter/Space, it is in the tab order, and it announces its own expanded state
+ * — all without JS. The only script is the one that closes it on Escape and on
+ * an outside click, which is an enhancement rather than a requirement.
+ *
+ * MOBILE IS DELIBERATELY DIFFERENT. Below 859px the compact header button stays
+ * a direct link to the review rather than becoming a second popover: a phone
+ * header is ~44px of shared space that already holds a hamburger, and burying
+ * the primary door one tap deeper there costs more than the sort is worth. The
+ * mobile panel carries all three doors as its first group instead — the
+ * "simple three-link sheet" §3 allows for.
+ */
+const startHereDoors = [
+  {
+    label: DOORS.review.label,
+    note: 'Not sure what’s wrong — 30 minutes, then a written readout.',
+    href: ROUTES.review,
+    cta: DOORS.review.cta,
+  },
+  {
+    label: 'Request a quote',
+    note: QUOTE_PROMISE,
+    href: ROUTES.quote,
+    cta: DOORS.quote.cta,
+  },
+  {
+    label: 'Just looking',
+    note: 'See what we have built for people like you.',
+    href: '/work/',
+    cta: 'work',
+  },
+];
 
 const currentPath = Astro.url.pathname.replace(/\/?$/, '/');
 
@@ -316,13 +364,38 @@ const workActive =
               {item.label}
             </a>
           ))}
-          <a
-            href={reviewHref}
-            class="btn btn--primary"
-            data-track="cta_click"
-            data-track-cta="consultation"
-            data-track-location="header"
-          >{settings.headerCtaLabel}</a>
+          {/* The chooser (journey-redesign.md §3). A <details>, so open/close,
+              keyboard and screen-reader state are the browser's job — see the
+              note on startHereDoors. `.btn--primary` sits on the <summary>,
+              which check-launch strips along with the rest of <header> before
+              counting filled buttons, so it costs nothing against the §7.3 cap. */}
+          <details class="start" data-start-here>
+            <summary class="btn btn--primary start__trigger">
+              Start here
+              <svg class="start__caret" width="10" height="6" viewBox="0 0 10 6" fill="none" aria-hidden="true">
+                <path d="M1 1l4 4 4-4" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" />
+              </svg>
+            </summary>
+            <div class="start__panel">
+              <p class="start__label">Where are you?</p>
+              <ul class="start__list">
+                {startHereDoors.map((d) => (
+                  <li>
+                    <a
+                      class="start__door"
+                      href={d.href}
+                      data-track="cta_click"
+                      data-track-cta={d.cta}
+                      data-track-location="header_chooser"
+                    >
+                      <span class="start__door-label">{d.label}<span class="start__arrow" aria-hidden="true">→</span></span>
+                      <span class="start__door-note">{d.note}</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </details>
         </nav>
         {/* Below 859px .site-nav is hidden and the CTA above goes with it, so
             the mobile header had no ask at all — only a hamburger concealing
@@ -344,6 +417,27 @@ const workActive =
       </div>
       <div class="mobile-nav" id="mobile-nav">
         <nav class="container mobile-nav__inner" aria-label="Mobile">
+          {/* The three doors, first and as a labelled group — the "simple
+              three-link sheet" §3 allows on mobile in place of the desktop
+              popover. They lead the panel because sorting the visitor is what
+              the panel is for; the service list answers a question they only
+              ask after choosing a door. */}
+          <p class="mobile-nav__label">Where are you?</p>
+          <ul class="mobile-nav__list mobile-nav__doors">
+            {startHereDoors.map((d) => (
+              <li>
+                <a
+                  href={d.href}
+                  data-track="cta_click"
+                  data-track-cta={d.cta}
+                  data-track-location="mobile_nav_chooser"
+                >
+                  <span class="mobile-nav__door-label">{d.label}</span>
+                  <span class="mobile-nav__door-note">{d.note}</span>
+                </a>
+              </li>
+            ))}
+          </ul>
           <p class="mobile-nav__label">What we do</p>
           <ul class="mobile-nav__list">
             <li>
@@ -442,22 +536,48 @@ const workActive =
         setOpen(!panel?.classList.contains('is-open'));
       });
 
+      // The header chooser. <details> handles opening, keyboard activation and
+      // its own aria-expanded state; these two listeners only add what a
+      // <details> does NOT do — close on Escape and close on an outside click.
+      // Everything below is an enhancement: with JS off the chooser still opens,
+      // still takes keyboard focus, and still closes on a second click of the
+      // trigger.
+      const startHere = document.querySelector<HTMLDetailsElement>('[data-start-here]');
+      const closeStartHere = (focusTrigger = false) => {
+        if (!startHere?.open) return;
+        startHere.open = false;
+        if (focusTrigger) startHere.querySelector('summary')?.focus();
+      };
+
       document.addEventListener('keydown', (e) => {
-        if (e.key === 'Escape' && panel?.classList.contains('is-open')) {
+        if (e.key !== 'Escape') return;
+        if (panel?.classList.contains('is-open')) {
           setOpen(false);
           toggle?.focus();
         }
+        closeStartHere(true);
       });
 
-      // Tap outside the header closes the panel.
+      // Tap outside the header closes the mobile panel; tap outside the chooser
+      // closes the chooser. Two different boundaries, so two tests — the chooser
+      // lives inside the header and would never close on the first one.
       document.addEventListener('click', (e) => {
+        if (!(e.target instanceof Node)) return;
         if (
           panel?.classList.contains('is-open') &&
-          e.target instanceof Node &&
           !document.querySelector('.site-header')?.contains(e.target)
         ) {
           setOpen(false);
         }
+        if (startHere && !startHere.contains(e.target)) closeStartHere();
+      });
+
+      // Leaving the chooser by keyboard closes it too, so a Tab off the last
+      // door does not leave an open panel floating over the page.
+      startHere?.addEventListener('focusout', (e) => {
+        const next = e.relatedTarget;
+        if (next instanceof Node && startHere.contains(next)) return;
+        closeStartHere();
       });
     </script>
 
@@ -467,6 +587,21 @@ const workActive =
 
     <footer class="site-footer">
       <div class="container">
+        {/* The third door, on every page (journey-redesign.md §1.1 and §5.1).
+            It used to exist on exactly two surfaces — the homepage Pulse strip
+            and the Pulse index — so a visitor who was not ready for either of
+            the other two doors had no exit anywhere else on the site.
+            `variant="inline"` because a bordered signup panel repeated in every
+            footer reads as an ad; the not-yet door is meant to be the quietest
+            of the three. */}
+        <div class="site-footer__nl">
+          <NewsletterForm
+            source="footer"
+            variant="inline"
+            heading="Not ready to talk yet?"
+            body={settings?.newsletterBlurb ?? 'One useful idea every other week. No fluff, no funnels.'}
+          />
+        </div>
         <div class="site-footer__grid">
           <div>
             <a href="/" class="brand" aria-label="Panta — home" style="color: var(--cream);">

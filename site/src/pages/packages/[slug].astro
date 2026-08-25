@@ -2,7 +2,7 @@
 import '@fontsource/ibm-plex-mono/400.css';
 import Base from '../../layouts/Base.astro';
 import Placeholder from '../../components/Placeholder.astro';
-import PulseTerm from '../../components/PulseTerm.astro';
+import ThreeDoors from '../../components/ThreeDoors.astro';
 import SectionViews from '../../components/SectionViews.astro';
 import { getPackage, getPackageSlugs } from '../../lib/sanity.js';
 import { serviceHref } from '../../lib/pillars.js';
@@ -49,20 +49,19 @@ const lede = paragraphs(hasText(p.heroLede) ? p.heroLede : p.summary);
 // Meta tags and JSON-LD take text, not markup.
 const metaDescription = p.seoDescription ?? toPlainText(p.summary);
 
-// Defaults live here, not in Sanity, so every page ends in a review CTA even if
-// an editor empties the fields. "Pulse Check" never appears on the button —
-// buttons describe, copy brands (§7.1).
-const CTA = {
+// Defaults live here, not in Sanity, so every page closes properly even if an
+// editor empties the fields. The close is the three doors now (§1.1), the same
+// as every service page — a package is the most decided a visitor gets before
+// asking for a number, so the quote door matters more here than anywhere.
+//
+// `ctaBody` is rich text on this type, so the fallback runs through
+// toPlainText: ThreeDoors takes a string, and handing it an array of HTML
+// paragraphs would render "[object Object]".
+const CLOSE = {
   title: p.ctaTitle ?? 'Not sure this is the right one?',
-  // paragraphs() takes the string default as readily as the rich-text field, so
-  // the fallback copy stays a plain string in the source where it is readable.
-  body: paragraphs(
-    hasText(p.ctaBody)
-      ? p.ctaBody
-      : 'Book a free 30-minute review and we will tell you honestly — including if the answer is a different package, or nothing at all. You will get a one-page written readout within 48 hours either way.'
-  ),
-  label: p.ctaLabel ?? 'Get a free review',
-  note: p.ctaNote ?? 'We call it the Pulse Check · readout within 48 hours',
+  body: hasText(p.ctaBody)
+    ? toPlainText(p.ctaBody)
+    : 'Take whichever door fits. If the answer turns out to be a different package, or nothing at all, the free review will tell you that honestly.',
 };
 
 const schema = [
@@ -175,23 +174,13 @@ const gaps = [
     </section>
   )}
 
-  <!-- ===================== closing review CTA (always) ===================== -->
-  <section class="section section--bamboo" data-section="cta">
-    <div class="container pkg-cta__inner">
-      <h2 class="pkg-cta__head">{CTA.title}</h2>
-      {CTA.body.map((html) => <p class="pkg-cta__body" set:html={html} />)}
-      <a
-        class="btn btn--filled"
-        href="/consultation/"
-        data-track="cta_click"
-        data-track-cta="pulse_check"
-        data-track-location={`package_${p.slug}_cta`}
-      >{CTA.label}</a>
-      <p class="pkg-cta__micro">
-        <PulseTerm text={CTA.note} location={`package_${p.slug}_cta`} />
-      </p>
-    </div>
-  </section>
+  <!-- ================= closing: three doors (always) ================= -->
+  <ThreeDoors
+    location={`package_${p.slug}_doors`}
+    heading={CLOSE.title}
+    body={CLOSE.body}
+    need={p.service?.slug ?? p.slug}
+  />
 </Base>
 
 <style>
@@ -241,38 +230,6 @@ const gaps = [
   .related__body { font-size: 0.9rem; color: var(--stone-deep); }
 
   /* --- closing CTA --- */
-  .pkg-cta__inner {
-    display: grid;
-    gap: 1rem;
-    justify-items: start;
-    max-width: 44rem;
-  }
-
-  .pkg-cta__head {
-    font-family: var(--font-serif);
-    font-size: clamp(1.5rem, 2.8vw, 2.1rem);
-    margin: 0;
-    color: var(--cream);
-  }
-
-  .pkg-cta__body {
-    font-size: 1rem;
-    line-height: 1.7;
-    color: var(--cream);
-    margin: 0;
-    max-width: 54ch;
-  }
-
-  .pkg-cta__micro {
-    font-family: var(--font-mono);
-    font-size: 0.68rem;
-    letter-spacing: 0.04em;
-    color: var(--cream);
-    opacity: 0.85;
-    margin: 0;
-    /* Cream on bamboo — the term's default accent (bamboo-deep) would vanish. */
-    --pulse-term-accent: var(--cream);
-  }
 </style>
 
 <SectionViews />
