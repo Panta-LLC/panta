@@ -12,26 +12,26 @@ export default defineType({
     defineField({name: 'replyLine', type: 'string', title: 'Reply Line'}),
     defineField({name: 'headerCtaLabel', type: 'string', title: 'Header Cta Label'}),
     // The one booking URL. /consultation/ derives the embed from it by adding
-    // ?embed=true (site/src/lib/booking.js), so there is nothing else to keep
-    // in sync and no way to have the embed pointing somewhere the fallback
-    // link doesn't.
+    // ?gv=true (site/src/lib/booking.js), so there is nothing else to keep in
+    // sync and no way to have the embed pointing somewhere the fallback link
+    // doesn't.
     defineField({
       name: 'scheduleUrl',
       type: 'url',
       title: 'Booking page URL',
       description:
-        'The Koalendar booking page, e.g. https://koalendar.com/e/your-page. Copy it from Koalendar → your event → Share. Paste the plain link; the site adds ?embed=true itself. Changing this changes both the embedded calendar and the "open in a new tab" fallback.',
+        'The Google Calendar appointment schedule, e.g. https://calendar.google.com/calendar/appointments/schedules/… — open the schedule in Google Calendar, choose Share → Embed, and copy the address out of the snippet. Paste it plain; the site adds ?gv=true itself. Do NOT paste the short calendar.app.google link: it works as a link but refuses to be embedded, so the page would fall back to "open in a new tab" and show no calendar. Changing this changes both the embedded calendar and that fallback link.',
     }),
     // Kept rather than deleted so the old value is not silently dropped and so
     // nobody re-adds a field with this name meaning something else. Nothing
-    // reads it.
+    // reads it — the embed URL is derived from Booking page URL above.
     defineField({
       name: 'calEmbedUrl',
       type: 'url',
       title: 'Cal Embed Url (retired)',
       readOnly: true,
       description:
-        'RETIRED — the Google Calendar embed URL, from before the switch to Koalendar. No longer read by the site. Safe to ignore.',
+        'RETIRED — the separate Google Calendar embed URL, from before the embed was derived from the booking link. No longer read by the site. Safe to ignore.',
     }),
 
     // --- homepage dynamic slots (PULSE-HOME-BUILD.md §6) ---
@@ -72,6 +72,7 @@ export default defineType({
       rows: 2,
       description: 'Body copy for the newsletter blocks on the homepage and Pulse index.',
     }),
+
     // --- copy that renders on more than one page -----------------------------
     // Both of these were literals in the codebase. They live here rather than on
     // a page singleton because neither belongs to one page: the steps render on

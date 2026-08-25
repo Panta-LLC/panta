@@ -30,7 +30,7 @@ which exposes `window.pantaTrack(event, props)` and a declarative
 | `case_study_read` | `study` | `/work/:slug/`, via `ReadDepth` — 75% of the article **and** 20s on page |
 | `pulse_article_read` | `post`, `category` | `/pulse/:slug/`, same component and thresholds |
 | `outbound_email_click` | `address` | any `mailto:` link, anywhere |
-| `pulse_check_booked` | `cta_location`, `booking_type` | `/thanks/`, where Koalendar redirects after a booking — ⚠ **needs Koalendar Pro** |
+| `pulse_check_booked` | `cta_location`, `booking_type` | `/thanks/`, reached only by a post-booking redirect — ⚠ **dormant: Google Calendar has none** |
 
 Every one of these also carries `source_page` (the path it fired on) and, on
 pages that declare one, `service_line` (the service slug). Both are attached
@@ -171,10 +171,17 @@ Short on purpose, so the numbers are real. This is the only funnel that isolates
 the two things most worth knowing month to month: whether the page sells the
 call (step 1 → 2), and whether the scheduler closes it (step 2 → 3).
 
-Step 2 → 3 is the new one, and it is the only place a scheduler problem can
-surface at all — no times on offer, too many questions, a slow embed, a booking
-form that asks for something people won't give. Before Koalendar there was no
-way to see it, because the funnel ended at step 2.
+Step 2 → 3 is the only place a scheduler problem can surface at all — no times
+on offer, too many questions, a slow embed, a booking form that asks for
+something people won't give.
+
+⚠ **Step 3 currently reads zero.** The scheduler is a Google Calendar
+appointment schedule, which has no post-booking redirect, so nothing reaches
+`/thanks/` and the funnel really ends at step 2. Build it anyway: funnels are
+not retroactive, and this one starts counting the day a scheduler that can
+redirect is in place ([`FUNNEL-MEASUREMENT.md`](FUNNEL-MEASUREMENT.md) §5).
+Until then, compare `booking_viewed` against the bookings in Google Calendar by
+hand.
 
 ### 2. The spine — quarterly
 
@@ -243,12 +250,13 @@ lose the comparison you spent a year earning.
 
 ## Notes on the booking step
 
-The scheduler reports nothing to the host page; the conversion is counted on
-[`/thanks/`](../site/src/pages/thanks.astro), which Koalendar redirects to. The
-note above the `IntersectionObserver` in
-[`consultation.astro`](../site/src/pages/consultation.astro) still stands: do
-not invent a `booking_completed` on the consultation page, which cannot observe
-one.
+The scheduler reports nothing to the host page, and the Google Calendar embed
+cannot redirect anywhere either — so the conversion, which is counted on
+[`/thanks/`](../site/src/pages/thanks.astro), has nothing sending visitors to
+it. The note above the `IntersectionObserver` in
+[`consultation.astro`](../site/src/pages/consultation.astro) is the rule that
+follows: do not invent a `booking_completed` on the consultation page, which
+cannot observe one. `booking_viewed` is the last honest step.
 
 **Reading the placement breakdown.** Filter the funnel report on `cta_click`'s
 `location`. It is deliberately **not** carried through the navigation as a
