@@ -1,6 +1,51 @@
 import { defineConfig } from 'astro/config';
 import sitemap from '@astrojs/sitemap';
 import vercel from '@astrojs/vercel';
+import { createClient } from '@sanity/client';
+
+/**
+ * Package pages that are BUILT but carry <meta name="robots" content="noindex">.
+ *
+ * packages/[slug].astro builds a page for every LISTED package — not only the
+ * page-ready ones — so an editor can preview the real URL before flipping the
+ * flag, and marks it noindex until `pageReady` is on. The sitemap must not list
+ * those: a URL that is both submitted and noindex is exactly the contradiction
+ * the filter below exists to prevent, and it was shipping five of them.
+ *
+ * Derived from the same flag the template reads rather than hardcoded, so
+ * turning `pageReady` on in the Studio adds the page to the sitemap on the next
+ * build with no change here. A hardcoded '/packages/' would have to be
+ * remembered and removed at exactly the wrong moment.
+ *
+ * On a query failure this excludes EVERY package page rather than none, and the
+ * build continues. Omitting a live page from the sitemap costs a little
+ * discovery; submitting a noindex one is a self-inflicted contradiction on a
+ * site that sells being findable.
+ */
+const noindexPackagePaths = async () => {
+  try {
+    const slugs = await createClient({
+      projectId: process.env.PUBLIC_SANITY_PROJECT_ID ?? 'tdi9ql1j',
+      dataset: process.env.PUBLIC_SANITY_DATASET ?? 'pantaco',
+      apiVersion: '2026-07-28',
+      useCdn: false,
+    }).fetch(
+      `*[_type == "packageOffer" && !(_id in path("drafts.**"))
+         && coalesce(listed, true) == true
+         && coalesce(pageReady, false) != true
+         && defined(slug.current)].slug.current`,
+    );
+    return slugs.map((slug) => `/packages/${slug}/`);
+  } catch (err) {
+    console.warn(
+      `[sitemap] could not read package pageReady flags (${err.message}) — ` +
+        'excluding all /packages/ from the sitemap for this build',
+    );
+    return ['/packages/'];
+  }
+};
+
+const NOINDEX_PATHS = await noindexPackagePaths();
 
 export default defineConfig({
   // The host that actually serves a 200. The apex allthingspanta.com 308s to
@@ -35,10 +80,18 @@ export default defineConfig({
       // fires the pulse_check_booked conversion on load, so a crawler or a
       // curious visitor arriving from search would each be counted as a
       // booking. It is reachable only by a scheduler redirect.
+      //
+      // NOINDEX_PATHS above adds the package pages that are built-but-noindex,
+      // resolved from Sanity at config time.
       filter: (page) =>
-        !['/journey', '/consultation-condensed', '/hero-mockup', '/hero-centered', '/thanks'].some(
-          (p) => page.includes(p),
-        ),
+        ![
+          '/journey',
+          '/consultation-condensed',
+          '/hero-mockup',
+          '/hero-centered',
+          '/thanks',
+          ...NOINDEX_PATHS,
+        ].some((p) => page.includes(p)),
     }),
   ],
 });

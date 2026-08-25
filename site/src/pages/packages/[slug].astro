@@ -75,9 +75,15 @@ const schema = [
 
 /** A section promised by the page but not yet written blocks the build. */
 const gap = (cond, note) => (p.pageReady && cond ? note : null);
+// `heroLede` is deliberately NOT a gap. `lede` above already falls back to
+// `summary`, which is required by the schema and populated on every package —
+// so a missing hero lede renders a correct page, not an empty one. Flagging it
+// here made the template contradict itself: the fallback said "summary is an
+// acceptable opening", the gap check said "no lede must block launch", and the
+// result was that no package could go page-ready without copy that would only
+// restate the summary. `bullets` stays a gap because nothing falls back to it.
 const gaps = [
   gap(!bullets.length, `what "${p.title}" includes — 3 or more lines`),
-  gap(!hasText(p.heroLede), `hero lede for "${p.title}"`),
   ...(p.contentGaps ?? []),
 ].filter(Boolean);
 ---
