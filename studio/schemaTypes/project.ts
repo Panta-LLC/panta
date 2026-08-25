@@ -19,9 +19,66 @@ export default defineType({
     defineField({name: 'url', type: 'url', description: 'Live site, if shareable'}),
     defineField({name: 'order', type: 'number', description: 'Sort order (lowest first)'}),
     defineField({name: 'featured', type: 'boolean', description: 'Show on the Websites page'}),
-    defineField({name: 'thumbnail', type: 'string', description: 'Path to card image, e.g. /work/name-thumb.webp'}),
-    defineField({name: 'image', type: 'string', description: 'Path to full-width case study image'}),
-    defineField({name: 'imageAlt', type: 'string'}),
+    // ------------------------------------------------------------ imagery --
+    // Managed assets, added because the string paths below made a case study
+    // uneditable: adding one meant committing a .webp to the repo, which is not
+    // something an editor can do. These take precedence everywhere; the strings
+    // remain as the fallback until the last project is migrated.
+    defineField({
+      name: 'thumbnailImage',
+      type: 'image',
+      title: 'Card image',
+      options: {hotspot: true},
+      description:
+        'The image on the /work/ card, the homepage case card and the service proof strip. Takes precedence over the legacy path field below. Landscape — it renders in a fixed ratio and a portrait crop will be cut.',
+      fields: [
+        defineField({
+          name: 'alt',
+          type: 'string',
+          description: 'Falls back to “<project name> website” if empty.',
+        }),
+      ],
+    }),
+    defineField({
+      name: 'heroImage',
+      type: 'image',
+      title: 'Case study image',
+      options: {hotspot: true},
+      description:
+        'The full-width image at the top of /work/<slug>/. Takes precedence over the legacy path field below. Optional — the case study renders without it.',
+      fields: [
+        defineField({
+          name: 'alt',
+          type: 'string',
+          description: 'Falls back to “<project name> website” if empty.',
+        }),
+      ],
+    }),
+
+    // --- legacy path fields -------------------------------------------------
+    // Kept, not deleted: they still carry the launch images for any project not
+    // yet migrated, and every template reads them only when the managed asset
+    // above is absent. Deleting one before its project has a real asset would
+    // blank that image with no error anywhere.
+    defineField({
+      name: 'thumbnail',
+      type: 'string',
+      title: 'Card image path (legacy)',
+      description:
+        'LEGACY — a path to a file committed in the repo, e.g. /work/name-thumb.webp. Ignored when Card image above is set. Prefer uploading the image; a path here cannot be changed without a deploy.',
+    }),
+    defineField({
+      name: 'image',
+      type: 'string',
+      title: 'Case study image path (legacy)',
+      description:
+        'LEGACY — a path to a file committed in the repo. Ignored when Case study image above is set.',
+    }),
+    defineField({
+      name: 'imageAlt',
+      type: 'string',
+      description: 'Alt text for the legacy path fields. Managed images carry their own alt.',
+    }),
     defineField({name: 'summary', type: 'text', description: 'One or two sentences shown on the work card'}),
     defineField({name: 'situation', type: 'text', description: 'Short situation line (legacy card field)'}),
     defineField({
@@ -63,4 +120,14 @@ export default defineType({
     defineField({name: 'articleUrl', type: 'url', description: 'Optional deeper write-up elsewhere'}),
     defineField({name: 'articleLabel', type: 'string'}),
   ],
+  // Without this the Studio list shows every project as "Untitled": Sanity's
+  // default preview selects a `title` field, and this type's title is `name`.
+  preview: {
+    select: {title: 'name', client: 'client.name', year: 'year', media: 'thumbnailImage'},
+    prepare: ({title, client, year, media}) => ({
+      title: title ?? 'Untitled project',
+      subtitle: [client, year].filter(Boolean).join(' · '),
+      media,
+    }),
+  },
 })

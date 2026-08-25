@@ -2,17 +2,51 @@
  * Launch gate. Run after `astro build`; exits non-zero if the site is not
  * shippable.
  *
- *   npm run check:launch
+ *   npm run check:launch      # every check is fatal (pre-push / review)
+ *   node scripts/check-launch.mjs --build   # only HARD checks are fatal
  *
  * PULSE-HOME-BUILD.md §7.4 — "bracketed placeholders must block launch, not
  * ship" — plus the §9 content blockers and the §7.5 copy bans. The point is
  * that none of these can be forgotten: they fail a command rather than relying
  * on someone remembering to look.
+ *
+ * ── Two modes, and why ─────────────────────────────────────────────────────
+ * `--build` runs inside `npm run build`, which is what Vercel executes, so
+ * anything fatal there blocks every deploy — including deploys triggered by an
+ * editor publishing in Sanity. That makes the gate's severity an operational
+ * decision, not just an editorial one:
+ *
+ *   HARD (fatal in both modes): a placeholder, or a banned word. These are
+ *   things that must never reach a visitor, and neither can be introduced
+ *   except by someone writing them. This matters more now that the homepage
+ *   FAQ and process steps are edited in the Studio: an editor can put
+ *   "seamless" on the homepage without opening the repo, and this is the only
+ *   thing standing between that and production.
+ *
+ *   SOFT (fatal only in the default mode): everything else — the §9 content
+ *   minimums, the filled-button cap, the three-doors rule. These describe work
+ *   that is not finished yet rather than damage. Blocking deploys on "the Pulse
+ *   strip has 1 of 3 posts" would mean no content change could ship until two
+ *   more articles exist, which punishes the wrong action.
+ *
+ * HARD checks skip noindex pages. A page carrying <meta name="robots"
+ * noindex> is not published surface — it is a prototype or a package page
+ * being previewed before `pageReady` is flipped, and a placeholder on one is
+ * the intended state of that workflow, not a launch blocker.
  */
 import {readFileSync, readdirSync, statSync} from 'node:fs'
 import {join} from 'node:path'
 
 const DIST = 'dist/client'
+
+/** `--build` runs inside the deploy; only HARD problems are fatal there. */
+const BUILD_MODE = process.argv.includes('--build')
+
+/** Kinds that must never reach a visitor. Everything else is unfinished work. */
+const HARD_KINDS = new Set(['placeholder', 'banned word'])
+
+/** A page told not to be indexed is not published surface — see the header. */
+const isNoindex = (html) => /<meta[^>]+name="robots"[^>]+content="[^"]*noindex/i.test(html)
 
 function htmlFiles(dir, out = []) {
   for (const entry of readdirSync(dir)) {
@@ -244,23 +278,57 @@ for (const file of files) {
 }
 
 // --- report -----------------------------------------------------------------
-if (!problems.length) {
-  console.log(`✓ Launch checks passed across ${files.length} pages.`)
+// In build mode a HARD problem on a noindex page is dropped rather than
+// downgraded: it is not a lesser blocker, it is not a blocker at all.
+const noindexPaths = new Set(
+  files
+    .filter((f) => isNoindex(readFileSync(f, 'utf8')))
+    .map((f) => f.replace(DIST, '').replace(/index\.html$/, '') || '/'),
+)
+const normalise = (where) => where.replace(/index\.html$/, '') || '/'
+
+const isFatal = (p) =>
+  BUILD_MODE ? HARD_KINDS.has(p.kind) && !noindexPaths.has(normalise(p.where)) : true
+
+const fatal = problems.filter(isFatal)
+const warnings = problems.filter((p) => !isFatal(p))
+
+function render(list, heading) {
+  console.log(heading)
+  const byKind = list.reduce((acc, p) => ((acc[p.kind] ??= []).push(p), acc), {})
+  for (const [kind, items] of Object.entries(byKind)) {
+    console.log(`  ${kind.toUpperCase()}`)
+    const seen = new Set()
+    for (const i of items) {
+      const key = `${i.where}|${i.detail}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      console.log(`    ${i.where.padEnd(28)} ${i.detail}`)
+    }
+    console.log()
+  }
+}
+
+if (warnings.length) {
+  render(
+    warnings,
+    `\n⚠ ${warnings.length} unfinished item${warnings.length === 1 ? '' : 's'}` +
+      `${BUILD_MODE ? ' (not blocking the build)' : ''}:\n`,
+  )
+}
+
+if (!fatal.length) {
+  console.log(
+    `✓ Launch checks passed across ${files.length} pages` +
+      `${BUILD_MODE && warnings.length ? ` — ${warnings.length} warning(s) above` : ''}.`,
+  )
   process.exit(0)
 }
 
-const byKind = problems.reduce((acc, p) => ((acc[p.kind] ??= []).push(p), acc), {})
-console.log(`\n✗ ${problems.length} launch blocker${problems.length === 1 ? '' : 's'}:\n`)
-for (const [kind, items] of Object.entries(byKind)) {
-  console.log(`  ${kind.toUpperCase()}`)
-  const seen = new Set()
-  for (const i of items) {
-    const key = `${i.where}|${i.detail}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    console.log(`    ${i.where.padEnd(28)} ${i.detail}`)
-  }
-  console.log()
-}
-console.log('These are content blockers, not code bugs — see PULSE-HOME-BUILD.md §9.\n')
+render(fatal, `\n✗ ${fatal.length} launch blocker${fatal.length === 1 ? '' : 's'}:\n`)
+console.log(
+  BUILD_MODE
+    ? 'These block the deploy: a placeholder or a banned word on an indexable page.\n'
+    : 'These are content blockers, not code bugs — see PULSE-HOME-BUILD.md §9.\n',
+)
 process.exit(1)

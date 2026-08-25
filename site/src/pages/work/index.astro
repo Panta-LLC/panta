@@ -72,11 +72,11 @@ const TAGS = (() => {
               data-tags={tags}
               {...props}
             >
-              {p.thumbnail && (
+              {p.thumb && (
                 <img
                   class="work-thumb"
-                  src={p.thumbnail}
-                  alt={p.imageAlt ?? `${p.name} website`}
+                  src={p.thumb}
+                  alt={p.thumbAlt}
                   width="640"
                   height="400"
                   loading="lazy"

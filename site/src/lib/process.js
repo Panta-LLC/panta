@@ -11,6 +11,16 @@
  * are the extra detail /process/ adds and the homepage has no room for, which
  * is why they live here rather than being a second array on that page.
  */
+/**
+ * The launch copy, and the fallback. `siteSettings.processSteps` is the live
+ * source (studio/schemaTypes/siteSettings.ts) — this array is what renders when
+ * that field is empty or the fetch returns nothing, so an unedited Studio still
+ * produces today's page rather than a blank section.
+ *
+ * Kept in the repo rather than deleted after seeding for the same reason the
+ * seeded service copy is: a diff is where copy gets reviewed, and a build that
+ * loses its Sanity connection must still ship the three commitments intact.
+ */
 export const STEPS = [
   {
     n: '1',
@@ -38,3 +48,14 @@ export const STEPS = [
       'the finished thing, in accounts you own, with whatever handover you need to run it without us. Support afterward is agreed, not assumed.',
   },
 ];
+
+/**
+ * The steps to render: the Studio's if an editor has written them, otherwise
+ * the launch copy above.
+ *
+ * All-or-nothing rather than field-by-field. A per-field merge would let a
+ * half-filled Studio array silently mix new copy with old, which is exactly how
+ * two versions of a commitment end up on one page.
+ */
+export const resolveSteps = (fromCms) =>
+  Array.isArray(fromCms) && fromCms.length > 0 ? fromCms : STEPS;

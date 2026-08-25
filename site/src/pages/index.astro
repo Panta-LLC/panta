@@ -16,7 +16,7 @@ import { getDoc, getFeaturedCaseStudy, getPackages, getPosts, getProjects, getSe
 import { packageHref } from '../lib/packages.js';
 import { serviceHref } from '../lib/pillars.js';
 import { faqSchema } from '../lib/schema.js';
-import { STEPS } from '../lib/process.js';
+import { resolveSteps } from '../lib/process.js';
 import { PLAN, ROUTES } from '../lib/offer.js';
 
 // Homepage per PULSE-HOME-BUILD.md §4 and panta-homepage-copy.md. Nine
@@ -202,7 +202,14 @@ const CASES = [caseStudy, ...otherProjects].filter(Boolean).slice(0, 2);
 //
 // Note question 1: "fixed price, plain terms" is promised in STEPS[1] and no
 // number appears anywhere on the site. This is where that gets an answer.
-const FAQS = [
+// Live copy first, launch copy as the floor. Both of these now come from
+// siteSettings — see the note on that type. The fallback stays because an empty
+// field must render the shipped page, not an empty section, and because the
+// FAQ answers feed JSON-LD: a page that emits an FAQPage with no questions is
+// worse than one that emits none.
+const STEPS = resolveSteps(settings?.processSteps);
+const FAQS = (settings?.homeFaqs ?? []).filter((f) => f?.q && f?.a);
+const FAQS_FALLBACK = [
   {
     q: 'What does working together cost?',
     // The band is the point: this FAQ sits immediately before the ask, and its
@@ -226,6 +233,7 @@ const FAQS = [
     a: 'No. Each project is delivered with your ownership and control. We are always available to answer questions and provide support, but you are not locked in to working with us. You can continue to use Panta as a partner and a resource, or you can choose to work with someone else.'
   },
 ];
+const FAQ_LIST = FAQS.length > 0 ? FAQS : FAQS_FALLBACK;
 ---
 {/* The title is deliberately NOT derived from HERO.headline: the headline is
     meant to be A/B tested from the Studio, and the title tag should not churn
@@ -234,7 +242,7 @@ const FAQS = [
 <Base
   title="Panta — Digital, strategic, and creative support"
   description="Panta helps small businesses and community organizations get found, run smoother, and tell their story — without the agency runaround."
-  schema={[faqSchema(FAQS)].filter(Boolean)}
+  schema={[faqSchema(FAQ_LIST)].filter(Boolean)}
 >
   {/* Parser-blocking on purpose. It runs before the hero is painted, which is
       the whole point: it stamps the pre-animation hidden state on <html> so
@@ -396,8 +404,8 @@ const FAQS = [
                     data-track-cta={i === 0 ? 'case_study_image' : 'case_study_secondary_image'}
                     data-track-location="home_case"
                   >
-                    {c.thumbnail ? (
-                      <img src={c.thumbnail.replace('-thumb', '')} alt="" loading="lazy" decoding="async" />
+                    {(c.hero ?? c.thumb) ? (
+                      <img src={c.hero ?? c.thumb} alt="" loading="lazy" decoding="async" />
                     ) : (
                       <div class="case__media-empty"></div>
                     )}
@@ -790,7 +798,7 @@ const FAQS = [
             with no JS, which a hand-rolled aria-expanded accordion does not.
             Deliberately NOT name="home-faq" — exclusive accordions collapse the
             answer you were comparing against and jump the scroll position. */}
-        {FAQS.map((f) => (
+        {FAQ_LIST.map((f) => (
           <details class="faq__item">
             <summary class="faq__q">
               <span>{f.q}</span>

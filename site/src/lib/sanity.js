@@ -182,8 +182,19 @@ const PROJECT_SERVICES = `"services": services[
 // getFeaturedCaseStudy(), because ProofStrip renders a service's case study with
 // the client's own sentence beside it (journey-redesign.md §1.2) and reads this
 // projection through `service.featuredProjects`.
+// `thumb`/`thumbAlt` resolve the MANAGED image and fall back to the legacy
+// string path, so every consumer reads one field and never has to know which
+// era a project was authored in. Resolved here rather than in each template
+// because four surfaces render this card (studio/schemaTypes/project.ts).
+const PROJECT_IMAGES = `
+  "thumb": coalesce(thumbnailImage.asset->url, thumbnail),
+  "thumbAlt": coalesce(thumbnailImage.alt, imageAlt, name + " website"),
+  "hero": coalesce(heroImage.asset->url, image),
+  "heroAlt": coalesce(heroImage.alt, imageAlt, name + " website")`;
+
 const PROJECT_CARD = `_id, name, clientType, url, situation, summary, contributions,
   outcome, featured, thumbnail, imageAlt, year, quote, quoteAuthor, quoteRole,
+  ${PROJECT_IMAGES},
   "slug": slug.current,
   "client": client->{name, sector, url, "slug": slug.current,
     "logo": select(logoApproved == true => logo.asset->url),
@@ -202,6 +213,7 @@ export const getCaseStudies = () =>
     `*[_type == "project" && defined(slug.current) && !(_id in path("drafts.**"))]
       | order(order asc){
         ..., "slug": slug.current,
+        ${PROJECT_IMAGES},
         ${PROJECT_SERVICES},
         "client": client->{name, sector, url, "slug": slug.current,
           "logo": select(logoApproved == true => logo.asset->url),
@@ -228,11 +240,11 @@ export const getTestimonial = () =>
 export const getFeaturedCaseStudy = () =>
   sanity.fetch(
     `coalesce(
-      *[_id == "siteSettings"][0].featuredCaseStudy->{name, quote, quoteAuthor, quoteRole, summary, outcome, clientType, contributions, "slug": slug.current, thumbnail, image,
+      *[_id == "siteSettings"][0].featuredCaseStudy->{name, quote, quoteAuthor, quoteRole, summary, outcome, clientType, contributions, "slug": slug.current, thumbnail, image, ${PROJECT_IMAGES},
         "client": client->{name, sector, "slug": slug.current,
           "logo": select(logoApproved == true => logo.asset->url),
           "logoAlt": coalesce(logo.alt, name)}},
-      *[_type == "project" && slug.current == "delta-bay-impact"][0]{name, quote, quoteAuthor, quoteRole, summary, outcome, clientType, contributions, "slug": slug.current, thumbnail, image,
+      *[_type == "project" && slug.current == "delta-bay-impact"][0]{name, quote, quoteAuthor, quoteRole, summary, outcome, clientType, contributions, "slug": slug.current, thumbnail, image, ${PROJECT_IMAGES},
         "client": client->{name, sector, "slug": slug.current,
           "logo": select(logoApproved == true => logo.asset->url),
           "logoAlt": coalesce(logo.alt, name)}}

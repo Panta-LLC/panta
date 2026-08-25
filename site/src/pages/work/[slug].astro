@@ -54,10 +54,10 @@ const schema = [
     </div>
   </section>
 
-  {p.image && (
+  {p.hero && (
     <div class="shot-wrap">
       <div class="container">
-        <img class="shot" src={p.image} alt={p.imageAlt ?? `${p.name} website`} width="1200" height="750" loading="eager" />
+        <img class="shot" src={p.hero} alt={p.heroAlt} width="1200" height="750" loading="eager" />
       </div>
     </div>
   )}
