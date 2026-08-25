@@ -18,7 +18,12 @@ import Base from '../layouts/Base.astro';
 import SectionViews from '../components/SectionViews.astro';
 import ThreeDoors from '../components/ThreeDoors.astro';
 import PriceStrip from '../components/PriceStrip.astro';
-import { STEPS } from '../lib/process.js';
+import { resolveSteps } from '../lib/process.js';
+import { getDoc } from '../lib/sanity.js';
+
+// Same source as the homepage, so the two cannot drift — that is the whole
+// reason the steps were centralised in the first place.
+const STEPS = resolveSteps((await getDoc('siteSettings'))?.processSteps);
 import { OFFER, PRICE_STRIP, ROUTES } from '../lib/offer.js';
 
 const description =

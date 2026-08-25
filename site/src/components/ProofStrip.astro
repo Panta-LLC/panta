@@ -46,7 +46,7 @@ const quote = lead?.quote
           it, which reads as a failed image load rather than as a design. */}
       <div class:list={['proofstrip__grid', { 'proofstrip__grid--solo': !quote?.author }]}>
         <article class="proofstrip__case">
-          {lead.thumbnail && (
+          {lead.thumb && (
             <a
               class="proofstrip__media"
               href={`/work/${lead.slug}/`}
@@ -56,7 +56,7 @@ const quote = lead?.quote
               data-track-cta="proof_case_image"
               data-track-location={location}
             >
-              <img src={lead.thumbnail} alt="" loading="lazy" decoding="async" />
+              <img src={lead.thumb} alt="" loading="lazy" decoding="async" />
             </a>
           )}
           <h3 class="proofstrip__name">{lead.name}</h3>

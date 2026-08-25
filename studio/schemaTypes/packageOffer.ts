@@ -89,7 +89,7 @@ export default defineType({
       type: 'string',
       group: 'index',
       description:
-        'Optional and rendered verbatim, e.g. “From $3,000” or “$3,000–$6,000”. Leave empty and no price appears — a blank field is not a blank line.',
+        'DELIBERATELY EMPTY on all five packages today — this is a decision, not an oversight, and the card renders correctly without it. The homepage FAQ commits to $2,000–$10,000 for projects and each service FAQ gives a narrower band with the reasoning attached; a per-package figure that disagrees with either contradicts it two screens down on the same page. Fill this only when a package has a real fixed price that has been decided, not to make the field look answered. Optional and rendered verbatim, e.g. “From $3,000” or “$3,000–$6,000”. A blank field is not a blank line.',
     }),
     defineField({
       name: 'service',
