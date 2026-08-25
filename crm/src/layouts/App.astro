@@ -20,6 +20,9 @@ const path = Astro.url.pathname;
 
 const links = [
   { href: '/', label: 'Dashboard' },
+  // Before Clients, because it is upstream of it: a lead becomes a client and
+  // never the other way round, and the queue is the thing with a clock on it.
+  { href: '/leads', label: 'Leads' },
   { href: '/clients', label: 'Clients' },
   { href: '/pulse', label: 'Pulse Checks' },
   { href: '/projects', label: 'Projects' },

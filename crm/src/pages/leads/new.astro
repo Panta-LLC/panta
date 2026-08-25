@@ -1,0 +1,221 @@
+---
+export const prerender = false;
+
+/**
+ * A lead you took down yourself.
+ *
+ * Same fields as the partner form and deliberately so — a lead phoned in by a
+ * partner and one submitted through their link should be the same row, or the
+ * queue starts having two shapes and the second one is always the neglected
+ * one. `partnerId` is still offered here, because "Marta told me about them at
+ * the mixer" is a referral and should be attributed like one.
+ */
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listPartners } from '../../lib/db/queries/partners.ts';
+import { CLIENT_SECTORS } from '../../lib/db/schema.ts';
+import { URGENCY_LABELS } from '../../lib/db/queries/leads.ts';
+
+requireUser(Astro.locals);
+
+const partners = await listPartners();
+const error = Astro.url.searchParams.get('error');
+
+const SECTOR_LABELS: Record<string, string> = {
+  nonprofit: 'Nonprofit',
+  independent_practice: 'Independent practice',
+  small_business: 'Small business',
+  community_org: 'Community organization',
+  public_agency: 'Public agency',
+  ecommerce: 'E-commerce',
+  other: 'Other',
+};
+---
+
+<App title="Log a lead">
+  <p class="kicker"><a href="/leads">Leads</a> · New</p>
+  <h1>Log a lead</h1>
+  <p class="muted lede">
+    For something that reached you outside a partner's link. It lands in the same
+    queue.
+  </p>
+
+  {error === 'org' && <p class="err">An organization name is required.</p>}
+
+  <form method="POST" action="/api/leads" class="form">
+    <div>
+      <label for="orgName">Organization name</label>
+      <input id="orgName" name="orgName" type="text" required autofocus />
+    </div>
+
+    <div>
+      <label for="partnerId">Referred by</label>
+      <select id="partnerId" name="partnerId">
+        <option value="">Nobody — came to us directly</option>
+        {
+          partners.map((p) => (
+            <option value={p.id}>
+              {p.name}
+              {p.status === 'revoked' ? ' (link revoked)' : ''}
+            </option>
+          ))
+        }
+      </select>
+      <p class="hint">
+        Attribute it even when they phoned it in — the partner list counts referrals,
+        not form submissions.
+      </p>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="websiteUrl">Website</label>
+        <input id="websiteUrl" name="websiteUrl" type="text" placeholder="example.org" />
+      </div>
+      <div>
+        <label for="sector">Sector</label>
+        <select id="sector" name="sector">
+          <option value="">—</option>
+          {CLIENT_SECTORS.map((s) => <option value={s}>{SECTOR_LABELS[s] ?? s}</option>)}
+        </select>
+      </div>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="city">City</label>
+        <input id="city" name="city" type="text" />
+      </div>
+      <div>
+        <label for="state">State</label>
+        <input id="state" name="state" type="text" maxlength="2" />
+      </div>
+    </div>
+
+    <fieldset>
+      <legend>Who to talk to</legend>
+      <div class="row">
+        <div>
+          <label for="contactName">Name</label>
+          <input id="contactName" name="contactName" type="text" />
+        </div>
+        <div>
+          <label for="contactRole">Role</label>
+          <input id="contactRole" name="contactRole" type="text" />
+        </div>
+      </div>
+      <div class="row">
+        <div>
+          <label for="contactEmail">Email</label>
+          <input id="contactEmail" name="contactEmail" type="email" />
+        </div>
+        <div>
+          <label for="contactPhone">Phone</label>
+          <input id="contactPhone" name="contactPhone" type="tel" />
+        </div>
+      </div>
+    </fieldset>
+
+    <div>
+      <label for="whatTheyNeed">What do they need?</label>
+      <textarea id="whatTheyNeed" name="whatTheyNeed" rows="3"></textarea>
+      <p class="hint">
+        Their words or the referrer's, not a summary. This is carried onto the client
+        record on conversion.
+      </p>
+    </div>
+
+    <div class="row">
+      <div>
+        <label for="urgency">Timing</label>
+        <select id="urgency" name="urgency">
+          {
+            Object.entries(URGENCY_LABELS).map(([v, label]) => (
+              <option value={v} selected={v === 'unknown'}>
+                {label}
+              </option>
+            ))
+          }
+        </select>
+      </div>
+      <div class="checkwrap">
+        <label class="check">
+          <input type="checkbox" name="permissionToContact" value="1" />
+          <span>They know to expect us</span>
+        </label>
+      </div>
+    </div>
+
+    <div>
+      <label for="referrerNote">Anything else</label>
+      <textarea id="referrerNote" name="referrerNote" rows="2"></textarea>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn--primary" type="submit">Log it</button>
+      <a class="btn btn--ghost" href="/leads">Cancel</a>
+    </div>
+  </form>
+</App>
+
+<style>
+  .lede {
+    max-width: var(--measure);
+    margin-top: -0.5rem;
+  }
+  .form {
+    max-width: 38rem;
+  }
+  .form > * + * {
+    margin-top: 1.25rem;
+  }
+  .row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+  }
+  fieldset {
+    border: none;
+    border-top: 1px solid var(--line);
+    padding: 1.25rem 0 0;
+    margin: 0;
+  }
+  fieldset > * + * {
+    margin-top: 1rem;
+  }
+  legend {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    padding-right: 0.6rem;
+  }
+  .hint {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin: 0.35rem 0 0;
+  }
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-weight: 400;
+  }
+  .checkwrap {
+    display: flex;
+    align-items: flex-end;
+    padding-bottom: 0.55rem;
+  }
+  .actions {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+  }
+  .err {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+</style>

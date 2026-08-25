@@ -1,0 +1,134 @@
+---
+export const prerender = false;
+
+/**
+ * The people who send work this way, and the links they use.
+ *
+ * Two numbers per partner — leads sent, leads converted — and no third one
+ * derived from them. A conversion *rate* here would be a partner score, which
+ * the schema refuses to store for the same reason it refuses to score clients;
+ * at two or three referrals each it would also be measuring mostly noise.
+ */
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { listPartners } from '../../lib/db/queries/partners.ts';
+
+requireUser(Astro.locals);
+
+const rows = await listPartners();
+const active = rows.filter((p) => p.status === 'active');
+---
+
+<App title="Partners">
+  <div class="head">
+    <div>
+      <p class="kicker"><a href="/leads">Leads</a> · Partners</p>
+      <h1>
+        {active.length} active {active.length === 1 ? 'partner' : 'partners'}
+      </h1>
+    </div>
+    <a class="btn btn--primary" href="/partners/new">Add a partner</a>
+  </div>
+
+  {
+    rows.length === 0 ? (
+      <div class="card">
+        <p style="margin:0">
+          No partners yet. Adding one generates a private link you can email them —
+          anything they submit through it arrives in the <a href="/leads">leads queue</a>{' '}
+          already attributed.
+        </p>
+      </div>
+    ) : (
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Partner</th>
+            <th>How you know them</th>
+            <th>Sent</th>
+            <th>Converted</th>
+            <th>Waiting</th>
+            <th>Link</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((p) => (
+            <tr class={p.status === 'revoked' ? 'is-revoked' : ''}>
+              <td>
+                <a href={`/partners/${p.id}`}>{p.name}</a>
+                {p.contactName && <span class="sub">{p.contactName}</span>}
+              </td>
+              <td class="muted">{p.relationship ?? '—'}</td>
+              <td class="muted">{p.leadCount || '—'}</td>
+              <td class="muted">{p.convertedCount || '—'}</td>
+              <td>
+                {p.newCount > 0 ? (
+                  <a href={`/leads?status=new`} class="waiting">{p.newCount}</a>
+                ) : (
+                  <span class="muted">—</span>
+                )}
+              </td>
+              <td class="muted">
+                {p.status === 'active' ? (
+                  <span class="live">active</span>
+                ) : (
+                  <span>revoked</span>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    )
+  }
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.5rem;
+  }
+  .head h1 {
+    margin-bottom: 0;
+  }
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+    padding: 0 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .table td {
+    padding: 0.7rem 0.75rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  .sub {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+  }
+  .is-revoked td:first-child a {
+    color: var(--stone-deep);
+  }
+  .live,
+  .waiting {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bamboo-deep);
+  }
+</style>

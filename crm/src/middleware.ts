@@ -21,8 +21,25 @@ import { SESSION_COOKIE, resolveSession } from './lib/auth/session.ts';
  * - /login and /api/auth/* are how you get one.
  * - /api/cron/* authenticates with a CRON_SECRET bearer instead, because
  *   Vercel's scheduler has no cookie. Those handlers check it themselves.
+ * - /refer/* and /api/refer/* are the partner referral form. They authenticate
+ *   with the token in the URL, resolved by getActivePartnerByToken(), and an
+ *   unknown or revoked token 404s.
+ *
+ * ⚠ Adding to this list is the one change in this project that can expose
+ * data, so the bar for a new entry is that it authenticates some OTHER way —
+ * never that it "doesn't show anything sensitive."
+ *
+ * The referral routes clear that bar in a specific and checkable sense: they
+ * are WRITE-ONLY. /refer/{token} reads exactly one thing, the partner's own
+ * name, to put at the top of the form; it never touches clients, leads,
+ * pulse checks, or any other partner's row. Nothing about the pipeline is
+ * reachable from an unauthenticated URL, so a leaked link leaks nothing — it
+ * can only submit, and the per-token rate limit and `status = 'revoked'`
+ * bound that. Keep it that way: the moment one of these routes renders
+ * somebody's data, the token stops being a convenience and becomes a
+ * credential, and it is pasted into emails.
  */
-const PUBLIC_PREFIXES = ['/login', '/api/auth/', '/api/cron/'];
+const PUBLIC_PREFIXES = ['/login', '/api/auth/', '/api/cron/', '/refer/', '/api/refer/'];
 
 function isPublic(pathname: string): boolean {
   return PUBLIC_PREFIXES.some((p) => pathname === p || pathname.startsWith(p));

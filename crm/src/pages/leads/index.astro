@@ -1,0 +1,244 @@
+---
+export const prerender = false;
+
+/**
+ * The triage queue.
+ *
+ * Sorted newest-first inside a status filter and nothing else. There is no
+ * "hottest lead" ordering here and there will not be one — the schema has no
+ * lead score, and inventing an ordering in the view is the same thing wearing
+ * a different hat. What the queue IS accountable for is how long something sat
+ * before anyone looked at it, so age is the number on every row.
+ */
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import {
+  listLeads,
+  countLeadsByStatus,
+  URGENCY_LABELS,
+  LEAD_STATUS_LABELS,
+} from '../../lib/db/queries/leads.ts';
+import { LEAD_STATUSES } from '../../lib/db/schema.ts';
+
+requireUser(Astro.locals);
+
+// Default to 'new': this page exists to be emptied, and opening on everything
+// ever submitted buries the four rows that actually need you.
+const status = Astro.url.searchParams.get('status') ?? 'new';
+const filter = (LEAD_STATUSES as readonly string[]).includes(status) ? status : undefined;
+
+const [rows, counts] = await Promise.all([listLeads({ status: filter }), countLeadsByStatus()]);
+
+const total = Object.values(counts).reduce((a, b) => a + b, 0);
+
+/** Whole days since submission. The queue's one honest measure of neglect. */
+function ageDays(d: Date): number {
+  return Math.floor((Date.now() - new Date(d).getTime()) / 86_400_000);
+}
+
+const TABS: Array<[string, string, number]> = [
+  ...LEAD_STATUSES.map(
+    (s) => [s, LEAD_STATUS_LABELS[s] ?? s, counts[s] ?? 0] as [string, string, number],
+  ),
+  ['all', 'All', total],
+];
+---
+
+<App title="Leads">
+  <div class="head">
+    <div>
+      <p class="kicker">Leads</p>
+      <h1>
+        {
+          filter === 'new'
+            ? rows.length === 0
+              ? 'Queue is clear'
+              : `${rows.length} waiting`
+            : `${rows.length} ${LEAD_STATUS_LABELS[status]?.toLowerCase() ?? status}`
+        }
+      </h1>
+    </div>
+    <div class="head__actions">
+      <a class="btn btn--ghost" href="/partners">Partners</a>
+      <a class="btn btn--primary" href="/leads/new">Log a lead</a>
+    </div>
+  </div>
+
+  <nav class="tabs">
+    {
+      TABS.map(([value, label, n]) => (
+        <a
+          href={value === 'all' ? '/leads?status=all' : `/leads?status=${value}`}
+          aria-current={(filter ?? 'all') === value ? 'page' : undefined}>
+          {label}
+          {n > 0 && <span class="tabs__n">{n}</span>}
+        </a>
+      ))
+    }
+  </nav>
+
+  {
+    rows.length === 0 ? (
+      <div class="card">
+        <p style="margin:0">
+          {filter === 'new'
+            ? 'Nothing waiting. Every lead that has come in has been looked at.'
+            : 'Nothing here yet.'}
+        </p>
+        {total === 0 && (
+          <p class="muted" style="margin:0.75rem 0 0">
+            Leads arrive through a partner's private link.{' '}
+            <a href="/partners/new">Add a partner</a> to generate one, or{' '}
+            <a href="/leads/new">log one yourself</a>.
+          </p>
+        )}
+      </div>
+    ) : (
+      <table class="table">
+        <thead>
+          <tr>
+            <th>Organization</th>
+            <th>From</th>
+            <th>Timing</th>
+            <th>Warm?</th>
+            <th>Age</th>
+            {filter !== 'new' && <th>Status</th>}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((l) => {
+            const age = ageDays(l.createdAt);
+            return (
+              <tr>
+                <td>
+                  <a href={`/leads/${l.id}`}>{l.orgName}</a>
+                  {l.contactName && <span class="sub">{l.contactName}</span>}
+                </td>
+                <td class="muted">
+                  {l.partnerName ? (
+                    <a href={`/partners/${l.partnerId}`}>{l.partnerName}</a>
+                  ) : (
+                    <span class="muted">logged by hand</span>
+                  )}
+                </td>
+                <td class="muted">{URGENCY_LABELS[l.urgency] ?? l.urgency}</td>
+                <td>
+                  {/*
+                    Whether the partner told them a referral was coming. Shown
+                    in the list because it changes how the first email opens,
+                    and that is decided before you open the lead.
+                  */}
+                  {l.permissionToContact ? (
+                    <span class="warm">introduced</span>
+                  ) : (
+                    <span class="muted">cold</span>
+                  )}
+                </td>
+                <td class={l.status === 'new' && age >= 3 ? 'is-stale' : 'muted'}>
+                  {age === 0 ? 'today' : `${age}d`}
+                </td>
+                {filter !== 'new' && (
+                  <td class="muted">
+                    {l.status === 'converted' && l.clientId ? (
+                      <a href={`/clients/${l.clientId}`}>Converted</a>
+                    ) : (
+                      LEAD_STATUS_LABELS[l.status] ?? l.status
+                    )}
+                  </td>
+                )}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    )
+  }
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1rem;
+    margin-bottom: 1.25rem;
+  }
+  .head h1 {
+    margin-bottom: 0;
+  }
+  .head__actions {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1.25rem;
+    border-bottom: 1px solid var(--line);
+    margin-bottom: 1.5rem;
+    padding-bottom: 0.6rem;
+  }
+  .tabs a {
+    font-family: var(--font-mono);
+    font-size: 0.74rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    text-decoration: none;
+  }
+  .tabs a[aria-current='page'] {
+    color: var(--charcoal);
+    border-bottom: 2px solid var(--bamboo);
+    padding-bottom: 0.55rem;
+    margin-bottom: -0.62rem;
+  }
+  .tabs__n {
+    margin-left: 0.35rem;
+    color: var(--bamboo-deep);
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+    padding: 0 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .table td {
+    padding: 0.7rem 0.75rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+    vertical-align: top;
+  }
+  .sub {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+  }
+
+  /* Green marks state, never decoration — here it means the partner has
+     already made the introduction, which is a fact about the lead. */
+  .warm {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--bamboo-deep);
+  }
+
+  /* Amber is reserved for "this is running out of time". A referral someone
+     made for you, sitting untouched for three days, qualifies. */
+  .is-stale {
+    color: var(--amber);
+    font-weight: 500;
+  }
+</style>

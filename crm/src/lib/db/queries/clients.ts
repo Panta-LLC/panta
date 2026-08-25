@@ -87,6 +87,22 @@ export async function createClient(input: NewClient) {
   return rows[0]!;
 }
 
+/**
+ * ⚠ Correlated subqueries must qualify the OUTER table by hand.
+ *
+ * Inside a raw `sql` template, drizzle renders `${table.column}` as a BARE
+ * column name — `"id"`, not `"clients"."id"`. In a subquery that is not a
+ * harmless difference: Postgres resolves the bare name against the innermost
+ * scope, so `where ${pulseChecks.clientId} = ${clients.id}` becomes
+ * `where "client_id" = "id"` and BOTH names bind to pulse_checks. The
+ * subquery stops correlating to the outer row entirely and quietly counts
+ * zero, forever, with no error.
+ *
+ * That is not hypothetical — it is what this very query did until Aug 2026,
+ * which is why the Pulse Checks column on /clients read "—" for every client
+ * while two of them had one each. Alias the inner table, and write the outer
+ * reference as literal text.
+ */
 export async function listClients() {
   return db
     .select({
@@ -97,10 +113,11 @@ export async function listClients() {
       websiteUrl: clients.websiteUrl,
       status: clients.status,
       createdAt: clients.createdAt,
+      // See the note above listClients on why "clients"."id" is spelled out.
       pulseCount: sql<number>`(
-        select count(*) from ${pulseChecks}
-        where ${pulseChecks.clientId} = ${clients.id}
-          and ${pulseChecks.isRehearsal} = false
+        select count(*) from ${pulseChecks} pc
+        where pc.client_id = "clients"."id"
+          and pc.is_rehearsal = false
       )`.mapWith(Number),
     })
     .from(clients)

@@ -1,15 +1,23 @@
 ---
 /**
- * Chrome-free shell for pages that must render without a session (/login) or
- * without navigation (the readout print route).
+ * Chrome-free shell for pages that must render without a session (/login,
+ * /refer/{token}) or without navigation (the readout print route).
  */
 import '../styles/global.css';
 
 interface Props {
   title: string;
+  /**
+   * What follows the title in the tab. Defaults to the internal name, and is
+   * overridden to plain "Panta" by the partner referral form — that page is
+   * the one thing here an outsider ever sees, and telling a referral partner
+   * they are filling in a form inside somebody's CRM is both unpolished and
+   * more than they need to know.
+   */
+  suffix?: string;
 }
 
-const { title } = Astro.props;
+const { title, suffix = 'Panta CRM' } = Astro.props;
 ---
 
 <!doctype html>
@@ -18,7 +26,7 @@ const { title } = Astro.props;
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="robots" content="noindex, nofollow" />
-    <title>{title} · Panta CRM</title>
+    <title>{title} · {suffix}</title>
   </head>
   <body>
     <slot />

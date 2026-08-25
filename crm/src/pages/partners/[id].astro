@@ -1,0 +1,288 @@
+---
+export const prerender = false;
+
+/**
+ * One partner: their link, and what has come through it.
+ *
+ * The link is the point of the page, so it sits at the top at full width and
+ * selectable — this is a thing that gets copied into an email, and a truncated
+ * URL with an ellipsis in the middle is the most annoying possible way to
+ * present it.
+ */
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import { getPartner, referralUrl } from '../../lib/db/queries/partners.ts';
+import {
+  listLeads,
+  LEAD_STATUS_LABELS,
+  URGENCY_LABELS,
+} from '../../lib/db/queries/leads.ts';
+import { fmtDate } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const partner = id ? await getPartner(id) : null;
+if (!partner) return Astro.redirect('/partners', 302);
+
+const leads = await listLeads({ partnerId: partner.id });
+const link = referralUrl(partner.token);
+const isActive = partner.status === 'active';
+
+const created = Astro.url.searchParams.get('created') === '1';
+const rotated = Astro.url.searchParams.get('rotated') === '1';
+
+const converted = leads.filter((l) => l.status === 'converted').length;
+---
+
+<App title={partner.name}>
+  <p class="kicker"><a href="/partners">Partners</a></p>
+
+  <div class="head">
+    <div>
+      <h1>{partner.name}</h1>
+      <p class="muted meta">
+        {partner.contactName ?? 'No named contact'}
+        {partner.email && <> · <a href={`mailto:${partner.email}`}>{partner.email}</a></>}
+        {partner.phone && ` · ${partner.phone}`}
+      </p>
+      {partner.relationship && <p class="rel">{partner.relationship}</p>}
+    </div>
+  </div>
+
+  {created && <p class="ok">Partner added. Their link is below — send it to them.</p>}
+  {
+    rotated && (
+      <p class="ok">
+        New link issued. <strong>The old one no longer works</strong> — anyone still
+        holding it will get a 404, so send them this one.
+      </p>
+    )
+  }
+
+  {/* ── the link ────────────────────────────────────────────────────────── */}
+  <section class={`link ${isActive ? '' : 'link--dead'}`}>
+    <h2>Their referral link</h2>
+    {
+      isActive ? (
+        <>
+          <div class="link__row">
+            <code id="link" class="link__url">{link}</code>
+            <button class="btn btn--ghost" type="button" data-copy>Copy</button>
+          </div>
+          <p class="hint">
+            No password, no account. Anyone with this URL can submit a lead attributed
+            to {partner.name} — and can do nothing else: the page reads no client data
+            and grants no session.
+          </p>
+        </>
+      ) : (
+        <p class="hint">
+          This link is revoked. It returns a 404 that does not say why, so whoever
+          holds it learns nothing.
+        </p>
+      )
+    }
+
+    <div class="link__actions">
+      {
+        isActive ? (
+          <>
+            <form method="POST" action={`/api/partners/${partner.id}`}>
+              <input type="hidden" name="action" value="rotate" />
+              <button class="btn btn--ghost" type="submit">Issue a new link</button>
+            </form>
+            <form method="POST" action={`/api/partners/${partner.id}`}>
+              <input type="hidden" name="action" value="revoke" />
+              <button class="btn btn--ghost" type="submit">Revoke</button>
+            </form>
+          </>
+        ) : (
+          <>
+            <form method="POST" action={`/api/partners/${partner.id}`}>
+              <input type="hidden" name="action" value="reactivate" />
+              <button class="btn btn--ghost" type="submit">Reactivate this link</button>
+            </form>
+            <form method="POST" action={`/api/partners/${partner.id}`}>
+              <input type="hidden" name="action" value="rotate" />
+              <button class="btn btn--ghost" type="submit">Issue a new one instead</button>
+            </form>
+          </>
+        )
+      }
+    </div>
+    <p class="hint">
+      Revoking keeps the old URL dead. Issuing a new one does the same and gives you a
+      replacement — that is the answer to "I forwarded it to the wrong person."
+    </p>
+  </section>
+
+  {partner.notes && <div class="card"><p style="margin:0">{partner.notes}</p></div>}
+
+  {/* ── what they have sent ─────────────────────────────────────────────── */}
+  <section>
+    <h2>
+      {leads.length === 0
+        ? 'Nothing sent yet'
+        : `${leads.length} referral${leads.length === 1 ? '' : 's'}`}
+      {converted > 0 && <span class="muted"> · {converted} became clients</span>}
+    </h2>
+
+    {
+      leads.length === 0 ? (
+        <p class="muted">
+          Nothing has come through this link yet.
+        </p>
+      ) : (
+        <table class="table">
+          <thead>
+            <tr>
+              <th>Organization</th>
+              <th>Received</th>
+              <th>Timing</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {leads.map((l) => (
+              <tr>
+                <td><a href={`/leads/${l.id}`}>{l.orgName}</a></td>
+                <td class="muted">{fmtDate(l.createdAt)}</td>
+                <td class="muted">{URGENCY_LABELS[l.urgency] ?? l.urgency}</td>
+                <td class="muted">
+                  {l.status === 'converted' && l.clientId ? (
+                    <a href={`/clients/${l.clientId}`}>Converted</a>
+                  ) : (
+                    LEAD_STATUS_LABELS[l.status] ?? l.status
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      )
+    }
+  </section>
+</App>
+
+{/*
+  The only script on any page in this project. It is here rather than as a
+  React island because copying a string to the clipboard does not warrant a
+  hydration boundary — and if it fails, the URL above is still plain selectable
+  text, which is the fallback anyway.
+*/}
+<script>
+  document.querySelector('[data-copy]')?.addEventListener('click', async (event) => {
+    const button = event.currentTarget as HTMLButtonElement;
+    const url = document.getElementById('link')?.textContent ?? '';
+    try {
+      await navigator.clipboard.writeText(url);
+      button.textContent = 'Copied';
+      setTimeout(() => (button.textContent = 'Copy'), 1600);
+    } catch {
+      // Clipboard access can be refused (insecure context, permissions). Say
+      // so rather than showing a success that did not happen.
+      button.textContent = 'Select it above';
+      setTimeout(() => (button.textContent = 'Copy'), 2400);
+    }
+  });
+</script>
+
+<style>
+  .head h1 {
+    margin-bottom: 0.25rem;
+  }
+  .meta {
+    margin: 0;
+  }
+  .rel {
+    font-family: var(--font-serif);
+    color: var(--stone-deep);
+    margin: 0.4rem 0 0;
+    max-width: var(--measure);
+  }
+
+  section {
+    margin: 2.25rem 0;
+  }
+  h2 {
+    font-size: 1.15rem;
+  }
+
+  .link {
+    border: 1px solid var(--line);
+    padding: 1.25rem 1.4rem;
+    background: var(--cream-soft);
+  }
+  .link h2 {
+    margin-top: 0;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+  }
+  .link--dead {
+    background: none;
+  }
+  .link__row {
+    display: flex;
+    gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+  }
+  .link__url {
+    font-family: var(--font-mono);
+    font-size: 0.9rem;
+    background: var(--cream);
+    border: 1px solid var(--line);
+    padding: 0.55rem 0.7rem;
+    flex: 1 1 22rem;
+    /* Break anywhere: the token is base64url and has no natural break points,
+       so without this it forces the page into a horizontal scroll. */
+    word-break: break-all;
+  }
+  .link__actions {
+    display: flex;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    margin-top: 1rem;
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+  .hint {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin: 0.6rem 0 0;
+    max-width: var(--measure);
+  }
+
+  .table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.95rem;
+  }
+  .table th {
+    text-align: left;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+    padding: 0 0.75rem 0.5rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+  .table td {
+    padding: 0.7rem 0.75rem 0.7rem 0;
+    border-bottom: 1px solid var(--line);
+  }
+
+  .ok {
+    border-left: 2px solid var(--bamboo);
+    background: var(--cream-soft);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+</style>

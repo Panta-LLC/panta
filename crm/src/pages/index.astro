@@ -5,16 +5,33 @@ import App from '../layouts/App.astro';
 import { requireUser } from '../lib/auth/guard.ts';
 import { listReadoutsDue, listUpcoming } from '../lib/db/queries/pulse.ts';
 import { listReviewQueue, getGoogleAccount } from '../lib/db/queries/gmail.ts';
+import { listLeads } from '../lib/db/queries/leads.ts';
 import { fmtCountdown, fmtDateTime } from '../lib/format.ts';
 
 const user = requireUser(Astro.locals);
 
-const [due, upcoming, suggested, googleAccount] = await Promise.all([
+const [due, upcoming, suggested, googleAccount, waitingLeads] = await Promise.all([
   listReadoutsDue(),
   listUpcoming(),
   listReviewQueue(),
   getGoogleAccount(user.id),
+  listLeads({ status: 'new' }),
 ]);
+
+/**
+ * A referral someone made for you, sitting untouched.
+ *
+ * It earns a place on this page for the same reason readouts do: it is a
+ * promise to a third party that decays silently. Nobody chases you about a
+ * lead you never opened — the partner just quietly stops sending them.
+ *
+ * Three days is the threshold, and it is amber rather than green: `listLeads`
+ * returns newest first, so the last row is the oldest one waiting.
+ */
+const oldestLead = waitingLeads.at(-1);
+const leadAgeDays = oldestLead
+  ? Math.floor((Date.now() - new Date(oldestLead.createdAt).getTime()) / 86_400_000)
+  : 0;
 ---
 
 <App title="Dashboard">
@@ -52,6 +69,17 @@ const [due, upcoming, suggested, googleAccount] = await Promise.all([
           );
         })}
       </ul>
+    )
+  }
+
+  {
+    waitingLeads.length > 0 && (
+      <p class={`suggested ${leadAgeDays >= 3 ? 'is-stale' : ''}`}>
+        <a href="/leads">
+          {waitingLeads.length} lead{waitingLeads.length === 1 ? '' : 's'} waiting
+          {leadAgeDays >= 3 && ` — the oldest for ${leadAgeDays} days`}
+        </a>
+      </p>
     )
   }
 
@@ -187,5 +215,11 @@ const [due, upcoming, suggested, googleAccount] = await Promise.all([
   section h2 {
     padding-bottom: 0.4rem;
     border-bottom: 1px solid var(--line);
+  }
+
+  /* Amber means "running out of time", and a referral gone stale is exactly
+     that — the partner is the one who paid for it. */
+  .suggested.is-stale a {
+    color: var(--amber);
   }
 </style>

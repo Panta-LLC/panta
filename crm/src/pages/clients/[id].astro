@@ -7,6 +7,7 @@ import { requireUser } from '../../lib/auth/guard.ts';
 import { getClient } from '../../lib/db/queries/clients.ts';
 import { listPulseChecksForClient } from '../../lib/db/queries/pulse.ts';
 import { listTimeline, MANUAL_KINDS } from '../../lib/db/queries/interactions.ts';
+import { listLeadsForClient, URGENCY_LABELS } from '../../lib/db/queries/leads.ts';
 import {
   listProjectsForClient,
   PROJECT_KIND_LABELS,
@@ -21,10 +22,14 @@ const { id } = Astro.params;
 const client = id ? await getClient(id) : null;
 if (!client) return Astro.redirect('/clients', 302);
 
-const [checks, timeline, projects] = await Promise.all([
+const [checks, timeline, projects, originLeads] = await Promise.all([
   listPulseChecksForClient(client.id),
   listTimeline(client.id),
   listProjectsForClient(client.id),
+  // Where this organization came from, if it came from anywhere. Almost always
+  // empty — most clients are added by hand — which is why it renders nothing
+  // at all rather than an "Origin: —" row taking up space on every page.
+  listLeadsForClient(client.id),
 ]);
 
 const STATUS_LABELS: Record<string, string> = {
@@ -82,6 +87,40 @@ const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
   </div>
 
   {client.notes && <div class="card" style="margin-bottom:2rem"><p style="margin:0">{client.notes}</p></div>}
+
+  {
+    originLeads.length > 0 && (
+      <div class="origin">
+        {originLeads.map((l) => (
+          <>
+            <p class="origin__line">
+              {l.partnerName ? (
+                <>
+                  Referred by{' '}
+                  <a href={`/partners/${l.partnerId}`}>{l.partnerName}</a>
+                </>
+              ) : (
+                'Came in as a lead'
+              )}
+              {' · '}
+              <a href={`/leads/${l.id}`}>{fmtDate(l.createdAt)}</a>
+              {' · '}
+              <span class="muted">{URGENCY_LABELS[l.urgency] ?? l.urgency}</span>
+              {/*
+                Carried onto the client page because it changes how you open
+                the first conversation, and by the time you are looking at this
+                record you have usually forgotten which it was.
+              */}
+              {!l.permissionToContact && (
+                <span class="origin__cold"> · they were not told to expect us</span>
+              )}
+            </p>
+            {l.referrerNote && <p class="origin__note">"{l.referrerNote}"</p>}
+          </>
+        ))}
+      </div>
+    )
+  }
 
   <div class="cols">
     <div>
@@ -238,5 +277,27 @@ const nowLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000)
       grid-template-columns: minmax(0, 1fr);
       gap: 2rem;
     }
+  }
+
+  /* Provenance, not content: a hairline strip above the working columns rather
+     than a card, so it reads as a fact about the record and never competes
+     with the timeline. */
+  .origin {
+    border-left: 2px solid var(--sage);
+    padding: 0.15rem 0 0.15rem 0.9rem;
+    margin-bottom: 2rem;
+  }
+  .origin__line {
+    margin: 0;
+    font-size: 0.92rem;
+  }
+  .origin__note {
+    font-family: var(--font-serif);
+    color: var(--stone-deep);
+    margin: 0.35rem 0 0;
+    max-width: var(--measure);
+  }
+  .origin__cold {
+    color: var(--amber);
   }
 </style>

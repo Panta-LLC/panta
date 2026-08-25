@@ -1,0 +1,503 @@
+---
+export const prerender = false;
+
+/**
+ * One lead, and the decision about it.
+ *
+ * The page is built around a single question — is this a client? — so the
+ * possible-matches panel sits directly above the convert button rather than in
+ * a sidebar. Creating a duplicate client is the one expensive mistake
+ * available here, and it is expensive precisely because it is invisible: two
+ * records of the same organization drift apart quietly for months.
+ */
+import App from '../../layouts/App.astro';
+import { requireUser } from '../../lib/auth/guard.ts';
+import {
+  getLead,
+  findPossibleMatches,
+  URGENCY_LABELS,
+  LEAD_STATUS_LABELS,
+} from '../../lib/db/queries/leads.ts';
+import { fmtDate, fmtDateTime } from '../../lib/format.ts';
+
+requireUser(Astro.locals);
+
+const { id } = Astro.params;
+const row = id ? await getLead(id) : null;
+if (!row) return Astro.redirect('/leads', 302);
+
+const lead = row.lead;
+const matches = await findPossibleMatches({
+  id: lead.id,
+  orgName: lead.orgName,
+  websiteUrl: lead.websiteUrl,
+  contactEmail: lead.contactEmail,
+});
+
+const error = Astro.url.searchParams.get('error');
+const ERRORS: Record<string, string> = {
+  convert: 'Converting failed. Nothing was changed — check the logs and try again.',
+  status: 'That status is not one this lead can be in.',
+};
+
+const site = lead.websiteUrl
+  ? lead.websiteUrl.startsWith('http')
+    ? lead.websiteUrl
+    : `https://${lead.websiteUrl}`
+  : null;
+
+const isOpen = lead.status === 'new' || lead.status === 'qualified';
+const hasMatches = matches.clients.length > 0 || matches.leads.length > 0;
+
+const SECTOR_LABELS: Record<string, string> = {
+  nonprofit: 'Nonprofit',
+  independent_practice: 'Independent practice',
+  small_business: 'Small business',
+  community_org: 'Community organization',
+  public_agency: 'Public agency',
+  ecommerce: 'E-commerce',
+  other: 'Other',
+};
+---
+
+<App title={lead.orgName}>
+  <p class="kicker"><a href="/leads">Leads</a></p>
+
+  <div class="head">
+    <div>
+      <h1>{lead.orgName}</h1>
+      <p class="muted meta">
+        {lead.sector ? (SECTOR_LABELS[lead.sector] ?? lead.sector) : 'Sector not given'}
+        {lead.city && ` · ${lead.city}${lead.state ? `, ${lead.state}` : ''}`}
+        {' · '}
+        {
+          site ? (
+            <a href={site} target="_blank" rel="noreferrer noopener">
+              {site.replace(/^https?:\/\//, '')}
+            </a>
+          ) : (
+            'no website given'
+          )
+        }
+      </p>
+    </div>
+    <p class={`state state--${lead.status}`}>{LEAD_STATUS_LABELS[lead.status] ?? lead.status}</p>
+  </div>
+
+  {error && <p class="err">{ERRORS[error] ?? 'Something went wrong.'}</p>}
+
+  {
+    lead.status === 'converted' && lead.clientId && (
+      <div class="card resolved">
+        <p style="margin:0">
+          Converted {fmtDate(lead.convertedAt)} —{' '}
+          <a href={`/clients/${lead.clientId}`}>{row.clientName ?? 'open the client'}</a>
+        </p>
+      </div>
+    )
+  }
+
+  <div class="cols">
+    <div>
+      {/* ── provenance ─────────────────────────────────────────────────── */}
+      <section class="from">
+        <h2>Where this came from</h2>
+        <dl class="kv">
+          <dt>Referred by</dt>
+          <dd>
+            {
+              row.partnerName ? (
+                <>
+                  <a href={`/partners/${lead.partnerId}`}>{row.partnerName}</a>
+                  {row.partnerStatus === 'revoked' && (
+                    <span class="muted"> · link since revoked</span>
+                  )}
+                </>
+              ) : lead.submittedVia === 'internal' ? (
+                'Logged by hand'
+              ) : (
+                /* partnerId is `on delete set null`, so this is a real state:
+                   the partner record is gone but their referral survives. */
+                'Partner record removed'
+              )
+            }
+          </dd>
+          <dt>Received</dt>
+          <dd>{fmtDateTime(lead.createdAt)}</dd>
+          <dt>Introduced?</dt>
+          <dd>
+            {
+              lead.permissionToContact ? (
+                <span class="warm">Yes — they know Panta may reach out</span>
+              ) : (
+                <span>
+                  No — they aren't expecting to hear from us
+                  <span class="hint">
+                    Open with how you know {row.partnerName ?? 'the referrer'} rather than
+                    as a cold approach.
+                  </span>
+                </span>
+              )
+            }
+          </dd>
+          <dt>Timing</dt>
+          <dd>{URGENCY_LABELS[lead.urgency] ?? lead.urgency}</dd>
+        </dl>
+      </section>
+
+      {/* ── the partner's own words ─────────────────────────────────────── */}
+      {
+        (lead.whatTheyNeed || lead.referrerNote) && (
+          <section>
+            <h2>In their words</h2>
+            {lead.whatTheyNeed && (
+              <blockquote class="quote">
+                <p>{lead.whatTheyNeed}</p>
+                <cite>{row.partnerName ?? 'the referrer'}, on what they need</cite>
+              </blockquote>
+            )}
+            {lead.referrerNote && (
+              <blockquote class="quote quote--aside">
+                <p>{lead.referrerNote}</p>
+                <cite>passed along privately</cite>
+              </blockquote>
+            )}
+          </section>
+        )
+      }
+
+      {/* ── duplicate check, immediately above the decision ──────────────── */}
+      {
+        isOpen && (
+          <section>
+            <h2>Before you convert</h2>
+            {hasMatches ? (
+              <div class="matches">
+                <p class="muted">
+                  This may already be in the system. Attaching adds the referral to an
+                  existing client's timeline instead of creating a second record.
+                </p>
+
+                {matches.clients.map((c) => (
+                  <div class="match">
+                    <div>
+                      <a href={`/clients/${c.id}`}>{c.name}</a>
+                      <span class="hint">
+                        Existing client · {c.status}
+                        {c.viaContact
+                          ? ' · same contact email'
+                          : c.viaDomain
+                            ? ' · same website domain'
+                            : ' · same name'}
+                      </span>
+                    </div>
+                    <form method="POST" action={`/api/leads/${lead.id}/convert`}>
+                      <input type="hidden" name="attachToClientId" value={c.id} />
+                      <button class="btn btn--ghost" type="submit">Attach to this client</button>
+                    </form>
+                  </div>
+                ))}
+
+                {matches.leads.map((l) => (
+                  <div class="match">
+                    <div>
+                      <a href={`/leads/${l.id}`}>{l.orgName}</a>
+                      <span class="hint">
+                        Earlier lead · {LEAD_STATUS_LABELS[l.status] ?? l.status} ·{' '}
+                        {fmtDate(l.createdAt)}
+                        {l.partnerName && ` · from ${l.partnerName}`}
+                      </span>
+                    </div>
+                    <form method="POST" action={`/api/leads/${lead.id}`}>
+                      <input type="hidden" name="action" value="status" />
+                      <input type="hidden" name="status" value="duplicate" />
+                      <input
+                        type="hidden"
+                        name="dispositionReason"
+                        value={`Same organization as lead ${l.id}`}
+                      />
+                      <button class="btn btn--ghost" type="submit">Mark this a duplicate</button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p class="muted">
+                No existing client or earlier lead matches this name, website domain, or
+                contact email.
+              </p>
+            )}
+          </section>
+        )
+      }
+    </div>
+
+    {/* ── the decision ─────────────────────────────────────────────────── */}
+    <aside>
+      <div class="card">
+        <h3>Who to talk to</h3>
+        {
+          lead.contactName || lead.contactEmail || lead.contactPhone ? (
+            <dl class="kv kv--tight">
+              {lead.contactName && (
+                <>
+                  <dt>Name</dt>
+                  <dd>
+                    {lead.contactName}
+                    {lead.contactRole && <span class="muted"> · {lead.contactRole}</span>}
+                  </dd>
+                </>
+              )}
+              {lead.contactEmail && (
+                <>
+                  <dt>Email</dt>
+                  <dd><a href={`mailto:${lead.contactEmail}`}>{lead.contactEmail}</a></dd>
+                </>
+              )}
+              {lead.contactPhone && (
+                <>
+                  <dt>Phone</dt>
+                  <dd>{lead.contactPhone}</dd>
+                </>
+              )}
+            </dl>
+          ) : (
+            <p class="muted" style="margin:0">
+              No contact given — start from the website.
+            </p>
+          )
+        }
+      </div>
+
+      {
+        isOpen && (
+          <div class="card decide">
+            <h3>Decide</h3>
+
+            <form method="POST" action={`/api/leads/${lead.id}/convert`}>
+              <button class="btn btn--primary" type="submit">Convert to client</button>
+            </form>
+            <p class="hint">
+              Creates the client and contact, and puts the referral on their timeline.
+              {matches.clients.length > 0 && ' Check the possible matches first.'}
+            </p>
+
+            {lead.status === 'new' && (
+              <form method="POST" action={`/api/leads/${lead.id}`} class="stack">
+                <input type="hidden" name="action" value="status" />
+                <input type="hidden" name="status" value="qualified" />
+                <button class="btn btn--ghost" type="submit">Worth pursuing — not yet</button>
+              </form>
+            )}
+
+            {/*
+              A reason is required to decline, and it is for your memory, not
+              theirs: nothing here is ever shown to the partner or the
+              organization. Six months on, "why did I pass on this?" is a
+              question you will actually ask.
+            */}
+            <form method="POST" action={`/api/leads/${lead.id}`} class="stack decline">
+              <input type="hidden" name="action" value="status" />
+              <input type="hidden" name="status" value="declined" />
+              <label for="dispositionReason">Not a fit, because</label>
+              <input
+                id="dispositionReason"
+                name="dispositionReason"
+                type="text"
+                required
+                placeholder="Wants an app, not a web presence"
+              />
+              <button class="btn btn--ghost" type="submit">Decline</button>
+            </form>
+          </div>
+        )
+      }
+
+      {
+        !isOpen && lead.dispositionReason && (
+          <div class="card">
+            <h3>Why</h3>
+            <p style="margin:0">{lead.dispositionReason}</p>
+          </div>
+        )
+      }
+
+      <div class="card" id="notes">
+        <h3>Your notes</h3>
+        <form method="POST" action={`/api/leads/${lead.id}`}>
+          <input type="hidden" name="action" value="notes" />
+          <textarea name="internalNotes" rows="5">{lead.internalNotes ?? ''}</textarea>
+          <button class="btn btn--ghost" type="submit">Save</button>
+        </form>
+      </div>
+    </aside>
+  </div>
+</App>
+
+<style>
+  .head {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 1rem;
+  }
+  .head h1 {
+    margin-bottom: 0.25rem;
+  }
+  .meta {
+    margin-top: 0;
+  }
+  .state {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    white-space: nowrap;
+    margin: 0.4rem 0 0;
+  }
+  .state--new {
+    color: var(--bamboo-deep);
+  }
+
+  .cols {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) 20rem;
+    gap: 2.5rem;
+    margin-top: 2rem;
+    align-items: start;
+  }
+  @media (max-width: 62rem) {
+    .cols {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+
+  section {
+    margin-bottom: 2.25rem;
+  }
+  h2 {
+    font-size: 1.15rem;
+  }
+  h3 {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-weight: 400;
+    margin: 0 0 0.85rem;
+  }
+
+  .kv {
+    display: grid;
+    grid-template-columns: 9rem minmax(0, 1fr);
+    gap: 0.5rem 1rem;
+    margin: 0;
+  }
+  .kv--tight {
+    grid-template-columns: 4.5rem minmax(0, 1fr);
+  }
+  .kv dt {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    padding-top: 0.15rem;
+  }
+  .kv dd {
+    margin: 0;
+  }
+
+  .warm {
+    color: var(--bamboo-deep);
+  }
+  .hint {
+    display: block;
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin-top: 0.3rem;
+  }
+
+  /* The partner's words, set apart. Same treatment the readout gives a
+     client's own language — it is evidence, not commentary. */
+  .quote {
+    border-left: 2px solid var(--line);
+    margin: 0 0 1.25rem;
+    padding: 0.1rem 0 0.1rem 1.1rem;
+  }
+  .quote p {
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    margin: 0 0 0.4rem;
+    white-space: pre-wrap;
+  }
+  .quote--aside {
+    border-left-color: var(--sage);
+  }
+  .quote cite {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    font-style: normal;
+  }
+
+  .matches {
+    border: 1px solid var(--line);
+    padding: 1rem 1.15rem;
+  }
+  .match {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    padding: 0.85rem 0;
+    border-top: 1px solid var(--line);
+  }
+  .match:first-of-type {
+    border-top: none;
+  }
+  .match form {
+    flex: none;
+  }
+
+  .decide > * + * {
+    margin-top: 1rem;
+  }
+  .stack {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    align-items: flex-start;
+    border-top: 1px solid var(--line);
+    padding-top: 1rem;
+  }
+  .stack label {
+    font-size: 0.85rem;
+  }
+  .stack input[type='text'] {
+    width: 100%;
+  }
+  .decline button {
+    align-self: flex-start;
+  }
+
+  #notes textarea {
+    width: 100%;
+    margin-bottom: 0.6rem;
+  }
+
+  .resolved {
+    border-left: 2px solid var(--bamboo);
+    margin-bottom: 1.5rem;
+  }
+  .err {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 0.6rem 0.85rem;
+    font-size: 0.9rem;
+  }
+</style>

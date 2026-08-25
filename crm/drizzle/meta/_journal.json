@@ -15,6 +15,13 @@
       "when": 1786672339757,
       "tag": "0001_crazy_purple_man",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1787603930025,
+      "tag": "0002_nebulous_ink",
+      "breakpoints": true
     }
   ]
 }
