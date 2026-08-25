@@ -617,3 +617,193 @@ export const emailMatchQueue = pgTable('email_match_queue', {
   resolvedAt: timestamp('resolved_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
 });
+
+// ══════════════════════ PARTNERS + LEADS (Phase 4) ══════════════════════
+
+/**
+ * People who send work this way: past clients, adjacent freelancers, the
+ * accountant who keeps meeting nonprofits with a broken website.
+ *
+ * Each one gets a private URL — /refer/{token} — instead of a login. That
+ * choice is the whole design: attribution is automatic rather than
+ * self-reported (there is no "who are you?" field for someone to mistype or
+ * leave blank), and a link can be retired on its own without touching anyone
+ * else's. Nobody who refers you two organizations a year should have to
+ * maintain a password to do it.
+ */
+export const PARTNER_STATUSES = ['active', 'revoked'] as const;
+
+export const partners = pgTable(
+  'partners',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    /** The organization or person as you would say it out loud. */
+    name: text('name').notNull(),
+    contactName: text('contact_name'),
+    email: text('email'),
+    phone: text('phone'),
+
+    /**
+     * The secret in /refer/{token}. Stored in PLAINTEXT, unlike the session
+     * tokens in `sessions`, and that difference is deliberate.
+     *
+     * A session token is write-once: it is minted, handed to a browser, and
+     * never needs to be shown again, so storing only its hash costs nothing. A
+     * referral link is the opposite — you will need to copy it out of this
+     * database and paste it into an email eighteen months from now, and a hash
+     * cannot be un-hashed to do that. Hashing it would mean re-issuing a new
+     * link every time someone lost theirs.
+     *
+     * The exposure is bounded by what the token can actually do: submit a lead
+     * form. It reads nothing, and grants no session. Worst case for a leaked
+     * link is junk rows attributed to the wrong partner, which is what
+     * `status = 'revoked'` and the per-token rate limit are for.
+     */
+    token: text('token').notNull().unique(),
+
+    /** 'active' | 'revoked'. Revoked links 404 rather than explaining why. */
+    status: text('status').notNull().default('active'),
+    revokedAt: timestamp('revoked_at', { withTimezone: true }),
+
+    /** How you know them, in your own words. Context for reading their leads. */
+    relationship: text('relationship'),
+    notes: text('notes'),
+
+    /**
+     * Soft link for the case where a partner is also a client. Nullable and
+     * one-way: deleting the client leaves the partner and their referral
+     * history intact, because the leads they sent are still yours.
+     */
+    clientId: uuid('client_id').references(() => clients.id, { onDelete: 'set null' }),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+
+    // ⚠ No partner score, tier, or "quality" column — same rule as
+    // `pulseChecks`, and for the same reason. Count their converted leads if
+    // you want to know who sends good work; do not rank the people who help
+    // you in a column that a report could one day print.
+  },
+  (t) => [
+    /** The lookup on every /refer/{token} request. */
+    uniqueIndex('partners_token_key').on(t.token),
+    index('partners_status_idx').on(t.status),
+  ],
+);
+
+/**
+ * How soon the referred organization needs something, AS THE PARTNER
+ * UNDERSTANDS IT.
+ *
+ * This is a reported fact about timing, not an assessment of the
+ * organization — the distinction matters, because a priority field is the
+ * shortest path to the lead-scoring column this schema refuses to have.
+ * `unknown` is the honest default and the form says so.
+ */
+export const LEAD_URGENCIES = ['now', 'few_months', 'exploring', 'unknown'] as const;
+
+/**
+ * Triage states. Deliberately flat and small — this is a queue to empty, not
+ * a pipeline to manage. The pipeline is `clients.status`, and a lead reaches
+ * it by being converted.
+ *
+ * `duplicate` is separate from `declined` because they mean opposite things
+ * about the partner: a duplicate means they sent something real that you
+ * already had, and counting it against them would be wrong.
+ */
+export const LEAD_STATUSES = ['new', 'qualified', 'converted', 'declined', 'duplicate'] as const;
+
+export const leads = pgTable(
+  'leads',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+
+    /**
+     * NULL means you entered it yourself — see `submittedVia`. Set null rather
+     * than cascade on partner deletion: the lead is a real thing that
+     * happened, and losing it because you tidied up a partner list would be a
+     * silent data loss.
+     */
+    partnerId: uuid('partner_id').references(() => partners.id, { onDelete: 'set null' }),
+
+    // ── the organization being referred ──────────────────────────────────
+    // Mirrors the shape of `clients` so conversion is a copy, not a mapping.
+    orgName: text('org_name').notNull(),
+    websiteUrl: text('website_url'),
+    sector: text('sector'),
+    city: text('city'),
+    state: text('state'),
+
+    // ── who to talk to ───────────────────────────────────────────────────
+    contactName: text('contact_name'),
+    /** Normalized on write the same way `contacts.email` is. */
+    contactEmail: text('contact_email'),
+    contactPhone: text('contact_phone'),
+    contactRole: text('contact_role'),
+
+    // ── the substance, in the partner's words ────────────────────────────
+    /**
+     * What the partner says the organization needs. Kept verbatim and never
+     * rewritten on the way in, for the same reason `pulseChecks.sourceVerbatim`
+     * is: the sentence someone uses is worth more than the category you would
+     * have filed it under.
+     */
+    whatTheyNeed: text('what_they_need'),
+    /** One of LEAD_URGENCIES. */
+    urgency: text('urgency').notNull().default('unknown'),
+    /**
+     * Did the partner tell them a referral was coming?
+     *
+     * The single most useful field on the form. A cold approach to someone who
+     * has never heard of you is a different first email than a warm one, and
+     * getting it wrong burns the partner's goodwill rather than yours.
+     */
+    permissionToContact: boolean('permission_to_contact').notNull().default(false),
+    /** Anything else the partner wanted to pass along. */
+    referrerNote: text('referrer_note'),
+
+    // ── triage ───────────────────────────────────────────────────────────
+    status: text('status').notNull().default('new'),
+    /** Why it was declined or marked duplicate. For your memory, not theirs. */
+    dispositionReason: text('disposition_reason'),
+    /** Set when it leaves 'new'. The clock the leads queue is judged against. */
+    triagedAt: timestamp('triaged_at', { withTimezone: true }),
+
+    /**
+     * Set on conversion. The join that makes a client's origin visible from
+     * the client page, and the reason a converted lead is never deleted.
+     */
+    clientId: uuid('client_id').references(() => clients.id, { onDelete: 'set null' }),
+    convertedAt: timestamp('converted_at', { withTimezone: true }),
+
+    /** Your notes. Never shown on any public route. */
+    internalNotes: text('internal_notes'),
+
+    // ── provenance ───────────────────────────────────────────────────────
+    /** 'partner_link' | 'internal' — how the row got here. */
+    submittedVia: text('submitted_via').notNull().default('partner_link'),
+    /**
+     * Kept for abuse triage only: if one link starts producing junk, this is
+     * how you tell a compromised link from a partner having a bad day. Not
+     * shown in the normal lead view.
+     */
+    submittedIp: inet('submitted_ip'),
+
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    /** The queue view: newest untriaged first. */
+    index('leads_status_idx').on(t.status, t.createdAt.desc()),
+    index('leads_partner_idx').on(t.partnerId, t.createdAt.desc()),
+    /**
+     * Duplicate detection on the way in, and the per-token rate limit, both
+     * read this. Not unique — the same person genuinely can be referred twice
+     * by two partners, and that is a fact worth recording, not an error worth
+     * rejecting.
+     */
+    index('leads_contact_email_idx')
+      .on(sql`lower(${t.contactEmail})`)
+      .where(sql`${t.contactEmail} is not null`),
+  ],
+);

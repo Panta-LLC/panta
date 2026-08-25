@@ -25,12 +25,15 @@ const KIND_LABELS: Record<string, string> = {
   pulse_check: 'Pulse Check',
   readout_sent: 'Readout sent',
   proposal: 'Proposal',
+  /** Written by convertLead() — how this client got here in the first place. */
+  referral: 'Referral',
 };
 
 /** Entries that point at something you can open. */
 function linkFor(e: TimelineEntry): string | null {
   if (e.entityType === 'pulse_check' && e.entityId) return `/pulse/${e.entityId}/capture`;
   if (e.entityType === 'readout' && e.entityId) return `/readouts/${e.entityId}`;
+  if (e.entityType === 'lead' && e.entityId) return `/leads/${e.entityId}`;
   if (e.source === 'gmail' && e.externalThreadId) {
     return `https://mail.google.com/mail/u/0/#inbox/${e.externalThreadId}`;
   }

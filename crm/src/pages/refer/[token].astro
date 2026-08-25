@@ -1,0 +1,376 @@
+---
+export const prerender = false;
+
+/**
+ * The partner referral form — the only page in this project a person outside
+ * the business ever sees.
+ *
+ * It is deliberately write-only. It reads exactly one thing from the database,
+ * the partner's own name, and renders nothing about any client, lead, or other
+ * partner. See the note on PUBLIC_PREFIXES in src/middleware.ts for why that
+ * constraint is the thing holding the whole arrangement up.
+ *
+ * The copy is written for someone doing you a favour in ninety seconds between
+ * two other tasks: one required field, everything else optional and labelled
+ * with what happens if they leave it blank.
+ */
+import Bare from '../../layouts/Bare.astro';
+import { getActivePartnerByToken } from '../../lib/db/queries/partners.ts';
+import { CLIENT_SECTORS } from '../../lib/db/schema.ts';
+
+const { token } = Astro.params;
+const partner = token ? await getActivePartnerByToken(token) : null;
+
+// A revoked link and a made-up one produce the same 404, on purpose.
+if (!partner) return new Response('Not found', { status: 404 });
+
+const sent = Astro.url.searchParams.get('sent') === '1';
+const error = Astro.url.searchParams.get('error');
+
+const ERRORS: Record<string, string> = {
+  org: 'Please give us the name of the organization.',
+  contact: 'Please add at least one of: an email, a phone number, or their website.',
+  email: "That email address doesn't look right.",
+  rate: "That's a lot of referrals in one hour — give it a few minutes and try again, or just email Damon directly.",
+};
+
+const SECTOR_LABELS: Record<string, string> = {
+  nonprofit: 'Nonprofit',
+  independent_practice: 'Independent practice',
+  small_business: 'Small business',
+  community_org: 'Community organization',
+  public_agency: 'Public agency',
+  ecommerce: 'E-commerce',
+  other: 'Other',
+};
+
+const URGENCIES = [
+  ['now', 'They need something now'],
+  ['few_months', 'Sometime in the next few months'],
+  ['exploring', "They're just exploring"],
+  ['unknown', "I don't know"],
+];
+
+const who = partner.contactName?.split(/\s+/)[0] ?? null;
+---
+
+<Bare title="Refer someone" suffix="Panta">
+  <main class="wrap">
+    <header class="masthead">
+      <p class="kicker">Panta · Referral</p>
+      <p class="masthead__who">
+        This is {partner.name}'s private link.
+      </p>
+    </header>
+
+    {
+      sent ? (
+        <section class="done">
+          <h1>Thank you{who ? `, ${who}` : ''}.</h1>
+          <p>
+            That's with Damon now. He reads these himself, usually the same day, and
+            he'll reach out to them directly.
+          </p>
+          <p class="muted">
+            If you told them a referral was coming, they'll hear from him within a
+            business day or two. If you didn't, he'll open with how the two of you know
+            each other rather than pretending it came out of nowhere.
+          </p>
+          <p>
+            <a class="btn btn--ghost" href={`/refer/${token}`}>Refer someone else</a>
+          </p>
+        </section>
+      ) : (
+        <>
+          <h1>Know someone we should talk to?</h1>
+          <p class="lede">
+            Tell us who they are and we'll take it from there. Only the first question
+            is required — send what you know and leave the rest blank.
+          </p>
+
+          {error && <p class="err">{ERRORS[error] ?? 'Something went wrong. Try again?'}</p>}
+
+          <form method="POST" action={`/api/refer/${token}`} class="form">
+            {/*
+              Honeypot. Positioned off-screen rather than display:none, because
+              some bots skip hidden fields but not displaced ones. aria-hidden
+              and tabindex keep it away from screen readers and the tab order.
+              Same field name as site/src/pages/api/contact.ts.
+            */}
+            <div class="hp" aria-hidden="true">
+              <label for="company_url">Company URL</label>
+              <input id="company_url" name="company_url" type="text" tabindex="-1" autocomplete="off" />
+            </div>
+
+            <fieldset>
+              <legend>Who are they?</legend>
+
+              <div>
+                <label for="orgName">Organization name <span class="req">required</span></label>
+                <input id="orgName" name="orgName" type="text" required autofocus autocomplete="off" />
+              </div>
+
+              <div>
+                <label for="websiteUrl">Their website</label>
+                <input id="websiteUrl" name="websiteUrl" type="text" placeholder="example.org" />
+                <p class="hint">
+                  Leave blank if they don't have one — that's genuinely useful to know, not
+                  a gap.
+                </p>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="sector">What kind of organization</label>
+                  <select id="sector" name="sector">
+                    <option value="">—</option>
+                    {CLIENT_SECTORS.map((s) => (
+                      <option value={s}>{SECTOR_LABELS[s] ?? s}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label for="city">City</label>
+                  <input id="city" name="city" type="text" />
+                </div>
+                <div>
+                  <label for="state">State</label>
+                  <input id="state" name="state" type="text" maxlength="2" placeholder="CA" />
+                </div>
+              </div>
+            </fieldset>
+
+            <fieldset>
+              <legend>Who should we talk to?</legend>
+
+              <div class="row">
+                <div>
+                  <label for="contactName">Name</label>
+                  <input id="contactName" name="contactName" type="text" autocomplete="off" />
+                </div>
+                <div>
+                  <label for="contactRole">Their role</label>
+                  <input id="contactRole" name="contactRole" type="text" placeholder="Director" />
+                </div>
+              </div>
+
+              <div class="row">
+                <div>
+                  <label for="contactEmail">Email</label>
+                  <input id="contactEmail" name="contactEmail" type="email" autocomplete="off" />
+                </div>
+                <div>
+                  <label for="contactPhone">Phone</label>
+                  <input id="contactPhone" name="contactPhone" type="tel" autocomplete="off" />
+                </div>
+              </div>
+              <p class="hint">
+                One of these — or their website above — is enough to get started.
+              </p>
+            </fieldset>
+
+            <fieldset>
+              <legend>What's going on?</legend>
+
+              <div>
+                <label for="whatTheyNeed">What do they need?</label>
+                <textarea id="whatTheyNeed" name="whatTheyNeed" rows="4"
+                  placeholder="Their site hasn't been touched since 2019 and they're losing bookings to a competitor."></textarea>
+                <p class="hint">
+                  In your own words is better than a tidy summary. Damon reads this
+                  before he reaches out.
+                </p>
+              </div>
+
+              <div>
+                <span class="label">How soon?</span>
+                <div class="radios">
+                  {URGENCIES.map(([v, label], i) => (
+                    <label class="radio">
+                      <input type="radio" name="urgency" value={v} checked={i === 3} />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {/*
+                The single most useful field on this form. A cold approach to
+                someone who has never heard of us is a different first email
+                than a warm one — and getting that wrong spends the partner's
+                goodwill, not ours.
+              */}
+              <div class="check">
+                <label class="radio">
+                  <input type="checkbox" name="permissionToContact" value="1" />
+                  <span>I've mentioned Panta to them, so they'll know why we're reaching out.</span>
+                </label>
+                <p class="hint">
+                  No problem either way — it just changes how Damon opens the
+                  conversation. If you haven't, he'll lead with how the two of you
+                  know each other rather than acting like it came from nowhere.
+                </p>
+              </div>
+
+              <div>
+                <label for="referrerNote">Anything else we should know?</label>
+                <textarea id="referrerNote" name="referrerNote" rows="3"
+                  placeholder="She's cautious about spending — don't lead with a big number."></textarea>
+                <p class="hint">Only Damon sees this. It never goes to them.</p>
+              </div>
+            </fieldset>
+
+            <div class="actions">
+              <button class="btn btn--primary" type="submit">Send this referral</button>
+            </div>
+          </form>
+        </>
+      )
+    }
+
+    <footer class="foot">
+      <p class="muted">
+        Panta LLC · <a href="mailto:hello@panta.llc">hello@panta.llc</a>
+      </p>
+    </footer>
+  </main>
+</Bare>
+
+<style>
+  /* This page carries its own layout because it is the only one with no app
+     chrome around it — App.astro's container assumes a nav bar above it. */
+  .wrap {
+    max-width: 40rem;
+    margin: 0 auto;
+    padding: 2.5rem 1.25rem 4rem;
+  }
+
+  .masthead {
+    border-bottom: 1px solid var(--line);
+    padding-bottom: 1rem;
+    margin-bottom: 2rem;
+  }
+  .masthead__who {
+    margin: 0.35rem 0 0;
+    font-family: var(--font-serif);
+    font-size: 1.05rem;
+    color: var(--stone-deep);
+  }
+
+  h1 {
+    margin-bottom: 0.5rem;
+  }
+  .lede {
+    font-family: var(--font-serif);
+    font-size: 1.1rem;
+    color: var(--stone-deep);
+    margin-top: 0;
+    max-width: var(--measure);
+  }
+
+  .form {
+    margin-top: 2rem;
+  }
+  fieldset {
+    border: none;
+    border-top: 1px solid var(--line);
+    padding: 1.5rem 0 0;
+    margin: 0 0 1.75rem;
+  }
+  legend {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    color: var(--stone-deep);
+    padding: 0 0.6rem 0 0;
+  }
+  fieldset > * + * {
+    margin-top: 1.15rem;
+  }
+
+  .row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(9rem, 1fr));
+    gap: 1rem;
+  }
+
+  .label {
+    display: block;
+    font-weight: 500;
+    margin-bottom: 0.4rem;
+  }
+  .req {
+    font-family: var(--font-mono);
+    font-size: 0.66rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    color: var(--bamboo-deep);
+    margin-left: 0.4rem;
+  }
+  .hint {
+    font-size: 0.85rem;
+    color: var(--stone-deep);
+    margin: 0.35rem 0 0;
+    max-width: var(--measure);
+  }
+
+  .radios {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+  }
+  .radio {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.55rem;
+    font-weight: 400;
+    cursor: pointer;
+  }
+  .radio input {
+    margin-top: 0.28rem;
+    flex: none;
+  }
+  .check {
+    background: var(--cream-soft);
+    border-left: 2px solid var(--bamboo);
+    padding: 0.9rem 1rem;
+  }
+
+  .actions {
+    border-top: 1px solid var(--line);
+    padding-top: 1.5rem;
+  }
+
+  .err {
+    border-left: 2px solid var(--amber);
+    background: var(--amber-soft);
+    padding: 0.7rem 0.95rem;
+    font-size: 0.92rem;
+    margin: 1.25rem 0 0;
+  }
+
+  .done h1 {
+    margin-top: 1rem;
+  }
+  .done p {
+    max-width: var(--measure);
+  }
+
+  /* Off-screen rather than display:none — some bots skip hidden inputs but
+     happily fill displaced ones. */
+  .hp {
+    position: absolute;
+    left: -9999px;
+    width: 1px;
+    height: 1px;
+    overflow: hidden;
+  }
+
+  .foot {
+    border-top: 1px solid var(--line);
+    margin-top: 3rem;
+    padding-top: 1rem;
+    font-size: 0.88rem;
+  }
+</style>
