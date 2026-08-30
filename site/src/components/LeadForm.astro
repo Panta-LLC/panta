@@ -101,7 +101,7 @@ const id = (field: string) => `lead-${field}-${source}`;
   <div class="lead__row">
     <div class="lead__field">
       <label for={id('name')}>Your name</label>
-      <input type="text" id={id('name')} name="name" autocomplete="name" required />
+      <input type="text" id={id('name')} name="name" autocomplete="name" maxlength="80" required />
     </div>
     <div class="lead__field">
       <label for={id('email')}>Email</label>
@@ -112,7 +112,7 @@ const id = (field: string) => `lead-${field}-${source}`;
   {!compact && (
     <div class="lead__field">
       <label for={id('org')}>Website, Social Account, or Business Profile URL <span class="lead__opt">(optional)</span></label>
-      <input type="text" id={id('org')} name="org" autocomplete="organization" />
+      <input type="text" id={id('org')} name="org" autocomplete="organization" maxlength="200" />
     </div>
   )}
 
@@ -123,6 +123,7 @@ const id = (field: string) => `lead-${field}-${source}`;
         id={id('message')}
         name="message"
         rows="3"
+        maxlength="4000"
         placeholder="A quick description of your biggest challenge or concern"
       ></textarea>
     </div>

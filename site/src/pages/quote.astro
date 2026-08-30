@@ -109,7 +109,7 @@ const quoteSchema = {
           <div class="qt-row">
             <div>
               <label for="name">Your name</label>
-              <input type="text" id="name" name="name" autocomplete="name" required />
+              <input type="text" id="name" name="name" autocomplete="name" maxlength="80" required />
             </div>
             <div>
               <label for="email">Email</label>
@@ -119,7 +119,7 @@ const quoteSchema = {
 
           <div>
             <label for="org">Organization or current website <span class="opt">(optional)</span></label>
-            <input type="text" id="org" name="org" autocomplete="organization" />
+            <input type="text" id="org" name="org" autocomplete="organization" maxlength="200" />
           </div>
 
           <div>
@@ -135,6 +135,7 @@ const quoteSchema = {
               id="message"
               name="message"
               rows="6"
+              maxlength="4000"
               required
               placeholder="What you have now, what you need built, and roughly when you need it. Pages, features, deadlines, anything already decided — the more specific, the closer the number."
             ></textarea>
