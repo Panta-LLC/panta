@@ -6,6 +6,8 @@ export const prerender = false;
 
 import type { APIRoute } from 'astro';
 import nodemailer from 'nodemailer';
+import { rateLimit } from '../../lib/rate-limit';
+import { headerSafe, screenSubmission } from '../../lib/spam';
 
 /**
  * The homepage form submits with `xhr=1` and stays on the page, so it needs JSON
@@ -18,6 +20,20 @@ function json(body: { ok: true } | { ok: false; error: string }, status = 200) {
     status,
     headers: { 'content-type': 'application/json' },
   });
+}
+
+/**
+ * Best-effort client IP for the rate limit. Vercel's proxy sets
+ * x-forwarded-for and overwrites rather than appends, so the first entry is the
+ * client as the edge saw it and a spoofed value does not survive. It gates a
+ * courtesy limit and authorises nothing. Locally there is no proxy, so every
+ * dev request shares one bucket — which is what makes the limit testable from a
+ * single machine. Mirrors api/subscribe.ts.
+ */
+function clientIp(request: Request): string {
+  const xff = request.headers.get('x-forwarded-for');
+  const first = xff?.split(',')[0]?.trim();
+  return first || request.headers.get('x-real-ip')?.trim() || 'local';
 }
 
 /** Coerce Vite/Node env values to a trimmed string (empty → undefined). */
@@ -33,10 +49,30 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   // forwarded Host instead. Requests with no Origin (curl, some clients)
   // still have to clear the honeypot and validation below.
   const origin = request.headers.get('origin');
+  const referer = request.headers.get('referer');
   const host = request.headers.get('x-forwarded-host') ?? request.headers.get('host');
   if (origin && host && new URL(origin).host !== host) {
     return new Response('Forbidden', { status: 403 });
   }
+
+  // Whether this POST came from a page on this site. Browsers set Origin on
+  // every form submission, so a request carrying neither Origin nor a Referer
+  // on our host did not come from our form — which is exactly how the spam that
+  // prompted this arrived.
+  //
+  // Deliberately NOT a rejection. A header can be stripped by privacy tooling
+  // or a corporate proxy, and losing a real lead is silent and unrecoverable
+  // where receiving a spam email is neither. It is handed to the content screen
+  // below as one signal among several instead.
+  const sameHost = (value: string | null) => {
+    if (!value || !host) return false;
+    try {
+      return new URL(value).host === host;
+    } catch {
+      return false;
+    }
+  };
+  const fromOurPage = sameHost(origin) || sameHost(referer);
 
   const form = await request.formData();
   const wantsJson = String(form.get('xhr') ?? '').trim() === '1';
@@ -75,8 +111,11 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
   const name = String(form.get('name') ?? '').trim();
   const email = String(form.get('email') ?? '').trim();
-  const org = String(form.get('org') ?? '').trim();
-  const message = String(form.get('message') ?? '').trim();
+  // Capped at the point of read, so nothing downstream has to think about
+  // length. `name` is deliberately NOT capped here — an absurdly long one is a
+  // spam signal the screen below scores, and truncating it first would hide it.
+  const org = String(form.get('org') ?? '').trim().slice(0, 200);
+  const message = String(form.get('message') ?? '').trim().slice(0, 4000);
   // Which surface the lead came from, so homepage and /contact/ are tellable
   // apart in the inbox. Defaults to the page that had no field before this.
   const source = String(form.get('source') ?? 'contact_page').slice(0, 40);
@@ -87,6 +126,46 @@ export const POST: APIRoute = async ({ request, redirect }) => {
 
   if (!name || !email || !email.includes('@')) {
     return fail('Add your name and a valid email address.', 400);
+  }
+
+  // Content screen (src/lib/spam.ts). The honeypot above catches the bot that
+  // fills every field it finds; this catches the one that fills only the real
+  // ones and puts its payload in the name.
+  //
+  // Drops SILENTLY with the success response, exactly like the honeypot path.
+  // A bot that gets an error learns which part of its payload to change; one
+  // that gets a 200 has no reason to come back with a different one. The log
+  // line carries the score and the signals that fired, so a mis-catch can be
+  // diagnosed from the Vercel logs — that is the only place a dropped
+  // submission is visible, and it is on purpose.
+  const verdict = screenSubmission({ name, email, org, message, hasOrigin: fromOurPage });
+  if (verdict.spam) {
+    console.info(
+      `contact: screened out (score ${verdict.score}: ${verdict.reasons.join(', ')}) ` +
+        `from ${email} — name: ${JSON.stringify(name.slice(0, 120))}`,
+    );
+    return ok();
+  }
+
+  // Limits sit here rather than at the top of the handler: a honeypot hit, a
+  // typo'd address and a screened payload all cost us nothing, and none of them
+  // should be able to spend a real visitor's budget. What is being protected is
+  // the SMTP send and the sending domain's reputation, so the check goes
+  // directly in front of it.
+  //
+  // Two rules, opposite attacks — same reasoning as api/subscribe.ts. Per-IP
+  // stops one script working through a list. Per-email protects the person
+  // whose address is being used as the reply-to for a flood, since every
+  // accepted submission sends that address a confirmation it never asked for.
+  // See src/lib/rate-limit.ts for the per-instance caveat: this is a speed
+  // bump, not a guarantee.
+  const ip = clientIp(request);
+  const limited =
+    !rateLimit(`contact:ip:${ip}`, { limit: 5, windowMs: 60 * 60_000 }).ok ||
+    !rateLimit(`contact:email:${email.toLowerCase()}`, { limit: 3, windowMs: 60 * 60_000 }).ok;
+  if (limited) {
+    console.info(`contact: rate limited ip=${ip} email=${email}`);
+    return fail("That's a few too many tries. Give it a minute and try again.", 429);
   }
 
   // Runtime first, build-time only as a dev fallback. Both halves matter:
@@ -148,13 +227,17 @@ export const POST: APIRoute = async ({ request, redirect }) => {
     await transporter.sendMail({
       from: `"panta.llc contact form" <${SMTP_USER}>`,
       to,
-      replyTo: `"${name.replace(/"/g, '')}" <${email}>`,
+      replyTo: `"${headerSafe(name)}" <${email}>`,
       // A quote request is a different job from a lead — it has a two-business-day
       // clock on it — so it says so in the subject rather than needing the body
       // read to find out.
+      // headerSafe, not the raw values: a Subject line is the one place a
+      // submitted string leaves our formatting and becomes mail structure, and
+      // a 200-character "name" in it is what tripped the receiving host's spam
+      // filter and bounced the whole message. Truncated here, screened above.
       subject: `New ${
         source === 'quote_page' ? 'QUOTE REQUEST' : source === 'contact_page' ? 'contact' : 'lead'
-      } from ${name}${org ? ` (${org})` : ''}`,
+      } from ${headerSafe(name)}${org ? ` (${headerSafe(org, 40)})` : ''}`,
       text: [
         `Name: ${name}`,
         // Labelled "Website or organization" on the form (LeadForm.astro) —

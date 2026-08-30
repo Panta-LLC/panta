@@ -124,7 +124,7 @@ const CHOOSER = [
         </div>
         <div>
           <label for="name">Your name</label>
-          <input type="text" id="name" name="name" autocomplete="name" required />
+          <input type="text" id="name" name="name" autocomplete="name" maxlength="80" required />
         </div>
         <div>
           <label for="email">Email</label>
@@ -132,11 +132,11 @@ const CHOOSER = [
         </div>
         <div>
           <label for="org">Website or organization <span class="opt">(optional)</span></label>
-          <input type="text" id="org" name="org" autocomplete="organization" />
+          <input type="text" id="org" name="org" autocomplete="organization" maxlength="200" />
         </div>
         <div>
           <label for="message">What made you reach out now?</label>
-          <textarea id="message" name="message" rows="5" placeholder="The itch. A form nobody fills out, a listing with the wrong hours, a hunch you're invisible on Google…"></textarea>
+          <textarea id="message" name="message" rows="5" maxlength="4000" placeholder="The itch. A form nobody fills out, a listing with the wrong hours, a hunch you're invisible on Google…"></textarea>
         </div>
         <div>
           <button type="submit" class="btn btn--primary">Send it over</button>
