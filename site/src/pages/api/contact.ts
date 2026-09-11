@@ -280,9 +280,35 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   // that must not fail, and a bounced confirmation must never cost us the lead
   // or show the visitor an error for something that already worked.
   //
-  // Transactional, not marketing — they initiated it — so no unsubscribe. The
-  // honeypot path returned long before here, so bots never trigger a send to a
-  // spoofed address.
+  // Transactional, not marketing — they initiated it — so no unsubscribe.
+  //
+  // GATED ON `fromOurPage`, and this is the load-bearing line in the file.
+  //
+  // The address in `email` is unverified and attacker-chosen: whoever posts
+  // this form decides who receives mail from us. That turned the receipt into
+  // an open relay, and it was being used as one — roughly forty times a day,
+  // a bot posting directly at this endpoint with a stranger's address in the
+  // email field and a promo payload in the message, which the receipt then
+  // quoted back (see confirmationText) and delivered to that stranger over our
+  // signature. The cost was not the spam itself: it flagged panta.llc at the
+  // sending host, and every real lead notification started bouncing 550 behind
+  // it. An inbound business lost its inbound.
+  //
+  // Requiring an Origin or Referer on our own host is not a strong check — a
+  // header is trivially forged — but it is precisely targeted at the thing
+  // doing the damage, which posts here with no browser at all. A visitor whose
+  // privacy tooling strips the header loses only the receipt, not the lead:
+  // the notification above already went out, and they still see the
+  // confirmation on the page.
+  //
+  // If this needs to be stronger later, the real answer is to stop sending
+  // mail to unverified addresses at all rather than to guess harder about
+  // headers.
+  if (!fromOurPage) {
+    console.info(`contact: receipt suppressed (no same-host origin) for ${email}`);
+    return ok();
+  }
+
   try {
     const isQuote = source === 'quote_page';
     await transporter.sendMail({
@@ -334,9 +360,6 @@ function confirmationText({
       'short note saying what we would need to know first. Either way it comes from',
       'a person who has read what you sent.',
       '',
-      ...(message
-        ? ['Here is the brief you sent, for your records:', '', ...message.split('\n').map((l) => `> ${l}`), '']
-        : []),
       'If it turns out the scope is still open, we may suggest starting with the free',
       '30-minute review instead — but we will say why, and you will still get the',
       'number you asked for.',
@@ -354,9 +377,6 @@ function confirmationText({
     'makes sense we will find a time; if your question does not need one, you will',
     'get a straight answer instead.',
     '',
-    ...(message
-      ? ['Here is what you sent, for your records:', '', ...message.split('\n').map((l) => `> ${l}`), '']
-      : []),
     'If you would rather just put something in the calendar now, you can pick a',
     'time here:',
     'https://www.allthingspanta.com/consultation/#book',

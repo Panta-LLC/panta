@@ -78,6 +78,17 @@ const KEYWORDS = [
 /** Control characters, which only appear when someone is probing mail headers. */
 const CONTROL = /[\u0000-\u001F\u007F]/;
 
+/**
+ * A run of block capitals longer than any acronym a client would write.
+ * Spaces and digits count as part of the run so a shouted clause reads as one
+ * ("THE PLAYSTATION 5 PRO 2TB IS THE WONDROUS BESTOWAL"), while "SEO" and
+ * "CRM" in an ordinary sentence never approach the length.
+ */
+const SHOUTING = /[A-Z][A-Z0-9 ]{24,}/;
+
+/** A single alphanumeric run far longer than a word — a campaign tracking id. */
+const OPAQUE_TOKEN = /\b(?=[a-z0-9]*\d)[a-z0-9]{40,}\b/i;
+
 function countLinks(text: string): number {
   return text.match(LINK)?.length ?? 0;
 }
@@ -132,6 +143,34 @@ export function screenSubmission({
   // --- signals that need company ---------------------------------------
   if (NON_LATIN.test(`${name} ${org} ${message}`)) add(2, 'non_latin_script');
   if (messageLinks > 0 && messageLinks < 3) add(Math.min(messageLinks, 2), 'links_in_message');
+
+  // A link in the message from a request that did not come from one of our own
+  // pages. Either half alone is innocent and stays weighted as such above — a
+  // link is how someone shows you their site, and a stripped Origin header is
+  // how some privacy tooling posts a form. Together they are the shape of the
+  // campaign that cost us the sending domain: a bot posting straight at the
+  // endpoint with a promo link in the message and a stranger's address in the
+  // email field, roughly forty times a day, scoring exactly 2 against a
+  // threshold of 3 and relaying every time.
+  //
+  // A real visitor pasting a link never trips this, because a browser posting
+  // our own form always sends the header. That is what makes it safe to weight
+  // decisively: it does not ask whether the content looks spammy, it asks
+  // whether a browser on our site sent it.
+  if (messageLinks > 0 && !hasOrigin) add(2, 'link_without_origin');
+
+  // Shouting. A person writing in about their business does not put a clause
+  // in block capitals; a promo payload leads with one. Scored 1, so it needs
+  // company — an acronym-heavy note ("SEO, CRM, SaaS") never reaches the run
+  // length this looks for.
+  if (SHOUTING.test(message)) add(1, 'shouting');
+
+  // An unbroken alphanumeric run far longer than any word. These are campaign
+  // tracking ids ("Invoice ID: q4xz3f8h9z8u0h3rl5sy...") — the payloads carry
+  // them so the operator can tell which relay delivered. No honest field
+  // contains one, but it is scored 1 rather than blocking alone: a pasted
+  // session token or order reference is unlikely, not impossible.
+  if (OPAQUE_TOKEN.test(message)) add(1, 'opaque_token');
 
   const hay = `${name} ${org} ${message}`.toLowerCase();
   const hits = KEYWORDS.filter((word) => hay.includes(word));
