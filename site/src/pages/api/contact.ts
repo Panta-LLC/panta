@@ -224,19 +224,29 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   });
 
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"panta.llc contact form" <${SMTP_USER}>`,
       to,
       replyTo: `"${headerSafe(name)}" <${email}>`,
       // A quote request is a different job from a lead — it has a two-business-day
       // clock on it — so it says so in the subject rather than needing the body
       // read to find out.
+      //
+      // Sentence case, NOT "QUOTE REQUEST". The all-caps version was the only
+      // difference between a contact notification that reached the inbox and a
+      // quote notification that did not: shouted words in a Subject are a
+      // standard spam heuristic, and this domain currently offers a receiving
+      // filter nothing to weigh against them (no SPF record, and the SPF string
+      // is sitting on _dmarc.panta.llc where it is neither SPF nor DMARC — see
+      // the DNS note in README). Until those records are right, the mail has to
+      // avoid giving filters a reason on its own.
+      //
       // headerSafe, not the raw values: a Subject line is the one place a
       // submitted string leaves our formatting and becomes mail structure, and
       // a 200-character "name" in it is what tripped the receiving host's spam
       // filter and bounced the whole message. Truncated here, screened above.
       subject: `New ${
-        source === 'quote_page' ? 'QUOTE REQUEST' : source === 'contact_page' ? 'contact' : 'lead'
+        source === 'quote_page' ? 'quote request' : source === 'contact_page' ? 'contact' : 'lead'
       } from ${headerSafe(name)}${org ? ` (${headerSafe(org, 40)})` : ''}`,
       text: [
         `Name: ${name}`,
@@ -251,6 +261,15 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         message || '(no message)',
       ].join('\n'),
     });
+    // Logged on SUCCESS, not just on failure. Without this line a delivered
+    // submission and a submission the relay accepted and the receiving host
+    // then filed as spam look identical from outside — both are a 200 with no
+    // output — which is exactly what made "I am not getting the emails"
+    // expensive to diagnose. The queue id in `response` is what a mail host's
+    // logs are searchable by, and `to` makes a misrouted CONTACT_TO visible
+    // without needing to read the value back (it is a sensitive Vercel var and
+    // cannot be).
+    console.info(`contact: relayed ${source} from ${email} to ${to} — ${info.response ?? 'no response'}`);
   } catch (err) {
     console.error('contact: send failed', err);
     return fail('Something went wrong sending that. Email us directly instead.', 502);
