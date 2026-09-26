@@ -224,19 +224,29 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   });
 
   try {
-    await transporter.sendMail({
+    const info = await transporter.sendMail({
       from: `"panta.llc contact form" <${SMTP_USER}>`,
       to,
       replyTo: `"${headerSafe(name)}" <${email}>`,
       // A quote request is a different job from a lead — it has a two-business-day
       // clock on it — so it says so in the subject rather than needing the body
       // read to find out.
+      //
+      // Sentence case, NOT "QUOTE REQUEST". The all-caps version was the only
+      // difference between a contact notification that reached the inbox and a
+      // quote notification that did not: shouted words in a Subject are a
+      // standard spam heuristic, and this domain currently offers a receiving
+      // filter nothing to weigh against them (no SPF record, and the SPF string
+      // is sitting on _dmarc.panta.llc where it is neither SPF nor DMARC — see
+      // the DNS note in README). Until those records are right, the mail has to
+      // avoid giving filters a reason on its own.
+      //
       // headerSafe, not the raw values: a Subject line is the one place a
       // submitted string leaves our formatting and becomes mail structure, and
       // a 200-character "name" in it is what tripped the receiving host's spam
       // filter and bounced the whole message. Truncated here, screened above.
       subject: `New ${
-        source === 'quote_page' ? 'QUOTE REQUEST' : source === 'contact_page' ? 'contact' : 'lead'
+        source === 'quote_page' ? 'quote request' : source === 'contact_page' ? 'contact' : 'lead'
       } from ${headerSafe(name)}${org ? ` (${headerSafe(org, 40)})` : ''}`,
       text: [
         `Name: ${name}`,
@@ -251,6 +261,15 @@ export const POST: APIRoute = async ({ request, redirect }) => {
         message || '(no message)',
       ].join('\n'),
     });
+    // Logged on SUCCESS, not just on failure. Without this line a delivered
+    // submission and a submission the relay accepted and the receiving host
+    // then filed as spam look identical from outside — both are a 200 with no
+    // output — which is exactly what made "I am not getting the emails"
+    // expensive to diagnose. The queue id in `response` is what a mail host's
+    // logs are searchable by, and `to` makes a misrouted CONTACT_TO visible
+    // without needing to read the value back (it is a sensitive Vercel var and
+    // cannot be).
+    console.info(`contact: relayed ${source} from ${email} to ${to} — ${info.response ?? 'no response'}`);
   } catch (err) {
     console.error('contact: send failed', err);
     return fail('Something went wrong sending that. Email us directly instead.', 502);
@@ -261,9 +280,35 @@ export const POST: APIRoute = async ({ request, redirect }) => {
   // that must not fail, and a bounced confirmation must never cost us the lead
   // or show the visitor an error for something that already worked.
   //
-  // Transactional, not marketing — they initiated it — so no unsubscribe. The
-  // honeypot path returned long before here, so bots never trigger a send to a
-  // spoofed address.
+  // Transactional, not marketing — they initiated it — so no unsubscribe.
+  //
+  // GATED ON `fromOurPage`, and this is the load-bearing line in the file.
+  //
+  // The address in `email` is unverified and attacker-chosen: whoever posts
+  // this form decides who receives mail from us. That turned the receipt into
+  // an open relay, and it was being used as one — roughly forty times a day,
+  // a bot posting directly at this endpoint with a stranger's address in the
+  // email field and a promo payload in the message, which the receipt then
+  // quoted back (see confirmationText) and delivered to that stranger over our
+  // signature. The cost was not the spam itself: it flagged panta.llc at the
+  // sending host, and every real lead notification started bouncing 550 behind
+  // it. An inbound business lost its inbound.
+  //
+  // Requiring an Origin or Referer on our own host is not a strong check — a
+  // header is trivially forged — but it is precisely targeted at the thing
+  // doing the damage, which posts here with no browser at all. A visitor whose
+  // privacy tooling strips the header loses only the receipt, not the lead:
+  // the notification above already went out, and they still see the
+  // confirmation on the page.
+  //
+  // If this needs to be stronger later, the real answer is to stop sending
+  // mail to unverified addresses at all rather than to guess harder about
+  // headers.
+  if (!fromOurPage) {
+    console.info(`contact: receipt suppressed (no same-host origin) for ${email}`);
+    return ok();
+  }
+
   try {
     const isQuote = source === 'quote_page';
     await transporter.sendMail({
@@ -315,9 +360,6 @@ function confirmationText({
       'short note saying what we would need to know first. Either way it comes from',
       'a person who has read what you sent.',
       '',
-      ...(message
-        ? ['Here is the brief you sent, for your records:', '', ...message.split('\n').map((l) => `> ${l}`), '']
-        : []),
       'If it turns out the scope is still open, we may suggest starting with the free',
       '30-minute review instead — but we will say why, and you will still get the',
       'number you asked for.',
@@ -335,9 +377,6 @@ function confirmationText({
     'makes sense we will find a time; if your question does not need one, you will',
     'get a straight answer instead.',
     '',
-    ...(message
-      ? ['Here is what you sent, for your records:', '', ...message.split('\n').map((l) => `> ${l}`), '']
-      : []),
     'If you would rather just put something in the calendar now, you can pick a',
     'time here:',
     'https://www.allthingspanta.com/consultation/#book',
