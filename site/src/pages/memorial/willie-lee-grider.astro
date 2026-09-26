@@ -13,9 +13,27 @@
  *
  * The twelve program pages are rendered server-side rather than built by a
  * script as in the original: the whole program is then in the HTML, readable
- * with JS off, and the first two pages start loading from the markup instead of
+ * with JS off, and the first page starts loading from the markup instead of
  * after a module runs. The PDF is an ordinary <a download> — the original's
  * button existed only because the artifact runtime has no file downloads.
+ *
+ * ── The pager, and why it is built the way it is ──────────────────────────────
+ * The program is read one page at a time, the way the printed one is held. That
+ * is layered on top of the twelve figures rather than replacing them:
+ *
+ *   - Without JS the markup is unchanged — twelve pages, top to bottom, and no
+ *     controls (they are shown by a `.js` rule, so nothing dead is ever drawn).
+ *   - An inline script in <head> sets `.js` BEFORE first paint, and page one is
+ *     server-rendered already carrying `.is-current`. Without that ordering the
+ *     browser would paint all twelve and then collapse them to one — a visible
+ *     lurch on exactly the element people came for.
+ *   - Setup runs in a try/catch that strips `.js` again if anything throws, so a
+ *     failure lands back on the plain scrolling program rather than on one page
+ *     with buttons that do nothing.
+ *
+ * Neighbouring pages are warmed (their `loading` flipped to eager) as you move,
+ * so the next page is usually decoded before it is asked for; loading all twelve
+ * up front would be ~2.5 MB for a program most people read a few pages of.
  *
  * Assets live in public/memorial/willie-lee-grider/ and are served unprocessed;
  * they are already sized for display (1100×1424) and re-encoding a scanned
@@ -51,6 +69,14 @@ const PDF = '/memorial/willie-lee-grider/Willie-Lee-Grider-Program.pdf';
       rel="stylesheet"
       href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap"
     />
+    <!--
+      Set before first paint so page one is the only one ever drawn. Deferring
+      this to the setup script at the end of the body would paint all twelve
+      pages and then collapse them — see the note in the frontmatter.
+    -->
+    <script is:inline>
+      document.documentElement.classList.add('js');
+    </script>
     <style>
       :root {
         color-scheme: dark;
@@ -183,6 +209,7 @@ const PDF = '/memorial/willie-lee-grider/Willie-Lee-Grider-Program.pdf';
         text-transform: uppercase;
         color: var(--muted);
       }
+      .pages { display: flex; flex-direction: column; gap: 18px; }
       figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
       figure img {
         display: block;
@@ -200,6 +227,94 @@ const PDF = '/memorial/willie-lee-grider/Willie-Lee-Grider-Program.pdf';
         text-align: right;
         font-variant-numeric: tabular-nums;
       }
+
+      /* One page at a time, once the pager is running. */
+      .js .pages > figure { display: none; }
+      .js .pages > figure.is-current { display: flex; }
+      /*
+       * Capping the WIDTH is what keeps a whole page in view, not `max-height`.
+       * A width of 100% gives the image a definite size before it loads, so the
+       * width/height attributes can reserve its box; `width: auto` with a height
+       * cap collapses an unloaded image to nothing and the pager jumps down the
+       * screen as each page arrives. 54vh is the width at which the page's own
+       * 1100×1424 proportion lands at about 70vh tall — the image and the pager
+       * under it then fit together on a laptop screen.
+       */
+      .js .pages > figure img {
+        width: 100%;
+        max-width: 54vh;
+        height: auto;
+        margin-inline: auto;
+      }
+      /* The pager states the page number; the caption would say it twice. */
+      .js .pages figcaption { display: none; }
+
+      /* Drawn only when the script that drives it is running. */
+      .pager { display: none; }
+      .js .pager {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 12px;
+        border-top: 1px solid var(--rule);
+        padding-top: 16px;
+      }
+      .pager-row {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 16px;
+        width: 100%;
+      }
+      .pager-btn {
+        appearance: none;
+        background: transparent;
+        border: 1px solid var(--rule);
+        color: var(--gold);
+        font: 500 0.95rem/1 'EB Garamond', Georgia, serif;
+        letter-spacing: 0.04em;
+        padding: 11px 18px;
+        cursor: pointer;
+      }
+      .pager-btn:hover:not(:disabled) { border-color: var(--gold); }
+      .pager-btn:disabled { color: var(--rule); cursor: default; }
+      .pager-status {
+        font-size: 0.78rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        font-variant-numeric: tabular-nums;
+        min-width: 9em;
+        text-align: center;
+      }
+      .pager-jump {
+        display: flex;
+        flex-wrap: wrap;
+        justify-content: center;
+        gap: 6px;
+      }
+      .pager-jump button {
+        appearance: none;
+        background: transparent;
+        border: 1px solid transparent;
+        color: var(--muted);
+        font: 400 0.9rem/1 'EB Garamond', Georgia, serif;
+        font-variant-numeric: tabular-nums;
+        min-width: 2.1em;
+        padding: 7px 4px;
+        cursor: pointer;
+      }
+      .pager-jump button:hover { color: var(--lily); }
+      .pager-jump button[aria-current='true'] {
+        color: var(--gold);
+        border-color: var(--rule);
+      }
+      .pager-btn:focus-visible,
+      .pager-jump button:focus-visible {
+        outline: 2px solid var(--lily);
+        outline-offset: 2px;
+      }
+      .pager-hint { font-size: 0.85rem; color: var(--muted); font-style: italic; }
       footer { text-align: center; color: var(--muted); font-style: italic; }
     </style>
   </head>
@@ -255,14 +370,15 @@ const PDF = '/memorial/willie-lee-grider/Willie-Lee-Grider-Program.pdf';
         </section>
       </div>
 
-      <div class="program" id="program">
+      <section class="program" id="program" aria-labelledby="program-title">
         <div class="program-head">
-          <h2>The Program</h2><span>{PAGE_COUNT} pages</span>
+          <h2 id="program-title">The Program</h2><span>{PAGE_COUNT} pages</span>
         </div>
-        <div class="program">
+
+        <div class="pages" data-pages>
           {
             pages.map((n, i) => (
-              <figure>
+              <figure class={i === 0 ? 'is-current' : undefined}>
                 <img
                   src={`/memorial/willie-lee-grider/pages/p-${n}.jpg`}
                   alt={`Program page ${i + 1} of ${PAGE_COUNT}`}
@@ -278,11 +394,164 @@ const PDF = '/memorial/willie-lee-grider/Willie-Lee-Grider-Program.pdf';
             ))
           }
         </div>
-      </div>
+
+        <nav class="pager" data-pager aria-label="Program pages">
+          <div class="pager-row">
+            <button type="button" class="pager-btn" data-prev>‹ Previous</button>
+            <span class="pager-status" data-status aria-live="polite">
+              Page 1 of {PAGE_COUNT}
+            </span>
+            <button type="button" class="pager-btn" data-next>Next ›</button>
+          </div>
+          <div class="pager-jump" data-jump>
+            {
+              pages.map((_, i) => (
+                <button
+                  type="button"
+                  data-go={i}
+                  aria-label={`Go to page ${i + 1}`}
+                  aria-current={i === 0 ? 'true' : 'false'}
+                >
+                  {i + 1}
+                </button>
+              ))
+            }
+          </div>
+          <p class="pager-hint">Use the arrow keys, or swipe, to turn the page.</p>
+        </nav>
+      </section>
 
       <footer>
         “Well done, good and faithful servant… Enter into the joy of your Lord.” ~ Matthew 25:23
       </footer>
     </div>
+
+    <script is:inline>
+      /*
+       * Turns the twelve stacked pages into one page at a time.
+       *
+       * Inline and unbundled on purpose: the `.js` class is already set in the
+       * head, so from that moment the page is committed to showing one figure.
+       * A module script would be deferred until after the document parses,
+       * leaving a window in which the program is a single page with no way to
+       * leave it. This runs the instant the markup above it exists.
+       *
+       * If anything here throws, `.js` comes off and the page is the plain
+       * scrolling program again — the failure mode is "less clever", not
+       * "unreadable".
+       */
+      (function () {
+        try {
+          var figures = Array.prototype.slice.call(
+            document.querySelectorAll('[data-pages] > figure'),
+          );
+          var jumps = Array.prototype.slice.call(
+            document.querySelectorAll('[data-jump] button'),
+          );
+          var prev = document.querySelector('[data-prev]');
+          var next = document.querySelector('[data-next]');
+          var status = document.querySelector('[data-status]');
+          var pages = document.querySelector('[data-pages]');
+          if (!figures.length || !prev || !next || !status || !pages) throw new Error('no pager');
+
+          var last = figures.length - 1;
+          var at = 0;
+
+          /* The page either side is the one most likely to be asked for next,
+             and a lazy image inside a display:none figure never starts. */
+          function warm(i) {
+            [i - 1, i, i + 1].forEach(function (n) {
+              var img = figures[n] && figures[n].querySelector('img');
+              if (img) img.loading = 'eager';
+            });
+          }
+
+          function show(i, moveFocus) {
+            at = Math.max(0, Math.min(last, i));
+            figures.forEach(function (fig, n) {
+              fig.classList.toggle('is-current', n === at);
+            });
+            jumps.forEach(function (btn, n) {
+              btn.setAttribute('aria-current', n === at ? 'true' : 'false');
+            });
+            prev.disabled = at === 0;
+            next.disabled = at === last;
+            status.textContent = 'Page ' + (at + 1) + ' of ' + figures.length;
+            warm(at);
+
+            /* A disabled button drops focus to the body, which would strand a
+               keyboard user at the end of the program. Hand it to the control
+               that still works. */
+            if (moveFocus && document.activeElement && document.activeElement.disabled) {
+              (at === 0 ? next : prev).focus();
+            }
+            /* Only claw the view back when the page has been scrolled off. */
+            if (pages.getBoundingClientRect().top < 0) {
+              pages.scrollIntoView({ block: 'start' });
+            }
+          }
+
+          prev.addEventListener('click', function () {
+            show(at - 1, true);
+          });
+          next.addEventListener('click', function () {
+            show(at + 1, true);
+          });
+          jumps.forEach(function (btn) {
+            btn.addEventListener('click', function () {
+              show(Number(btn.getAttribute('data-go')), false);
+            });
+          });
+
+          document.addEventListener('keydown', function (e) {
+            if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
+            /* A held arrow key auto-repeats several times a second, which flings
+               the reader to the last page. One press, one page. */
+            if (e.repeat) return;
+            var tag = (e.target.tagName || '').toLowerCase();
+            if (tag === 'input' || tag === 'textarea' || e.target.isContentEditable) return;
+            if (e.key === 'ArrowRight') {
+              show(at + 1, false);
+              e.preventDefault();
+            } else if (e.key === 'ArrowLeft') {
+              show(at - 1, false);
+              e.preventDefault();
+            }
+          });
+
+          /* Swipe, but only a deliberate horizontal one — the page still has to
+             scroll normally under a finger dragged up or down. */
+          var x0 = null;
+          var y0 = null;
+          pages.addEventListener(
+            'touchstart',
+            function (e) {
+              if (e.touches.length !== 1) return;
+              x0 = e.touches[0].clientX;
+              y0 = e.touches[0].clientY;
+            },
+            { passive: true },
+          );
+          pages.addEventListener(
+            'touchend',
+            function (e) {
+              if (x0 === null || !e.changedTouches.length) return;
+              var dx = e.changedTouches[0].clientX - x0;
+              var dy = e.changedTouches[0].clientY - y0;
+              x0 = null;
+              y0 = null;
+              if (Math.abs(dx) > 45 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+                show(dx < 0 ? at + 1 : at - 1, false);
+              }
+            },
+            { passive: true },
+          );
+
+          show(0, false);
+        } catch (err) {
+          document.documentElement.classList.remove('js');
+        }
+      })();
+    </script>
   </body>
 </html>
