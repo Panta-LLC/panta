@@ -259,10 +259,17 @@ for (const file of files) {
 // is already made, and offering someone three ways to start at that moment is
 // noise. Prototype pages are exempt for the same reason they are out of the
 // sitemap — they are not part of the journey yet.
+//
+// /memorial/* is exempt by prefix: those pages are a favour done for a family,
+// shared by link and noindex, and they do not use Base.astro at all. Putting a
+// "Get a quote" button under someone's funeral program is the one case where
+// the three doors are the wrong instinct, not a missing one.
 const DOOR_EXEMPT = ['/thanks/', '/journey/', '/consultation-condensed/', '/hero-mockup/', '/hero-centered/']
+const DOOR_EXEMPT_PREFIXES = ['/memorial/']
 for (const file of files) {
   const where = file.replace(DIST, '').replace(/index\.html$/, '') || '/'
   if (DOOR_EXEMPT.includes(where)) continue
+  if (DOOR_EXEMPT_PREFIXES.some((prefix) => where.startsWith(prefix))) continue
   const html = readFileSync(file, 'utf8')
   const missing = [
     html.includes('href="/quote/') ? null : 'no quote link',

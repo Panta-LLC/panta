@@ -81,6 +81,10 @@ export default defineConfig({
       // curious visitor arriving from search would each be counted as a
       // booking. It is reachable only by a scheduler redirect.
       //
+      // /memorial/ is not a prototype either: those pages are noindex because
+      // they are shared by link with a family, not published as surface for
+      // this business. The prefix covers any future one without a change here.
+      //
       // NOINDEX_PATHS above adds the package pages that are built-but-noindex,
       // resolved from Sanity at config time.
       filter: (page) =>
@@ -90,6 +94,7 @@ export default defineConfig({
           '/hero-mockup',
           '/hero-centered',
           '/thanks',
+          '/memorial/',
           ...NOINDEX_PATHS,
         ].some((p) => page.includes(p)),
     }),
