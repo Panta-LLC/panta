@@ -1,0 +1,288 @@
+---
+/**
+ * Celebration of life — Willie Lee Grider (1933–2026).
+ *
+ * A standalone page, deliberately outside Base.astro: it carries none of the
+ * site's chrome, palette, type or analytics. A memorial that opened inside the
+ * consulting site's header and "Book a Pulse Check" footer would be doing two
+ * jobs at once, and the second one badly.
+ *
+ * It is noindex and excluded from the sitemap (see astro.config.mjs) because it
+ * is shared by link with a family, not published as surface for this business.
+ * Nothing on the site links here.
+ *
+ * The twelve program pages are rendered server-side rather than built by a
+ * script as in the original: the whole program is then in the HTML, readable
+ * with JS off, and the first two pages start loading from the markup instead of
+ * after a module runs. The PDF is an ordinary <a download> — the original's
+ * button existed only because the artifact runtime has no file downloads.
+ *
+ * Assets live in public/memorial/willie-lee-grider/ and are served unprocessed;
+ * they are already sized for display (1100×1424) and re-encoding a scanned
+ * program buys nothing.
+ */
+const PAGE_COUNT = 12;
+const pages = Array.from({ length: PAGE_COUNT }, (_, i) => String(i + 1).padStart(2, '0'));
+const PDF = '/memorial/willie-lee-grider/Willie-Lee-Grider-Program.pdf';
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
+    <title>Willie Lee Grider — Celebration of Life</title>
+    <meta
+      name="description"
+      content="Celebrating the life of Willie Lee Grider, November 5, 1933 – September 11, 2026. Service details and the full program."
+    />
+    <meta name="robots" content="noindex" />
+    <meta name="theme-color" content="#0c0d0c" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Willie Lee Grider — Celebration of Life" />
+    <meta
+      property="og:description"
+      content="November 5, 1933 – September 11, 2026. Service details and the full program."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;1,400;1,500&family=EB+Garamond:ital,wght@0,400;0,500;1,400&display=swap"
+    />
+    <style>
+      :root {
+        color-scheme: dark;
+        --ground: #0c0d0c;
+        --panel: #161816;
+        --lily: #f3f0e8;
+        --muted: #a9ab9f;
+        --gold: #c9b27a;
+        --sage: #8fa68f;
+        --rule: #2c302b;
+      }
+      *,
+      *::before,
+      *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--ground);
+        color: var(--lily);
+        font: 400 1.0625rem/1.6 'EB Garamond', Georgia, 'Times New Roman', serif;
+        padding-inline: 16px;
+      }
+      img { max-width: 100%; }
+      .wrap {
+        max-width: 760px;
+        margin: 0 auto;
+        padding-block: 48px 64px;
+        display: flex;
+        flex-direction: column;
+        gap: 40px;
+      }
+      header {
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 6px;
+        border: 1px solid var(--rule);
+        padding: 40px 20px 34px;
+      }
+      .eyebrow {
+        font: italic 400 clamp(1.3rem, 4vw, 1.7rem) / 1.2 'Cormorant Garamond', Georgia, serif;
+        color: var(--gold);
+      }
+      h1 {
+        margin: 0;
+        font: italic 500 clamp(2.6rem, 10vw, 4.4rem) / 1.05 'Cormorant Garamond', Georgia, serif;
+        text-wrap: balance;
+      }
+      .dates {
+        font: italic 400 1.25rem/1.4 'Cormorant Garamond', Georgia, serif;
+        color: var(--muted);
+        margin-top: 6px;
+      }
+      .verse {
+        font-style: italic;
+        color: var(--muted);
+        font-size: 0.98rem;
+        max-width: 34em;
+        margin: 18px auto 0;
+      }
+      .verse cite {
+        display: block;
+        font-style: normal;
+        font-size: 0.8rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--sage);
+        margin-top: 4px;
+      }
+      .actions {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        justify-content: center;
+        margin-top: 24px;
+      }
+      .btn {
+        appearance: none;
+        border: 1px solid var(--gold);
+        background: var(--gold);
+        color: #16140e;
+        font: 500 1rem/1 'EB Garamond', Georgia, serif;
+        letter-spacing: 0.04em;
+        padding: 14px 22px;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .btn.ghost { background: transparent; color: var(--gold); }
+      .btn:focus-visible { outline: 2px solid var(--lily); outline-offset: 3px; }
+      .btn:hover { filter: brightness(1.08); }
+      .details {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 1px;
+        background: var(--rule);
+        border: 1px solid var(--rule);
+      }
+      .details section {
+        background: var(--panel);
+        padding: 20px 22px;
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+      }
+      .details h2 {
+        margin: 0 0 6px;
+        font: italic 500 1.35rem/1.2 'Cormorant Garamond', Georgia, serif;
+        color: var(--gold);
+      }
+      .details p { margin: 0; color: var(--lily); }
+      .details a { color: var(--sage); font-size: 0.9rem; margin-top: 8px; text-underline-offset: 3px; }
+      .program { display: flex; flex-direction: column; gap: 18px; }
+      .program-head {
+        display: flex;
+        justify-content: space-between;
+        align-items: baseline;
+        gap: 12px;
+        border-bottom: 1px solid var(--rule);
+        padding-bottom: 10px;
+      }
+      .program-head h2 {
+        margin: 0;
+        font: italic 500 1.6rem/1.2 'Cormorant Garamond', Georgia, serif;
+      }
+      .program-head span {
+        font-size: 0.8rem;
+        letter-spacing: 0.12em;
+        text-transform: uppercase;
+        color: var(--muted);
+      }
+      figure { margin: 0; display: flex; flex-direction: column; gap: 6px; }
+      figure img {
+        display: block;
+        width: 100%;
+        height: auto;
+        max-width: 100%;
+        background: #1b1d1b;
+        box-shadow: 0 2px 24px rgba(0, 0, 0, 0.5);
+      }
+      figcaption {
+        font-size: 0.78rem;
+        letter-spacing: 0.14em;
+        text-transform: uppercase;
+        color: var(--muted);
+        text-align: right;
+        font-variant-numeric: tabular-nums;
+      }
+      footer { text-align: center; color: var(--muted); font-style: italic; }
+    </style>
+  </head>
+  <body>
+    <div class="wrap">
+      <header>
+        <div class="eyebrow">celebrating the life of</div>
+        <h1>Willie Lee Grider</h1>
+        <div class="dates">November 5, 1933 ~ September 11, 2026</div>
+        <p class="verse">
+          “But they that wait upon the Lord shall renew their strength; they shall mount up with
+          wings as eagles; they shall run, and not be weary; and they shall walk, and not faint.”
+          <cite>Isaiah 40:31</cite>
+        </p>
+        <div class="actions">
+          <a class="btn" href={PDF} download>Download the program (PDF)</a>
+          <a class="btn ghost" href="#program">View it below</a>
+        </div>
+      </header>
+
+      <div class="details">
+        <section>
+          <h2>Celebration of Life</h2>
+          <p>Saturday, September 26, 2026</p>
+          <p>Southside Church of Christ</p>
+          <p>1501 Florida Avenue</p>
+          <a
+            href="https://www.google.com/maps/search/?api=1&query=Southside+Church+of+Christ+1501+Florida+Ave+Richmond+CA"
+            target="_blank"
+            rel="noopener">Directions</a
+          >
+        </section>
+        <section>
+          <h2>Interment</h2>
+          <p>Rolling Hills Memorial Park</p>
+          <p>4100 Hilltop Dr</p>
+          <a
+            href="https://www.google.com/maps/search/?api=1&query=Rolling+Hills+Memorial+Park+4100+Hilltop+Dr+Richmond+CA"
+            target="_blank"
+            rel="noopener">Directions</a
+          >
+        </section>
+        <section>
+          <h2>Repast</h2>
+          <p>Moose Lodge</p>
+          <p>4660 Appian Way</p>
+          <p>El Sobrante, CA 94803</p>
+          <a
+            href="https://www.google.com/maps/search/?api=1&query=Moose+Lodge+4660+Appian+Way+El+Sobrante+CA+94803"
+            target="_blank"
+            rel="noopener">Directions</a
+          >
+        </section>
+      </div>
+
+      <div class="program" id="program">
+        <div class="program-head">
+          <h2>The Program</h2><span>{PAGE_COUNT} pages</span>
+        </div>
+        <div class="program">
+          {
+            pages.map((n, i) => (
+              <figure>
+                <img
+                  src={`/memorial/willie-lee-grider/pages/p-${n}.jpg`}
+                  alt={`Program page ${i + 1} of ${PAGE_COUNT}`}
+                  width="1100"
+                  height="1424"
+                  loading={i < 2 ? 'eager' : 'lazy'}
+                  decoding="async"
+                />
+                <figcaption>
+                  Page {i + 1} of {PAGE_COUNT}
+                </figcaption>
+              </figure>
+            ))
+          }
+        </div>
+      </div>
+
+      <footer>
+        “Well done, good and faithful servant… Enter into the joy of your Lord.” ~ Matthew 25:23
+      </footer>
+    </div>
+  </body>
+</html>
